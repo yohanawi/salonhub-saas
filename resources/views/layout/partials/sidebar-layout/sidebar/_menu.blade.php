@@ -31,6 +31,47 @@
 				<!--end:Menu sub-->
 			</div>
 			<!--end:Menu item-->
+			@if (auth()->user()?->hasRole('Super Admin'))
+			<!--begin:Menu item-->
+			<div data-kt-menu-trigger="click" class="menu-item menu-accordion {{ request()->routeIs('plan-management.*') ? 'here show' : '' }}">
+				<!--begin:Menu link-->
+				<span class="menu-link">
+					<span class="menu-icon">{!! getIcon('credit-cart', 'fs-2') !!}</span>
+					<span class="menu-title">Plan Management</span>
+					<span class="menu-arrow"></span>
+				</span>
+				<!--end:Menu link-->
+				<!--begin:Menu sub-->
+				<div class="menu-sub menu-sub-accordion">
+					<!--begin:Menu item-->
+					<div class="menu-item">
+						<!--begin:Menu link-->
+						<a class="menu-link {{ request()->routeIs('plan-management.plans.index') ? 'active' : '' }}" href="{{ route('plan-management.plans.index') }}">
+							<span class="menu-bullet">
+								<span class="bullet bullet-dot"></span>
+							</span>
+							<span class="menu-title">Plans</span>
+						</a>
+						<!--end:Menu link-->
+					</div>
+					<!--end:Menu item-->
+					<!--begin:Menu item-->
+					<div class="menu-item">
+						<!--begin:Menu link-->
+						<a class="menu-link {{ request()->routeIs('plan-management.plans.create') ? 'active' : '' }}" href="{{ route('plan-management.plans.create') }}">
+							<span class="menu-bullet">
+								<span class="bullet bullet-dot"></span>
+							</span>
+							<span class="menu-title">Add Plan</span>
+						</a>
+						<!--end:Menu link-->
+					</div>
+					<!--end:Menu item-->
+				</div>
+				<!--end:Menu sub-->
+			</div>
+			<!--end:Menu item-->
+			@endif
 			<!--begin:Menu item-->
 			<div class="menu-item pt-5">
 				<!--begin:Menu content-->

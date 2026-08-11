@@ -31,6 +31,21 @@ class PasswordConfirmationTest extends TestCase
         $response->assertSessionHasNoErrors();
     }
 
+    public function test_password_can_be_confirmed_with_ajax()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/confirm-password', [
+            'password' => 'password',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'redirect' => url('/dashboard'),
+            ]);
+    }
+
     public function test_password_is_not_confirmed_with_invalid_password()
     {
         $user = User::factory()->create();

@@ -51,3 +51,21 @@ Breadcrumbs::for('user-management.permissions.index', function (BreadcrumbTrail 
     $trail->parent('user-management.index');
     $trail->push('Permissions', route('user-management.permissions.index'));
 });
+
+// Home > Dashboard > Plan Management
+Breadcrumbs::for('plan-management.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Plan Management', route('plan-management.plans.index'));
+});
+
+// Home > Dashboard > Plan Management > Plans
+Breadcrumbs::for('plan-management.plans.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('plan-management.index');
+    $trail->push('Plans', route('plan-management.plans.index'));
+});
+
+// Home > Dashboard > Plan Management > Plans > Create
+Breadcrumbs::for('plan-management.plans.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('plan-management.plans.index');
+    $trail->push('Add Plan', route('plan-management.plans.create'));
+});

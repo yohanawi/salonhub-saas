@@ -2,71 +2,43 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Models\Permission;
+use App\Models\Role;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 class RolesPermissionsSeeder extends Seeder
 {
+    public const ROLES = [
+        'Super Admin',
+        'Salon Owner',
+        'Salon Admin',
+        'Branch Manager',
+        'Receptionist',
+        'Cashier',
+        'Beautician',
+        'Customer',
+    ];
+
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        $abilities = [
-            'read',
-            'write',
-            'create',
-        ];
+        app('cache')
+            ->store(config('permission.cache.store') !== 'default' ? config('permission.cache.store') : null)
+            ->forget(config('permission.cache.key'));
 
-        $permissions_by_role = [
-            'administrator' => [
-                'user management',
-                'content management',
-                'financial management',
-                'reporting',
-                'payroll',
-                'disputes management',
-                'api controls',
-                'database management',
-                'repository management',
-            ],
-            'developer' => [
-                'api controls',
-                'database management',
-                'repository management',
-            ],
-            'analyst' => [
-                'content management',
-                'financial management',
-                'reporting',
-                'payroll',
-            ],
-            'support' => [
-                'reporting',
-            ],
-            'trial' => [
-            ],
-        ];
+        Permission::query()->delete();
 
-        foreach ($permissions_by_role['administrator'] as $permission) {
-            foreach ($abilities as $ability) {
-                Permission::create(['name' => $ability . ' ' . $permission]);
-            }
+        Role::query()
+            ->whereNotIn('name', self::ROLES)
+            ->delete();
+
+        foreach (self::ROLES as $role) {
+            Role::query()->firstOrCreate([
+                'name' => $role,
+                'guard_name' => 'web',
+            ]);
         }
-
-        foreach ($permissions_by_role as $role => $permissions) {
-            $full_permissions_list = [];
-            foreach ($abilities as $ability) {
-                foreach ($permissions as $permission) {
-                    $full_permissions_list[] = $ability . ' ' . $permission;
-                }
-            }
-            Role::create(['name' => $role])->syncPermissions($full_permissions_list);
-        }
-
-        User::find(1)->assignRole('administrator');
-        User::find(2)->assignRole('developer');
     }
 }

@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Apps\PermissionManagementController;
+use App\Http\Controllers\Apps\PlanManagementController;
 use App\Http\Controllers\Apps\RoleManagementController;
 use App\Http\Controllers\Apps\UserManagementController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,10 +26,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+
     Route::name('user-management.')->group(function () {
         Route::resource('/user-management/users', UserManagementController::class);
         Route::resource('/user-management/roles', RoleManagementController::class);
         Route::resource('/user-management/permissions', PermissionManagementController::class);
+    });
+
+    Route::name('plan-management.')->group(function () {
+        Route::resource('/plan-management/plans', PlanManagementController::class)->only(['index', 'create', 'store']);
     });
 
 });
@@ -35,6 +43,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::get('/error', function () {
     abort(500);
 });
+
+Route::view('/terms-and-conditions', 'pages.auth.terms')->name('terms');
 
 Route::get('/auth/redirect/{provider}', [SocialiteController::class, 'redirect']);
 

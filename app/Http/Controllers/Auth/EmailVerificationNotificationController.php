@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Http\Request;
+use Throwable;
 
 class EmailVerificationNotificationController extends Controller
 {
@@ -20,7 +21,13 @@ class EmailVerificationNotificationController extends Controller
             return redirect()->intended(RouteServiceProvider::HOME);
         }
 
-        $request->user()->sendEmailVerificationNotification();
+        try {
+            $request->user()->sendEmailVerificationNotification();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('status', 'verification-link-failed');
+        }
 
         return back()->with('status', 'verification-link-sent');
     }
