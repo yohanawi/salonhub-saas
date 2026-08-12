@@ -16,7 +16,10 @@
         <form method="POST" action="{{ route('branches.store') }}">
             @csrf
 
-            @include('pages/apps.branch-management.branches._form', ['branch' => $branch])
+            @include('pages/apps.branch-management.branches._form', [
+                'branch' => $branch,
+                'tenants' => $tenants,
+            ])
         </form>
     </div>
 

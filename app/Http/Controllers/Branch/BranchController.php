@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Branch\StoreBranchRequest;
 use App\Http\Requests\Branch\UpdateBranchRequest;
 use App\Models\Branch;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\BranchContext;
 use App\Services\BranchService;
@@ -23,7 +24,9 @@ class BranchController extends Controller
         $branches = $this->visibleBranches($user)
             ->withCount(['users', 'staff', 'appointments'])
             ->with('businessHours')
+            ->withTrashed()
             ->orderByDesc('is_main')
+            ->orderByRaw('deleted_at is not null')
             ->orderBy('name')
             ->get();
 
@@ -33,8 +36,8 @@ class BranchController extends Controller
             'branches' => $branches,
             'branchLimit' => $branchLimit,
             'branchCount' => $user->hasRole('Super Admin')
-                ? Branch::query()->count()
-                : ($user->tenant?->branches()->count() ?? 0),
+                ? Branch::withTrashed()->count()
+                : ($user->tenant?->branches()->withTrashed()->count() ?? 0),
         ]);
     }
 
@@ -48,12 +51,22 @@ class BranchController extends Controller
                 'currency' => $request->user()->tenant?->currency ?? 'LKR',
                 'timezone' => $request->user()->tenant?->timezone ?? 'Asia/Colombo',
             ]),
+            'tenants' => $request->user()->hasRole('Super Admin')
+                ? Tenant::query()->orderBy('name')->get()
+                : collect(),
         ]);
     }
 
     public function store(StoreBranchRequest $request, BranchService $service): RedirectResponse
     {
-        $branch = $service->create($request->user()->tenant, $request->validated());
+        $validated = $request->validated();
+        $tenant = $request->user()->hasRole('Super Admin')
+            ? Tenant::query()->findOrFail($validated['tenant_id'])
+            : $request->user()->tenant;
+
+        unset($validated['tenant_id']);
+
+        $branch = $service->create($tenant, $validated);
 
         return redirect()
             ->route('branches.show', $branch)
@@ -66,6 +79,7 @@ class BranchController extends Controller
 
         $branch->load([
             'businessHours' => fn ($query) => $query->orderBy('day_of_week'),
+            'specialHours' => fn ($query) => $query->whereDate('date', '>=', now()->toDateString())->orderBy('date'),
             'users.roles',
             'staff',
             'services',
@@ -89,6 +103,7 @@ class BranchController extends Controller
 
         return view('pages/apps.branch-management.branches.edit', [
             'branch' => $branch,
+            'tenants' => collect(),
             'assignableUsers' => User::query()
                 ->where('tenant_id', $branch->tenant_id)
                 ->orderBy('name')
@@ -113,11 +128,11 @@ class BranchController extends Controller
     private function visibleBranches(User $user)
     {
         if ($user->hasRole('Super Admin')) {
-            return Branch::query();
+            return Branch::withTrashed();
         }
 
         if (app(BranchContext::class)->hasTenantWideBranchAccess($user)) {
-            return Branch::query()->where('tenant_id', $user->tenant_id);
+            return Branch::withTrashed()->where('tenant_id', $user->tenant_id);
         }
 
         return $user->branches()->getQuery();

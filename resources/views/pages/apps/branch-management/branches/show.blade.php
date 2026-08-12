@@ -46,6 +46,11 @@
                                         Main Branch
                                     </span>
                                 @endif
+                                @if ($branch->trashed())
+                                    <span class="badge badge-light-danger">
+                                        Archived
+                                    </span>
+                                @endif
                                 @php
                                     $statusClass = match ($branch->status) {
                                         \App\Models\Branch::STATUS_ACTIVE => 'badge-light-success',
@@ -53,8 +58,8 @@
                                         default => 'badge-light-danger',
                                     };
                                 @endphp
-                                <span class="badge {{ $statusClass }}">
-                                    {{ $branch->status_label }}
+                                <span class="badge {{ $branch->trashed() ? 'badge-light-danger' : $statusClass }}">
+                                    {{ $branch->trashed() ? 'Archived' : $branch->status_label }}
                                 </span>
                             </div>
                             <div class="text-muted fw-semibold mb-2">
@@ -68,20 +73,39 @@
                     </div>
 
                     <div class="d-flex flex-wrap gap-3">
-                        <form method="POST" action="{{ route('branches.switch', $branch) }}">
-                            @csrf
-                            <button type="submit" class="btn btn-light-primary">
-                                <i class="bi bi-arrow-repeat me-1"></i>
-                                Switch Here
-                            </button>
-                        </form>
+                        @if ($branch->trashed())
+                            @can('restore', $branch)
+                                <form method="POST" action="{{ route('branches.restore', $branch) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-light-success">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                        Restore Branch
+                                    </button>
+                                </form>
+                            @endcan
+                        @else
+                            <form method="POST" action="{{ route('branches.switch', $branch) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-light-primary">
+                                    <i class="bi bi-arrow-repeat me-1"></i>
+                                    Switch Here
+                                </button>
+                            </form>
 
-                        @can('update', $branch)
-                            <a href="{{ route('branches.edit', $branch) }}" class="btn btn-primary">
-                                <i class="bi bi-pencil-square me-1"></i>
-                                Edit Branch
-                            </a>
-                        @endcan
+                            @can('update', $branch)
+                                <a href="{{ route('branches.edit', $branch) }}" class="btn btn-primary">
+                                    <i class="bi bi-pencil-square me-1"></i>
+                                    Edit Branch
+                                </a>
+                            @endcan
+
+                            @can('viewReports', $branch)
+                                <a href="{{ route('branches.reports.show', $branch) }}" class="btn btn-light-info">
+                                    <i class="bi bi-bar-chart me-1"></i>
+                                    Reports
+                                </a>
+                            @endcan
+                        @endif
                     </div>
                 </div>
             </div>
@@ -333,6 +357,50 @@
                             </div>
                         </div>
                     @endcan
+
+                    @can('delete', $branch)
+                        <div class="card border-0 shadow-sm mt-6">
+                            <div class="card-header border-0 pt-7">
+                                <div class="card-title d-flex align-items-center gap-3">
+                                    <div class="symbol symbol-40px">
+                                        <div class="symbol-label bg-light-danger">
+                                            <i class="bi bi-archive text-danger"></i>
+                                        </div>
+                                    </div>
+                                    <h2 class="fw-bold mb-0">
+                                        Archive Branch
+                                    </h2>
+                                </div>
+                            </div>
+                            <div class="card-body pt-3">
+                                <form method="POST" action="{{ route('branches.archive', $branch) }}">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    @if ($branch->is_main)
+                                        <label class="form-label fw-semibold">
+                                            Replacement Main Branch
+                                        </label>
+                                        <select name="replacement_main_branch_id" class="form-select mb-4" required>
+                                            <option value="">
+                                                Select branch
+                                            </option>
+                                            @foreach ($replacementBranches as $replacementBranch)
+                                                <option value="{{ $replacementBranch->id }}">
+                                                    {{ $replacementBranch->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+
+                                    <button type="submit" class="btn btn-light-danger w-100">
+                                        <i class="bi bi-archive me-1"></i>
+                                        Archive Branch
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endcan
                 </div>
             </div>
 
@@ -442,6 +510,108 @@
                                 @endforeach
                             </div>
                         @endcan
+                    </div>
+                </div>
+
+                {{-- Assigned Users --}}
+                <div class="card border-0 shadow-sm mb-7">
+                    <div class="card-header border-0 pt-7">
+                        <div class="card-title d-flex align-items-center gap-3">
+                            <div class="symbol symbol-45px">
+                                <div class="symbol-label bg-light-warning">
+                                    <i class="bi bi-calendar-event fs-2 text-warning"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="fw-bold mb-1">
+                                    Special Hours & Holidays
+                                </h2>
+                                <div class="text-muted fs-8">
+                                    Override normal hours for holidays, closures or one-off schedules.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body pt-3">
+                        @can('manageHours', $branch)
+                            <form method="POST" action="{{ route('branches.special-hours.store', $branch) }}" class="border rounded p-5 mb-6">
+                                @csrf
+                                <div class="row g-4 align-items-end">
+                                    <div class="col-md-3">
+                                        <label class="form-label required">Date</label>
+                                        <input type="date" name="date" value="{{ old('date') }}" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Label</label>
+                                        <input type="text" name="label" value="{{ old('label') }}" class="form-control" placeholder="Holiday">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Opens</label>
+                                        <input type="time" name="opens_at" value="{{ old('opens_at') }}" class="form-control">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Closes</label>
+                                        <input type="time" name="closes_at" value="{{ old('closes_at') }}" class="form-control">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-check form-switch form-check-custom form-check-solid mb-3">
+                                            <input class="form-check-input" type="checkbox" name="is_closed" value="1" @checked(old('is_closed'))>
+                                            <span class="form-check-label">Closed</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-12">
+                                        <textarea name="note" class="form-control" rows="2" placeholder="Optional note">{{ old('note') }}</textarea>
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-light-primary">
+                                            <i class="bi bi-plus-circle me-1"></i>
+                                            Save Special Hours
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        @endcan
+
+                        <div class="d-flex flex-column gap-3">
+                            @forelse ($branch->specialHours as $specialHour)
+                                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-4 border rounded p-4">
+                                    <div>
+                                        <div class="fw-bold text-gray-900">
+                                            {{ $specialHour->date->format('d M Y') }}
+                                            @if ($specialHour->label)
+                                                <span class="badge badge-light ms-2">{{ $specialHour->label }}</span>
+                                            @endif
+                                        </div>
+                                        <div class="text-muted fs-7">
+                                            @if ($specialHour->is_closed)
+                                                Closed all day
+                                            @else
+                                                {{ $specialHour->opens_at?->format('H:i') }} - {{ $specialHour->closes_at?->format('H:i') }}
+                                            @endif
+                                            @if ($specialHour->note)
+                                                · {{ $specialHour->note }}
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    @can('manageHours', $branch)
+                                        <form method="POST" action="{{ route('branches.special-hours.destroy', [$branch, $specialHour]) }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-light-danger">
+                                                <i class="bi bi-trash me-1"></i>
+                                                Remove
+                                            </button>
+                                        </form>
+                                    @endcan
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-8">
+                                    No upcoming special hours.
+                                </div>
+                            @endforelse
+                        </div>
                     </div>
                 </div>
 

@@ -102,6 +102,11 @@ class Branch extends Model
         return $this->hasMany(BranchBusinessHour::class);
     }
 
+    public function specialHours(): HasMany
+    {
+        return $this->hasMany(BranchSpecialHour::class);
+    }
+
     public function getAddressSummaryAttribute(): string
     {
         return collect([

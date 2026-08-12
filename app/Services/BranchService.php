@@ -137,6 +137,91 @@ class BranchService
         $branch->users()->sync($syncPayload);
     }
 
+    public function archive(Branch $branch, ?int $replacementMainBranchId = null): void
+    {
+        DB::transaction(function () use ($branch, $replacementMainBranchId) {
+            $branch = Branch::withTrashed()->whereKey($branch->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($branch->trashed()) {
+                return;
+            }
+
+            if ($branch->tenant->branches()->where('status', Branch::STATUS_ACTIVE)->whereKeyNot($branch->id)->count() === 0) {
+                throw ValidationException::withMessages([
+                    'branch' => 'At least one active branch must remain for this salon.',
+                ]);
+            }
+
+            if ($branch->is_main) {
+                $replacement = $replacementMainBranchId
+                    ? Branch::query()
+                        ->where('tenant_id', $branch->tenant_id)
+                        ->where('status', Branch::STATUS_ACTIVE)
+                        ->whereKeyNot($branch->id)
+                        ->whereKey($replacementMainBranchId)
+                        ->first()
+                    : null;
+
+                if (! $replacement) {
+                    throw ValidationException::withMessages([
+                        'replacement_main_branch_id' => 'Select another active branch before archiving the main branch.',
+                    ]);
+                }
+
+                $this->clearMainBranch($branch->tenant);
+                $replacement->update(['is_main' => true]);
+            }
+
+            $branch->update([
+                'status' => Branch::STATUS_INACTIVE,
+                'is_active' => false,
+                'is_main' => false,
+            ]);
+
+            $branch->delete();
+        });
+    }
+
+    public function restore(Branch $branch): Branch
+    {
+        return DB::transaction(function () use ($branch) {
+            $branch = Branch::withTrashed()->whereKey($branch->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($branch->trashed()) {
+                $branch->restore();
+            }
+
+            $hasMainBranch = $branch->tenant->branches()->where('is_main', true)->exists();
+
+            $branch->update([
+                'status' => Branch::STATUS_ACTIVE,
+                'is_active' => true,
+                'is_main' => ! $hasMainBranch,
+            ]);
+
+            return $branch->refresh();
+        });
+    }
+
+    public function upsertSpecialHour(Branch $branch, array $data): void
+    {
+        $isClosed = (bool) ($data['is_closed'] ?? false);
+
+        $branch->specialHours()->updateOrCreate(
+            [
+                'tenant_id' => $branch->tenant_id,
+                'date' => $data['date'],
+            ],
+            [
+                'opens_at' => $isClosed ? null : ($data['opens_at'] ?? null),
+                'closes_at' => $isClosed ? null : ($data['closes_at'] ?? null),
+                'is_closed' => $isClosed,
+                'label' => $data['label'] ?? null,
+                'note' => $data['note'] ?? null,
+            ]
+        );
+    }
+
     private function ensureBranchLimitNotExceeded(Tenant $tenant): void
     {
         $limit = $tenant->subscription?->plan?->max_branches;

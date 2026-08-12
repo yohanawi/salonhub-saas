@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Branch;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
 
 class BranchContext
@@ -46,9 +47,35 @@ class BranchContext
             ->first();
     }
 
+    public function availableBranches(User $user): Collection
+    {
+        if ($this->hasTenantWideBranchAccess($user)) {
+            return $user->tenant?->branches()
+                ->where('status', Branch::STATUS_ACTIVE)
+                ->orderByDesc('is_main')
+                ->orderBy('name')
+                ->get() ?? collect();
+        }
+
+        return $user->branches()
+            ->where('branches.status', Branch::STATUS_ACTIVE)
+            ->orderBy('branches.name')
+            ->get();
+    }
+
+    public function currentForOperation(?User $user = null): Branch
+    {
+        $branch = $this->current($user);
+
+        abort_unless($branch && ! $branch->trashed() && $branch->status === Branch::STATUS_ACTIVE, 422, 'Select an active branch before continuing.');
+
+        return $branch;
+    }
+
     public function switch(User $user, Branch $branch): void
     {
         abort_unless($this->canAccess($user, $branch), 403);
+        abort_if($branch->trashed() || $branch->status !== Branch::STATUS_ACTIVE, 422, 'Only active branches can be selected as the current branch.');
 
         Session::put('current_branch_id', $branch->id);
     }

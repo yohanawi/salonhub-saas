@@ -127,6 +127,11 @@
                                                     Main
                                                 </span>
                                             @endif
+                                            @if ($branch->trashed())
+                                                <span class="badge badge-light-danger fw-semibold">
+                                                    Archived
+                                                </span>
+                                            @endif
                                         </div>
                                         <div class="text-muted fs-7">
                                             Branch Code:
@@ -139,16 +144,18 @@
 
                                 {{-- Status --}}
                                 @php
-                                    $statusClass = match ($branch->status) {
-                                        \App\Models\Branch::STATUS_ACTIVE => 'badge-light-success',
-                                        \App\Models\Branch::STATUS_TEMPORARILY_CLOSED => 'badge-light-warning',
-                                        default => 'badge-light-danger',
-                                    };
+                                    $statusClass = $branch->trashed()
+                                        ? 'badge-light-danger'
+                                        : match ($branch->status) {
+                                            \App\Models\Branch::STATUS_ACTIVE => 'badge-light-success',
+                                            \App\Models\Branch::STATUS_TEMPORARILY_CLOSED => 'badge-light-warning',
+                                            default => 'badge-light-danger',
+                                        };
                                 @endphp
 
                                 <span class="badge {{ $statusClass }}">
                                     <span class="bullet bullet-dot me-2"></span>
-                                    {{ $branch->status_label }}
+                                    {{ $branch->trashed() ? 'Archived' : $branch->status_label }}
                                 </span>
                             </div>
 
@@ -207,6 +214,14 @@
                                     Manage
                                 </a>
 
+                                @can('viewReports', $branch)
+                                    <a href="{{ route('branches.reports.show', $branch) }}"
+                                        class="btn btn-sm btn-light-info flex-grow-1">
+                                        <i class="bi bi-bar-chart me-1"></i>
+                                        Reports
+                                    </a>
+                                @endcan
+
                                 @can('update', $branch)
                                     <a href="{{ route('branches.edit', $branch) }}"
                                         class="btn btn-sm btn-light flex-grow-1">
@@ -215,14 +230,27 @@
                                     </a>
                                 @endcan
 
-                                <form method="POST" action="{{ route('branches.switch', $branch) }}"
-                                    class="flex-grow-1">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-light-success w-100">
-                                        <i class="bi bi-arrow-repeat me-1"></i>
-                                        Switch
-                                    </button>
-                                </form>
+                                @if ($branch->trashed())
+                                    @can('restore', $branch)
+                                        <form method="POST" action="{{ route('branches.restore', $branch) }}"
+                                            class="flex-grow-1">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-light-success w-100">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                                Restore
+                                            </button>
+                                        </form>
+                                    @endcan
+                                @else
+                                    <form method="POST" action="{{ route('branches.switch', $branch) }}"
+                                        class="flex-grow-1">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-light-success w-100">
+                                            <i class="bi bi-arrow-repeat me-1"></i>
+                                            Switch
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
                     </div>

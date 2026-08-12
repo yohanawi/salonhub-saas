@@ -15,9 +15,16 @@ class StoreBranchRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = $this->user()->tenant_id;
+        $tenantId = $this->user()->hasRole('Super Admin')
+            ? $this->integer('tenant_id')
+            : $this->user()->tenant_id;
 
         return [
+            'tenant_id' => [
+                Rule::requiredIf(fn () => $this->user()->hasRole('Super Admin')),
+                'nullable',
+                Rule::exists('tenants', 'id'),
+            ],
             'name' => ['required', 'string', 'max:150'],
             'code' => [
                 'required',

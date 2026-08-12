@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\BranchSpecialHour;
 use App\Models\Permission;
 use App\Models\Plan;
 use App\Models\Role;
@@ -35,6 +36,8 @@ class BranchManagementTest extends TestCase
 
         Role::firstOrCreate(['name' => 'Branch Manager', 'guard_name' => 'web'])
             ->givePermissionTo(['branches.view', 'branches.update', 'branches.manage_hours', 'reports.view_branch']);
+
+        Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web']);
     }
 
     public function test_owner_can_create_branch_until_subscription_limit(): void
@@ -139,6 +142,95 @@ class BranchManagementTest extends TestCase
         $this->createBranch($tenantB, ['code' => 'CMB']);
 
         $this->assertSame(2, Branch::withoutGlobalScope('tenant')->where('code', 'CMB')->count());
+    }
+
+    public function test_super_admin_can_create_branch_for_selected_tenant(): void
+    {
+        [$tenant] = $this->tenantWithOwner(maxBranches: 2);
+        $superAdmin = User::factory()->create([
+            'tenant_id' => null,
+            'email_verified_at' => now(),
+        ]);
+        $superAdmin->assignRole('Super Admin');
+
+        $this->actingAs($superAdmin)
+            ->post(route('branches.store'), $this->branchPayload([
+                'tenant_id' => $tenant->id,
+                'name' => 'Admin Created Branch',
+                'code' => 'ADM',
+            ]))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('branches', [
+            'tenant_id' => $tenant->id,
+            'code' => 'ADM',
+        ]);
+    }
+
+    public function test_branch_can_be_archived_and_restored_with_replacement_main_branch(): void
+    {
+        [$tenant, $owner] = $this->tenantWithOwner(maxBranches: 3);
+        $mainBranch = $this->createBranch($tenant, ['code' => 'MAIN', 'is_main' => true]);
+        $replacementBranch = $this->createBranch($tenant, ['name' => 'Replacement', 'code' => 'REP']);
+
+        $this->actingAs($owner)
+            ->delete(route('branches.archive', $mainBranch), [
+                'replacement_main_branch_id' => $replacementBranch->id,
+            ])
+            ->assertRedirect(route('branches.index'));
+
+        $this->assertSoftDeleted('branches', ['id' => $mainBranch->id]);
+        $this->assertTrue($replacementBranch->fresh()->is_main);
+
+        $this->actingAs($owner)
+            ->post(route('branches.restore', $mainBranch))
+            ->assertRedirect(route('branches.show', $mainBranch));
+
+        $this->assertNotSoftDeleted('branches', ['id' => $mainBranch->id]);
+        $this->assertTrue($mainBranch->fresh()->is_active);
+    }
+
+    public function test_special_hours_can_be_created_and_removed(): void
+    {
+        [$tenant, $owner] = $this->tenantWithOwner();
+        $branch = $this->createBranch($tenant, ['code' => 'HOL']);
+
+        $date = now()->addWeek()->toDateString();
+
+        $this->actingAs($owner)
+            ->post(route('branches.special-hours.store', $branch), [
+                'date' => $date,
+                'label' => 'Holiday',
+                'is_closed' => 1,
+                'note' => 'Closed for maintenance',
+            ])
+            ->assertRedirect();
+
+        $specialHour = BranchSpecialHour::where('branch_id', $branch->id)->whereDate('date', $date)->first();
+
+        $this->assertNotNull($specialHour);
+        $this->assertTrue($specialHour->is_closed);
+
+        $this->actingAs($owner)
+            ->delete(route('branches.special-hours.destroy', [$branch, $specialHour]))
+            ->assertRedirect();
+
+        $this->assertDatabaseMissing('branch_special_hours', [
+            'id' => $specialHour->id,
+        ]);
+    }
+
+    public function test_branch_report_page_is_available_to_owner(): void
+    {
+        [$tenant, $owner] = $this->tenantWithOwner();
+        $branch = $this->createBranch($tenant, ['code' => 'RPT']);
+
+        $this->actingAs($owner)
+            ->get(route('branches.reports.show', $branch))
+            ->assertOk()
+            ->assertSee('Reports')
+            ->assertSee('Appointments')
+            ->assertSee('Inventory Items');
     }
 
     private function tenantWithOwner(?int $maxBranches = 3): array

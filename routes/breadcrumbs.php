@@ -88,3 +88,9 @@ Breadcrumbs::for('branches.edit', function (BreadcrumbTrail $trail, Branch $bran
     $trail->parent('branches.show', $branch);
     $trail->push('Edit', route('branches.edit', $branch));
 });
+
+// Home > Dashboard > Branches > [Branch] > Reports
+Breadcrumbs::for('branches.reports.show', function (BreadcrumbTrail $trail, Branch $branch) {
+    $trail->parent('branches.show', $branch);
+    $trail->push('Reports', route('branches.reports.show', $branch));
+});

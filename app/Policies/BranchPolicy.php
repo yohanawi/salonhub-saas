@@ -33,6 +33,10 @@ class BranchPolicy
 
     public function create(User $user): bool
     {
+        if ($user->hasRole('Super Admin')) {
+            return true;
+        }
+
         return $user->tenant_id !== null
             && (
                 app(BranchContext::class)->hasTenantWideBranchAccess($user)
@@ -42,6 +46,10 @@ class BranchPolicy
 
     public function update(User $user, Branch $branch): bool
     {
+        if ($branch->trashed()) {
+            return false;
+        }
+
         if ($user->hasRole('Super Admin')) {
             return true;
         }
@@ -61,6 +69,10 @@ class BranchPolicy
 
     public function changeStatus(User $user, Branch $branch): bool
     {
+        if ($branch->trashed()) {
+            return false;
+        }
+
         if ($user->hasRole('Super Admin')) {
             return true;
         }
@@ -74,6 +86,10 @@ class BranchPolicy
 
     public function manageHours(User $user, Branch $branch): bool
     {
+        if ($branch->trashed()) {
+            return false;
+        }
+
         return $this->update($user, $branch)
             && (
                 app(BranchContext::class)->hasTenantWideBranchAccess($user)
@@ -92,5 +108,44 @@ class BranchPolicy
                 app(BranchContext::class)->hasTenantWideBranchAccess($user)
                 || $user->can('branches.set_main')
             );
+    }
+
+    public function delete(User $user, Branch $branch): bool
+    {
+        if ($branch->trashed()) {
+            return false;
+        }
+
+        return $this->changeStatus($user, $branch);
+    }
+
+    public function restore(User $user, Branch $branch): bool
+    {
+        if (! $branch->trashed()) {
+            return false;
+        }
+
+        if ($user->hasRole('Super Admin')) {
+            return true;
+        }
+
+        return (int) $user->tenant_id === (int) $branch->tenant_id
+            && (
+                app(BranchContext::class)->hasTenantWideBranchAccess($user)
+                || $user->can('branches.change_status')
+            );
+    }
+
+    public function viewReports(User $user, Branch $branch): bool
+    {
+        if (! $this->view($user, $branch)) {
+            return false;
+        }
+
+        if ($user->hasRole('Super Admin') || app(BranchContext::class)->hasTenantWideBranchAccess($user)) {
+            return true;
+        }
+
+        return $user->can('reports.view_branch') || $user->can('reports.view_all_branches');
     }
 }

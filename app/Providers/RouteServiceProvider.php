@@ -29,7 +29,7 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
 
-        Route::bind('branch', fn (string $value) => Branch::withoutGlobalScope('tenant')->whereKey($value)->firstOrFail());
+        Route::bind('branch', fn (string $value) => Branch::withoutGlobalScope('tenant')->withTrashed()->whereKey($value)->firstOrFail());
 
         $this->routes(function () {
             Route::middleware('api')

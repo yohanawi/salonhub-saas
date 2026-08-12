@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -52,5 +53,12 @@ class Staff extends Model
     public function commissions(): HasMany
     {
         return $this->hasMany(StaffCommission::class);
+    }
+
+    public function scopeAssignedToBranch(Builder $query, Branch|int $branch): Builder
+    {
+        $branchId = $branch instanceof Branch ? $branch->getKey() : $branch;
+
+        return $query->whereHas('branches', fn (Builder $query) => $query->where('branches.id', $branchId));
     }
 }

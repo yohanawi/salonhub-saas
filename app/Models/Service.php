@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -44,5 +45,15 @@ class Service extends Model
     public function saleItems(): MorphMany
     {
         return $this->morphMany(SaleItem::class, 'item');
+    }
+
+    public function scopeAvailableAtBranch(Builder $query, Branch|int $branch): Builder
+    {
+        $branchId = $branch instanceof Branch ? $branch->getKey() : $branch;
+
+        return $query->whereHas('branches', function (Builder $query) use ($branchId) {
+            $query->where('branches.id', $branchId)
+                ->where('branch_services.is_active', true);
+        });
     }
 }

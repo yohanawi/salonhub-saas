@@ -15,8 +15,8 @@ class UpdateBranchRequest extends FormRequest
 
     public function rules(): array
     {
-        $tenantId = $this->user()->tenant_id;
         $branch = $this->route('branch');
+        $tenantId = $branch->tenant_id;
 
         return [
             'name' => ['required', 'string', 'max:150'],

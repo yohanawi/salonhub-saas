@@ -28,6 +28,29 @@
 
             <div class="card-body pt-3">
                 <div class="row g-5">
+                    @if (! $isEdit && auth()->user()?->hasRole('Super Admin'))
+                        <div class="col-12">
+                            <label class="form-label required fw-semibold">
+                                Salon / Tenant
+                            </label>
+                            <select name="tenant_id" class="form-select @error('tenant_id') is-invalid @enderror" required data-control="select2">
+                                <option value="">
+                                    Select salon
+                                </option>
+                                @foreach ($tenants as $tenant)
+                                    <option value="{{ $tenant->id }}" @selected((string) old('tenant_id') === (string) $tenant->id)>
+                                        {{ $tenant->name }}{{ $tenant->email ? ' - ' . $tenant->email : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('tenant_id')
+                                <div class="text-danger fs-7 mt-2">
+                                    {{ $message }}
+                                </div>
+                            @enderror
+                        </div>
+                    @endif
+
                     <div class="col-md-8">
                         <label class="form-label required fw-semibold">
                             Branch Name
