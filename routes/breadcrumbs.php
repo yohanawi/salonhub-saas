@@ -1,18 +1,13 @@
 <?php
 
 use App\Models\User;
+use App\Models\Branch;
 use Diglactic\Breadcrumbs\Breadcrumbs;
 use Diglactic\Breadcrumbs\Generator as BreadcrumbTrail;
 use Spatie\Permission\Models\Role;
 
-// Home
-Breadcrumbs::for('home', function (BreadcrumbTrail $trail) {
-    $trail->push('Home', route('dashboard'));
-});
-
 // Home > Dashboard
 Breadcrumbs::for('dashboard', function (BreadcrumbTrail $trail) {
-    $trail->parent('home');
     $trail->push('Dashboard', route('dashboard'));
 });
 
@@ -68,4 +63,28 @@ Breadcrumbs::for('plan-management.plans.index', function (BreadcrumbTrail $trail
 Breadcrumbs::for('plan-management.plans.create', function (BreadcrumbTrail $trail) {
     $trail->parent('plan-management.plans.index');
     $trail->push('Add Plan', route('plan-management.plans.create'));
+});
+
+// Home > Dashboard > Branches
+Breadcrumbs::for('branches.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Branches', route('branches.index'));
+});
+
+// Home > Dashboard > Branches > Create
+Breadcrumbs::for('branches.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('branches.index');
+    $trail->push('Add Branch', route('branches.create'));
+});
+
+// Home > Dashboard > Branches > [Branch]
+Breadcrumbs::for('branches.show', function (BreadcrumbTrail $trail, Branch $branch) {
+    $trail->parent('branches.index');
+    $trail->push($branch->name, route('branches.show', $branch));
+});
+
+// Home > Dashboard > Branches > [Branch] > Edit
+Breadcrumbs::for('branches.edit', function (BreadcrumbTrail $trail, Branch $branch) {
+    $trail->parent('branches.show', $branch);
+    $trail->push('Edit', route('branches.edit', $branch));
 });

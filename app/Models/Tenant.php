@@ -29,6 +29,11 @@ class Tenant extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function mainBranch(): HasOne
+    {
+        return $this->hasOne(Branch::class)->where('is_main', true);
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class);

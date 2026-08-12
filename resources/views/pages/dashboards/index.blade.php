@@ -312,7 +312,8 @@
                                                     required>
                                             </div>
                                             <div class="col-md-1 d-flex align-items-end">
-                                                <button type="button" class="btn btn-icon btn-light btn-sm invisible" tabindex="-1">
+                                                <button type="button" class="btn btn-icon btn-light btn-sm invisible"
+                                                    tabindex="-1">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </div>
@@ -330,7 +331,8 @@
                                 <div class="d-flex align-items-center justify-content-between mb-4">
                                     <div>
                                         <label class="form-label mb-1">First staff member</label>
-                                        <div class="text-muted fs-7">Optional. You can skip this if the salon owner is the first stylist.</div>
+                                        <div class="text-muted fs-7">Optional. You can skip this if the salon owner is
+                                            the first stylist.</div>
                                     </div>
 
                                     <button type="button" class="btn btn-light-primary btn-sm" id="add-first-staff">
@@ -369,25 +371,30 @@
                                 @php
                                     $selectedPlanId = old(
                                         'plan_id',
-                                        $subscriptionPlans->firstWhere('slug', 'free-trial')?->id ?? $subscriptionPlans->first()?->id,
+                                        $subscriptionPlans->firstWhere('slug', 'free-trial')?->id ??
+                                            $subscriptionPlans->first()?->id,
                                     );
                                 @endphp
 
                                 <div class="alert alert-primary d-flex align-items-center p-4 mb-6">
                                     <i class="bi bi-stars fs-2 me-3"></i>
                                     <div class="fw-semibold">
-                                        Start with the 14-day trial, or choose a paid plan now. Your selected plan is saved with this salon.
+                                        Start with the 14-day trial, or choose a paid plan now. Your selected plan is
+                                        saved with this salon.
                                     </div>
                                 </div>
 
-                                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 onboarding-plan-grid" data-plan-options>
+                                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 onboarding-plan-grid"
+                                    data-plan-options>
                                     @forelse ($subscriptionPlans as $plan)
                                         @php
                                             $isSelected = (string) $selectedPlanId === (string) $plan->id;
                                             $features = collect($plan->features ?? [])
-                                                ->filter(fn ($value) => $value !== false)
+                                                ->filter(fn($value) => $value !== false)
                                                 ->map(function ($value, $key) {
-                                                    $label = \App\Models\Plan::FEATURE_OPTIONS[$key] ?? str($key)->headline()->toString();
+                                                    $label =
+                                                        \App\Models\Plan::FEATURE_OPTIONS[$key] ??
+                                                        str($key)->headline()->toString();
 
                                                     return $value === 'limited' ? "{$label} (Limited)" : $label;
                                                 })
@@ -395,17 +402,19 @@
                                         @endphp
 
                                         <div class="col">
-                                            <input class="visually-hidden onboarding-plan-input" type="radio" name="plan_id"
-                                                id="onboarding-plan-{{ $plan->id }}" value="{{ $plan->id }}"
-                                                required @checked($isSelected)>
+                                            <input class="visually-hidden onboarding-plan-input" type="radio"
+                                                name="plan_id" id="onboarding-plan-{{ $plan->id }}"
+                                                value="{{ $plan->id }}" required @checked($isSelected)>
 
-                                            <label class="card h-100 border border-2 cursor-pointer onboarding-plan-card {{ $isSelected ? 'is-selected' : 'border-gray-300' }}"
-                                                data-plan-card
-                                                for="onboarding-plan-{{ $plan->id }}">
+                                            <label
+                                                class="card h-100 border border-2 cursor-pointer onboarding-plan-card {{ $isSelected ? 'is-selected' : 'border-gray-300' }}"
+                                                data-plan-card for="onboarding-plan-{{ $plan->id }}">
                                                 <div class="card-body p-4">
-                                                    <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+                                                    <div
+                                                        class="d-flex align-items-start justify-content-between gap-2 mb-3">
                                                         <div>
-                                                            <div class="fw-bold fs-5 text-gray-900">{{ $plan->name }}</div>
+                                                            <div class="fw-bold fs-5 text-gray-900">
+                                                                {{ $plan->name }}</div>
                                                             <div class="text-muted fs-7">
                                                                 @if ($plan->slug === 'free-trial')
                                                                     14-day trial.
@@ -420,13 +429,15 @@
                                                         </div>
 
                                                         <div class="d-flex flex-column align-items-end gap-2">
-                                                            <span class="badge badge-primary {{ $isSelected ? '' : 'd-none' }}"
+                                                            <span
+                                                                class="badge badge-primary {{ $isSelected ? '' : 'd-none' }}"
                                                                 data-selected-badge>
                                                                 Selected
                                                             </span>
 
                                                             @if ($plan->is_recommended)
-                                                                <span class="badge badge-light-primary">Recommended</span>
+                                                                <span
+                                                                    class="badge badge-light-primary">Recommended</span>
                                                             @elseif ($plan->trial_days > 0)
                                                                 <span class="badge badge-light-success">Trial</span>
                                                             @endif
@@ -435,7 +446,8 @@
 
                                                     <div class="mb-3">
                                                         @if ($plan->price > 0)
-                                                            <span class="fw-bold fs-4 text-gray-900">LKR {{ number_format((float) $plan->price) }}</span>
+                                                            <span class="fw-bold fs-4 text-gray-900">LKR
+                                                                {{ number_format((float) $plan->price) }}</span>
                                                             <span class="text-muted fs-8">/month</span>
                                                         @else
                                                             <span class="fw-bold fs-4 text-gray-900">Free</span>
@@ -443,20 +455,24 @@
                                                     </div>
 
                                                     <div class="d-flex flex-wrap gap-1 mb-3">
-                                                        <span class="badge badge-light">Branches: {{ $plan->max_branches ?? 'Unlimited' }}</span>
-                                                        <span class="badge badge-light">Staff: {{ $plan->max_staff ?? 'Unlimited' }}</span>
-                                                        <span class="badge badge-light">Users: {{ $plan->max_users ?? 'Unlimited' }}</span>
+                                                        <span class="badge badge-light">Branches:
+                                                            {{ $plan->max_branches ?? 'Unlimited' }}</span>
+                                                        <span class="badge badge-light">Staff:
+                                                            {{ $plan->max_staff ?? 'Unlimited' }}</span>
+                                                        <span class="badge badge-light">Users:
+                                                            {{ $plan->max_users ?? 'Unlimited' }}</span>
                                                     </div>
 
                                                     <div class="d-flex flex-column gap-2 fs-8">
                                                         @foreach ($features as $feature)
                                                             <div class="d-flex align-items-center text-gray-700">
-                                                                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                                                <i
+                                                                    class="bi bi-check-circle-fill text-success me-2"></i>
                                                                 {{ $feature }}
                                                             </div>
                                                         @endforeach
 
-                                                        @if (collect($plan->features ?? [])->filter(fn ($value) => $value !== false)->count() > $features->count())
+                                                        @if (collect($plan->features ?? [])->filter(fn($value) => $value !== false)->count() > $features->count())
                                                             <div class="text-muted fs-8 mt-1">
                                                                 More features included
                                                             </div>
@@ -556,7 +572,8 @@
                             return stepElement.querySelector('input[name="plan_id"]:checked') !== null;
                         }
 
-                        const requiredFields = stepElement.querySelectorAll('input[required], select[required], textarea[required]');
+                        const requiredFields = stepElement.querySelectorAll(
+                            'input[required], select[required], textarea[required]');
 
                         return Array.from(requiredFields).every((field) => {
                             if (field.disabled || field.closest('.d-none')) {
@@ -564,7 +581,8 @@
                             }
 
                             if (field.type === 'radio') {
-                                return stepElement.querySelector(`input[type="radio"][name="${field.name}"]:checked`) !== null;
+                                return stepElement.querySelector(
+                                    `input[type="radio"][name="${field.name}"]:checked`) !== null;
                             }
 
                             if (field.type === 'checkbox') {
@@ -680,4 +698,5 @@
             </script>
         @endpush
     @endif
+
 </x-default-layout>

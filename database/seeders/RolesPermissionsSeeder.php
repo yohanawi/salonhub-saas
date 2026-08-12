@@ -19,6 +19,19 @@ class RolesPermissionsSeeder extends Seeder
         'Customer',
     ];
 
+    public const PERMISSIONS = [
+        'branches.view',
+        'branches.create',
+        'branches.update',
+        'branches.change_status',
+        'branches.manage_hours',
+        'branches.manage_tax',
+        'branches.manage_staff',
+        'branches.set_main',
+        'reports.view_branch',
+        'reports.view_all_branches',
+    ];
+
     /**
      * Run the database seeds.
      */
@@ -28,7 +41,9 @@ class RolesPermissionsSeeder extends Seeder
             ->store(config('permission.cache.store') !== 'default' ? config('permission.cache.store') : null)
             ->forget(config('permission.cache.key'));
 
-        Permission::query()->delete();
+        Permission::query()
+            ->whereNotIn('name', self::PERMISSIONS)
+            ->delete();
 
         Role::query()
             ->whereNotIn('name', self::ROLES)
@@ -40,5 +55,33 @@ class RolesPermissionsSeeder extends Seeder
                 'guard_name' => 'web',
             ]);
         }
+
+        foreach (self::PERMISSIONS as $permission) {
+            Permission::query()->firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web',
+            ]);
+        }
+
+        Role::findByName('Super Admin')->givePermissionTo(self::PERMISSIONS);
+        Role::findByName('Salon Owner')->givePermissionTo(self::PERMISSIONS);
+        Role::findByName('Salon Admin')->givePermissionTo(self::PERMISSIONS);
+        Role::findByName('Branch Manager')->givePermissionTo([
+            'branches.view',
+            'branches.update',
+            'branches.manage_hours',
+            'reports.view_branch',
+        ]);
+        Role::findByName('Receptionist')->givePermissionTo([
+            'branches.view',
+            'reports.view_branch',
+        ]);
+        Role::findByName('Cashier')->givePermissionTo([
+            'branches.view',
+            'reports.view_branch',
+        ]);
+        Role::findByName('Beautician')->givePermissionTo([
+            'branches.view',
+        ]);
     }
 }
