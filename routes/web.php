@@ -14,6 +14,9 @@ use App\Http\Controllers\Branch\SwitchBranchController;
 use App\Http\Controllers\Branch\UpdateBranchHoursController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\Service\ServiceCategoryController;
+use App\Http\Controllers\Service\ServiceController;
+use App\Http\Controllers\Service\ServiceStatusController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,7 +45,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::name('plan-management.')->group(function () {
-        Route::resource('/plan-management/plans', PlanManagementController::class)->only(['index', 'create', 'store']);
+        Route::get('/plan-management/subscriptions', [PlanManagementController::class, 'subscriptions'])->name('subscriptions.index');
+        Route::patch('/plan-management/subscriptions/{tenant}', [PlanManagementController::class, 'updateSubscription'])->name('subscriptions.update');
+        Route::patch('/plan-management/plans/{plan}/status', [PlanManagementController::class, 'updateStatus'])->name('plans.status.update');
+        Route::resource('/plan-management/plans', PlanManagementController::class);
     });
 
     Route::prefix('branches')->name('branches.')->group(function () {
@@ -61,6 +67,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{branch}/special-hours', [BranchSpecialHourController::class, 'store'])->name('special-hours.store');
         Route::delete('/{branch}/special-hours/{specialHour}', [BranchSpecialHourController::class, 'destroy'])->name('special-hours.destroy');
         Route::post('/{branch}/switch', SwitchBranchController::class)->name('switch');
+    });
+
+    Route::resource('/service-categories', ServiceCategoryController::class)
+        ->except(['show']);
+
+    Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/', [ServiceController::class, 'index'])->name('index');
+        Route::get('/create', [ServiceController::class, 'create'])->name('create');
+        Route::post('/', [ServiceController::class, 'store'])->name('store');
+        Route::get('/{service}', [ServiceController::class, 'show'])->name('show');
+        Route::get('/{service}/edit', [ServiceController::class, 'edit'])->name('edit');
+        Route::put('/{service}', [ServiceController::class, 'update'])->name('update');
+        Route::patch('/{service}/status', [ServiceStatusController::class, 'update'])->name('status.update');
     });
 
 });

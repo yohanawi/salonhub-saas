@@ -3,7 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Branch;
+use App\Models\Service;
+use App\Models\ServiceCategory;
 use App\Policies\BranchPolicy;
+use App\Policies\ServiceCategoryPolicy;
+use App\Policies\ServicePolicy;
 // use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -16,6 +20,8 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Branch::class => BranchPolicy::class,
+        Service::class => ServicePolicy::class,
+        ServiceCategory::class => ServiceCategoryPolicy::class,
     ];
 
     /**

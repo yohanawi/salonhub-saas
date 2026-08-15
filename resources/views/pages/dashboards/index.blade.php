@@ -407,7 +407,7 @@
                                                 value="{{ $plan->id }}" required @checked($isSelected)>
 
                                             <label
-                                                class="card h-100 border border-2 cursor-pointer onboarding-plan-card {{ $isSelected ? 'is-selected' : 'border-gray-300' }}"
+                                                class="card h-100 border cursor-pointer onboarding-plan-card {{ $isSelected ? 'is-selected' : 'border-gray-300' }}"
                                                 data-plan-card for="onboarding-plan-{{ $plan->id }}">
                                                 <div class="card-body p-4">
                                                     <div

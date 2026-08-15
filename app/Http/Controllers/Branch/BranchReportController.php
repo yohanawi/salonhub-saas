@@ -10,14 +10,21 @@ use App\Models\Inventory;
 use App\Models\Payment;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Services\PlanEntitlementService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class BranchReportController extends Controller
 {
-    public function show(Request $request, Branch $branch): View
+    public function show(Request $request, Branch $branch, PlanEntitlementService $entitlements): View
     {
         $this->authorize('viewReports', $branch);
+
+        if (! $entitlements->featureEnabled($branch->tenant, 'basic_reports')
+            && ! $entitlements->featureEnabled($branch->tenant, 'advanced_reports')
+            && ! $entitlements->featureEnabled($branch->tenant, 'multi_branch_reports')) {
+            abort(403);
+        }
 
         $startDate = $request->date('start_date') ?: now()->startOfMonth();
         $endDate = $request->date('end_date') ?: now()->endOfMonth();

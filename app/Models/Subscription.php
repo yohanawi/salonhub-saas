@@ -13,13 +13,21 @@ class Subscription extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'entitlements' => 'array',
+        'price' => 'decimal:2',
         'trial_ends_at' => 'datetime',
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }

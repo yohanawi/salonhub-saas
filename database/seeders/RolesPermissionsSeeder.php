@@ -30,6 +30,15 @@ class RolesPermissionsSeeder extends Seeder
         'branches.set_main',
         'reports.view_branch',
         'reports.view_all_branches',
+        'service_categories.view',
+        'service_categories.create',
+        'service_categories.update',
+        'service_categories.delete',
+        'services.view',
+        'services.create',
+        'services.update',
+        'services.change_status',
+        'services.manage_branch_config',
     ];
 
     /**
@@ -71,17 +80,25 @@ class RolesPermissionsSeeder extends Seeder
             'branches.update',
             'branches.manage_hours',
             'reports.view_branch',
+            'service_categories.view',
+            'services.view',
         ]);
         Role::findByName('Receptionist')->givePermissionTo([
             'branches.view',
             'reports.view_branch',
+            'service_categories.view',
+            'services.view',
         ]);
         Role::findByName('Cashier')->givePermissionTo([
             'branches.view',
             'reports.view_branch',
+            'service_categories.view',
+            'services.view',
         ]);
         Role::findByName('Beautician')->givePermissionTo([
             'branches.view',
+            'service_categories.view',
+            'services.view',
         ]);
     }
 }

@@ -10,12 +10,20 @@ use Illuminate\Validation\ValidationException;
 
 class BranchService
 {
+    public function __construct(private PlanEntitlementService $entitlements)
+    {
+    }
+
     public function create(Tenant $tenant, array $data): Branch
     {
         return DB::transaction(function () use ($tenant, $data) {
             $tenant = Tenant::whereKey($tenant->getKey())->lockForUpdate()->firstOrFail();
 
-            $this->ensureBranchLimitNotExceeded($tenant);
+            $this->entitlements->ensureCanCreate(
+                $tenant,
+                'max_branches',
+                'Your subscription branch limit has been reached.'
+            );
 
             $branchCount = $tenant->branches()->withoutGlobalScopes()->count();
 
@@ -220,17 +228,6 @@ class BranchService
                 'note' => $data['note'] ?? null,
             ]
         );
-    }
-
-    private function ensureBranchLimitNotExceeded(Tenant $tenant): void
-    {
-        $limit = $tenant->subscription?->plan?->max_branches;
-
-        if ($limit !== null && $tenant->branches()->withoutGlobalScopes()->count() >= $limit) {
-            throw ValidationException::withMessages([
-                'branch' => 'Your subscription branch limit has been reached.',
-            ]);
-        }
     }
 
     private function clearMainBranch(Tenant $tenant): void

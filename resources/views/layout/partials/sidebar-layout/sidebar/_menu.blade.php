@@ -48,6 +48,15 @@
                                 <span class="menu-title">Add Plan</span>
                             </a>
                         </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('plan-management.subscriptions.*') ? 'active' : '' }}"
+                                href="{{ route('plan-management.subscriptions.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Subscriptions</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             @endif
@@ -82,6 +91,37 @@
                     @endcan
                 </div>
             </div>
+
+            @can('viewAny', \App\Models\Service::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('services.*') || request()->routeIs('service-categories.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('abstract-26', 'fs-2') !!}</span>
+                        <span class="menu-title">Service Management</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('services.*') ? 'active' : '' }}"
+                                href="{{ route('services.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Services</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('service-categories.*') ? 'active' : '' }}"
+                                href="{{ route('service-categories.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Categories</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            @endcan
 
             <div data-kt-menu-trigger="click"
                 class="menu-item menu-accordion {{ request()->routeIs('user-management.*') ? 'here show' : '' }}">

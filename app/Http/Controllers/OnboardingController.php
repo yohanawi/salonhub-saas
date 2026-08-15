@@ -7,17 +7,18 @@ use App\Models\Plan;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Staff;
-use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Services\BranchService;
+use App\Services\PlanEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class OnboardingController extends Controller
 {
-    public function complete(Request $request, BranchService $branchService): RedirectResponse
+    public function complete(Request $request, BranchService $branchService, PlanEntitlementService $entitlements): RedirectResponse
     {
         $validated = $request->validate([
             'business_phone' => ['nullable', 'string', 'max:50'],
@@ -58,7 +59,7 @@ class OnboardingController extends Controller
 
         abort_unless($tenant, 403);
 
-        DB::transaction(function () use ($request, $validated, $user, $tenant, $branchService) {
+        DB::transaction(function () use ($request, $validated, $user, $tenant, $branchService, $entitlements) {
             $tenantData = [
                 'phone' => $validated['business_phone'] ?? null,
                 'country' => $validated['country'],
@@ -74,20 +75,7 @@ class OnboardingController extends Controller
             $tenant->update($tenantData);
 
             $plan = Plan::findOrFail($validated['plan_id']);
-            $trialEndsAt = $plan->trial_days > 0 ? now()->addDays($plan->trial_days) : null;
-
-            Subscription::updateOrCreate(
-                [
-                    'tenant_id' => $tenant->id,
-                ],
-                [
-                    'plan_id' => $plan->id,
-                    'status' => $trialEndsAt ? 'trialing' : 'active',
-                    'trial_ends_at' => $trialEndsAt,
-                    'starts_at' => now(),
-                    'ends_at' => null,
-                ]
-            );
+            $entitlements->assignPlan($tenant, $plan);
 
             $branchData = [
                 'code' => 'MAIN',
@@ -120,6 +108,8 @@ class OnboardingController extends Controller
 
             $branchService->updateBusinessHours($branch, $validated['hours']);
 
+            $entitlements->ensureFeature($tenant, 'services');
+
             foreach ($validated['services'] as $serviceData) {
                 $category = ServiceCategory::firstOrCreate(
                     [
@@ -127,6 +117,7 @@ class OnboardingController extends Controller
                         'name' => $serviceData['category'],
                     ],
                     [
+                        'slug' => Str::slug($serviceData['category']),
                         'is_active' => true,
                     ]
                 );
@@ -140,6 +131,9 @@ class OnboardingController extends Controller
                         'category_id' => $category->id,
                         'duration_minutes' => $serviceData['duration_minutes'],
                         'price' => $serviceData['price'],
+                        'default_duration_minutes' => $serviceData['duration_minutes'],
+                        'default_price' => $serviceData['price'],
+                        'slug' => Str::slug($serviceData['name']),
                         'is_active' => true,
                     ]
                 );
@@ -148,12 +142,15 @@ class OnboardingController extends Controller
                     $service->id => [
                         'tenant_id' => $tenant->id,
                         'price' => $serviceData['price'],
+                        'duration_minutes' => $serviceData['duration_minutes'],
                         'is_active' => true,
                     ],
                 ]);
             }
 
             if (! empty($validated['staff_first_name']) && ! empty($validated['staff_last_name'])) {
+                $entitlements->ensureCanCreate($tenant, 'max_staff');
+
                 $staff = Staff::create([
                     'tenant_id' => $tenant->id,
                     'first_name' => $validated['staff_first_name'],
