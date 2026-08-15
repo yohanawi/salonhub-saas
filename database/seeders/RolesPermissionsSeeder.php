@@ -39,6 +39,21 @@ class RolesPermissionsSeeder extends Seeder
         'services.update',
         'services.change_status',
         'services.manage_branch_config',
+        'staff.view',
+        'staff.create',
+        'staff.update',
+        'staff.delete',
+        'staff.manage_branches',
+        'staff.manage_services',
+        'staff.manage_schedule',
+        'staff.manage_time_off',
+        'staff.manage_commission',
+        'customer.view',
+        'customer.create',
+        'customer.update',
+        'customer.delete',
+        'customer.export',
+        'customer.view_notes',
     ];
 
     /**
@@ -82,23 +97,46 @@ class RolesPermissionsSeeder extends Seeder
             'reports.view_branch',
             'service_categories.view',
             'services.view',
+            'staff.view',
+            'staff.create',
+            'staff.update',
+            'staff.manage_branches',
+            'staff.manage_services',
+            'staff.manage_schedule',
+            'staff.manage_time_off',
+            'customer.view',
+            'customer.create',
+            'customer.update',
+            'customer.view_notes',
+            'customer.export',
         ]);
         Role::findByName('Receptionist')->givePermissionTo([
             'branches.view',
             'reports.view_branch',
             'service_categories.view',
             'services.view',
+            'staff.view',
+            'customer.view',
+            'customer.create',
+            'customer.update',
+            'customer.view_notes',
         ]);
         Role::findByName('Cashier')->givePermissionTo([
             'branches.view',
             'reports.view_branch',
             'service_categories.view',
             'services.view',
+            'staff.view',
+            'customer.view',
+            'customer.create',
+            'customer.update',
         ]);
         Role::findByName('Beautician')->givePermissionTo([
             'branches.view',
             'service_categories.view',
             'services.view',
+            'staff.view',
+            'customer.view',
         ]);
     }
 }

@@ -123,6 +123,72 @@
                 </div>
             @endcan
 
+            @can('viewAny', \App\Models\Staff::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('staff-management.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('profile-user', 'fs-2') !!}</span>
+                        <span class="menu-title">Staff Management</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('staff-management.staff.index') || request()->routeIs('staff-management.staff.show') ? 'active' : '' }}"
+                                href="{{ route('staff-management.staff.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Staff</span>
+                            </a>
+                        </div>
+                        @can('create', \App\Models\Staff::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('staff-management.staff.create') ? 'active' : '' }}"
+                                    href="{{ route('staff-management.staff.create') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Add Staff</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\Customer::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('customer-management.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('people', 'fs-2') !!}</span>
+                        <span class="menu-title">Customer Management</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('customer-management.customers.index') || request()->routeIs('customer-management.customers.show') ? 'active' : '' }}"
+                                href="{{ route('customer-management.customers.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Customers</span>
+                            </a>
+                        </div>
+                        @can('create', \App\Models\Customer::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('customer-management.customers.create') ? 'active' : '' }}"
+                                    href="{{ route('customer-management.customers.create') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Add Customer</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
             <div data-kt-menu-trigger="click"
                 class="menu-item menu-accordion {{ request()->routeIs('user-management.*') ? 'here show' : '' }}">
                 <span class="menu-link">

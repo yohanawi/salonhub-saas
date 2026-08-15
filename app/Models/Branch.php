@@ -63,7 +63,9 @@ class Branch extends Model
 
     public function staff(): BelongsToMany
     {
-        return $this->belongsToMany(Staff::class, 'staff_branches')->withPivot('tenant_id');
+        return $this->belongsToMany(Staff::class, 'staff_branches')
+            ->withPivot('tenant_id', 'is_primary', 'status')
+            ->withTimestamps();
     }
 
     public function appointments(): HasMany

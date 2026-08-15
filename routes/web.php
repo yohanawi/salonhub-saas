@@ -12,11 +12,13 @@ use App\Http\Controllers\Branch\BranchSpecialHourController;
 use App\Http\Controllers\Branch\BranchStatusController;
 use App\Http\Controllers\Branch\SwitchBranchController;
 use App\Http\Controllers\Branch\UpdateBranchHoursController;
+use App\Http\Controllers\CustomerManagement\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Service\ServiceCategoryController;
 use App\Http\Controllers\Service\ServiceController;
 use App\Http\Controllers\Service\ServiceStatusController;
+use App\Http\Controllers\Staff\StaffController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -80,6 +82,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/{service}/edit', [ServiceController::class, 'edit'])->name('edit');
         Route::put('/{service}', [ServiceController::class, 'update'])->name('update');
         Route::patch('/{service}/status', [ServiceStatusController::class, 'update'])->name('status.update');
+    });
+
+    Route::prefix('staff-management')->name('staff-management.')->group(function () {
+        Route::resource('/staff', StaffController::class)
+            ->parameters(['staff' => 'staff']);
+    });
+
+    Route::prefix('customer-management')->name('customer-management.')->group(function () {
+        Route::resource('/customers', CustomerController::class);
     });
 
 });

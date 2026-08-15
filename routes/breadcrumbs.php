@@ -2,9 +2,11 @@
 
 use App\Models\User;
 use App\Models\Branch;
+use App\Models\Customer;
 use App\Models\Plan;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Models\Staff;
 use Diglactic\Breadcrumbs\Breadcrumbs;
 use Diglactic\Breadcrumbs\Generator as BreadcrumbTrail;
 use Spatie\Permission\Models\Role;
@@ -162,4 +164,64 @@ Breadcrumbs::for('service-categories.create', function (BreadcrumbTrail $trail) 
 Breadcrumbs::for('service-categories.edit', function (BreadcrumbTrail $trail, ServiceCategory $serviceCategory) {
     $trail->parent('service-categories.index');
     $trail->push($serviceCategory->name, route('service-categories.edit', $serviceCategory));
+});
+
+// Home > Dashboard > Staff Management
+Breadcrumbs::for('staff-management.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Staff Management', route('staff-management.staff.index'));
+});
+
+// Home > Dashboard > Staff Management > Staff
+Breadcrumbs::for('staff-management.staff.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('staff-management.index');
+    $trail->push('Staff', route('staff-management.staff.index'));
+});
+
+// Home > Dashboard > Staff Management > Staff > Create
+Breadcrumbs::for('staff-management.staff.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('staff-management.staff.index');
+    $trail->push('Add Staff', route('staff-management.staff.create'));
+});
+
+// Home > Dashboard > Staff Management > Staff > [Staff]
+Breadcrumbs::for('staff-management.staff.show', function (BreadcrumbTrail $trail, Staff $staff) {
+    $trail->parent('staff-management.staff.index');
+    $trail->push($staff->full_name, route('staff-management.staff.show', $staff));
+});
+
+// Home > Dashboard > Staff Management > Staff > [Staff] > Edit
+Breadcrumbs::for('staff-management.staff.edit', function (BreadcrumbTrail $trail, Staff $staff) {
+    $trail->parent('staff-management.staff.show', $staff);
+    $trail->push('Edit', route('staff-management.staff.edit', $staff));
+});
+
+// Home > Dashboard > Customer Management
+Breadcrumbs::for('customer-management.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Customer Management', route('customer-management.customers.index'));
+});
+
+// Home > Dashboard > Customer Management > Customers
+Breadcrumbs::for('customer-management.customers.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('customer-management.index');
+    $trail->push('Customers', route('customer-management.customers.index'));
+});
+
+// Home > Dashboard > Customer Management > Customers > Create
+Breadcrumbs::for('customer-management.customers.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('customer-management.customers.index');
+    $trail->push('Add Customer', route('customer-management.customers.create'));
+});
+
+// Home > Dashboard > Customer Management > Customers > [Customer]
+Breadcrumbs::for('customer-management.customers.show', function (BreadcrumbTrail $trail, Customer $customer) {
+    $trail->parent('customer-management.customers.index');
+    $trail->push($customer->full_name, route('customer-management.customers.show', $customer));
+});
+
+// Home > Dashboard > Customer Management > Customers > [Customer] > Edit
+Breadcrumbs::for('customer-management.customers.edit', function (BreadcrumbTrail $trail, Customer $customer) {
+    $trail->parent('customer-management.customers.show', $customer);
+    $trail->push('Edit', route('customer-management.customers.edit', $customer));
 });

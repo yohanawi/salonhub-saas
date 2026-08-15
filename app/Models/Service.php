@@ -34,7 +34,9 @@ class Service extends Model
 
     public function staff(): BelongsToMany
     {
-        return $this->belongsToMany(Staff::class, 'staff_services')->withPivot('tenant_id');
+        return $this->belongsToMany(Staff::class, 'staff_services')
+            ->withPivot('tenant_id', 'custom_duration_minutes', 'custom_price', 'status')
+            ->withTimestamps();
     }
 
     public function branches(): BelongsToMany

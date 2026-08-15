@@ -123,7 +123,10 @@ class PlanEntitlementService
     {
         return [
             'branches' => Branch::withoutGlobalScope('tenant')->withTrashed()->where('tenant_id', $tenant->id)->count(),
-            'staff' => Staff::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
+            'staff' => Staff::withoutGlobalScope('tenant')
+                ->where('tenant_id', $tenant->id)
+                ->whereIn('status', [Staff::STATUS_ACTIVE, Staff::STATUS_ON_LEAVE])
+                ->count(),
             'users' => User::query()->where('tenant_id', $tenant->id)->count(),
             'customers' => Customer::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
         ];
