@@ -38,22 +38,22 @@ class InvoiceController extends Controller
             : $branchContext->availableBranches($request->user());
 
         $invoices = ($isSuperAdmin ? Invoice::withoutTenantScope() : Invoice::query()->where('tenant_id', $tenant->id))
-            ->with(['tenant', 'branch', 'customer', 'appointment'])
+            ->with(['tenant', 'branch', 'customer', 'appointment', 'items.staff', 'payments.paymentMethod'])
             ->when(! $isSuperAdmin && ! ($branchContext->hasTenantWideBranchAccess($request->user()) || $request->user()->can('billing.view_all_branches')), function (Builder $query) use ($visibleBranches) {
                 $query->whereIn('branch_id', $visibleBranches->pluck('id'));
             })
-            ->when($isSuperAdmin && $request->filled('tenant_id'), fn (Builder $query) => $query->where('tenant_id', $request->integer('tenant_id')))
-            ->when($request->filled('branch_id'), fn (Builder $query) => $query->where('branch_id', $request->integer('branch_id')))
-            ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')->toString()))
-            ->when($request->filled('payment_status'), fn (Builder $query) => $query->where('payment_status', $request->string('payment_status')->toString()))
-            ->when($request->filled('date'), fn (Builder $query) => $query->whereDate('issued_at', $request->date('date')))
+            ->when($isSuperAdmin && $request->filled('tenant_id'), fn(Builder $query) => $query->where('tenant_id', $request->integer('tenant_id')))
+            ->when($request->filled('branch_id'), fn(Builder $query) => $query->where('branch_id', $request->integer('branch_id')))
+            ->when($request->filled('status'), fn(Builder $query) => $query->where('status', $request->string('status')->toString()))
+            ->when($request->filled('payment_status'), fn(Builder $query) => $query->where('payment_status', $request->string('payment_status')->toString()))
+            ->when($request->filled('date'), fn(Builder $query) => $query->whereDate('issued_at', $request->date('date')))
             ->when($request->filled('search'), function (Builder $query) use ($request) {
                 $search = $request->string('search')->toString();
 
                 $query->where(function (Builder $query) use ($search) {
                     $query->where('invoice_number', 'like', "%{$search}%")
-                        ->orWhereHas('customer', fn (Builder $query) => $query->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"))
-                        ->orWhereHas('appointment', fn (Builder $query) => $query->where('appointment_number', 'like', "%{$search}%"));
+                        ->orWhereHas('customer', fn(Builder $query) => $query->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"))
+                        ->orWhereHas('appointment', fn(Builder $query) => $query->where('appointment_number', 'like', "%{$search}%"));
                 });
             })
             ->latest('issued_at')
@@ -73,23 +73,14 @@ class InvoiceController extends Controller
     public function show(Request $request, Invoice $invoice, PlanEntitlementService $entitlements): View
     {
         $this->authorize('view', $invoice);
-        $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
+
+        if (! $request->user()->hasRole('Super Admin')) {
+            $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
+        }
 
         $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'items.staff', 'promotion', 'promotionCoupon', 'promotionUsages', 'payments.paymentMethod', 'payments.receiver', 'createdBy', 'voidedBy']);
 
         return view('pages/apps.billing.invoices.show', [
-            'invoice' => $invoice,
-        ]);
-    }
-
-    public function receipt(Request $request, Invoice $invoice, PlanEntitlementService $entitlements): View
-    {
-        $this->authorize('view', $invoice);
-        $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
-
-        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'items.staff', 'promotion', 'promotionCoupon', 'payments.paymentMethod', 'payments.receiver']);
-
-        return view('pages/apps.billing.invoices.receipt', [
             'invoice' => $invoice,
         ]);
     }

@@ -311,11 +311,6 @@ Breadcrumbs::for('billing.invoices.show', function (BreadcrumbTrail $trail, Invo
 });
 
 // Home > Dashboard > Billing > Invoices > [Invoice] > Receipt
-Breadcrumbs::for('billing.invoices.receipt', function (BreadcrumbTrail $trail, Invoice $invoice) {
-    $trail->parent('billing.invoices.show', $invoice);
-    $trail->push('Receipt', route('billing.invoices.receipt', $invoice));
-});
-
 // Home > Dashboard > Billing > Payments
 Breadcrumbs::for('billing.payments.index', function (BreadcrumbTrail $trail) {
     $trail->parent('billing.index');

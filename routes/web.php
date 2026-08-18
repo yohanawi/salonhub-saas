@@ -157,7 +157,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('billing')->name('billing.')->group(function () {
         Route::get('/checkout/appointments/{appointment}', [CheckoutController::class, 'create'])->name('checkout.appointments.create');
         Route::post('/checkout/appointments/{appointment}', [CheckoutController::class, 'store'])->name('checkout.appointments.store');
-        Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt'])->name('invoices.receipt');
         Route::post('/invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
         Route::resource('/invoices', InvoiceController::class)->only(['index', 'show']);
         Route::resource('/payment-methods', PaymentMethodController::class)->except(['show', 'destroy']);

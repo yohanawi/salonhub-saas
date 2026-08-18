@@ -38,6 +38,8 @@
     @endforeach
     <!--end::Custom Stylesheets-->
 
+    @stack('styles')
+
     @livewireStyles
 </head>
 <!--end::Head-->

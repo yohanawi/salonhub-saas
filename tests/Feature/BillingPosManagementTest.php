@@ -39,6 +39,9 @@ class BillingPosManagementTest extends TestCase
         Role::firstOrCreate(['name' => 'Salon Owner', 'guard_name' => 'web'])
             ->givePermissionTo(RolesPermissionsSeeder::PERMISSIONS);
 
+        Role::firstOrCreate(['name' => 'Super Admin', 'guard_name' => 'web'])
+            ->givePermissionTo(RolesPermissionsSeeder::PERMISSIONS);
+
         Role::firstOrCreate(['name' => 'Beautician', 'guard_name' => 'web'])
             ->givePermissionTo(['appointments.view']);
     }
@@ -173,13 +176,33 @@ class BillingPosManagementTest extends TestCase
             ])
             ->assertRedirect();
 
-        $invoice = Invoice::withoutTenantScope()->firstOrFail();
+        $invoice = Invoice::withoutTenantScope()
+            ->where('tenant_id', $tenant->id)
+            ->where('appointment_id', $appointment->id)
+            ->firstOrFail();
 
-        $this->actingAs($owner)->get(route('billing.invoices.index'))->assertOk()->assertSee('Invoices');
-        $this->actingAs($owner)->get(route('billing.invoices.show', $invoice))->assertOk()->assertSee($invoice->invoice_number);
-        $this->actingAs($owner)->get(route('billing.invoices.receipt', $invoice))->assertOk()->assertSee('Thank you for visiting');
-        $this->actingAs($owner)->get(route('billing.payments.index'))->assertOk()->assertSee('Payments');
-        $this->actingAs($owner)->get(route('billing.payment-methods.index'))->assertOk()->assertSee('Payment Methods');
+        $this->actingAs($owner)->get(route('billing.invoices.index'))
+            ->assertOk()
+            ->assertSee('Invoices')
+            ->assertSee('invoiceReceiptModal')
+            ->assertSee('data-receipt-template', false)
+            ->assertSee('Thank you for visiting')
+            ->assertSee('Swal.fire', false);
+        $this->actingAs($owner)->get(route('billing.invoices.show', $invoice))
+            ->assertOk()
+            ->assertSee($invoice->invoice_number)
+            ->assertSee('invoiceShowReceiptModal')
+            ->assertSee('data-receipt-template', false)
+            ->assertSee('Thank you for visiting')
+            ->assertSee('data-swal-confirm', false);
+        $this->actingAs($owner)->get(route('billing.payments.index'))
+            ->assertOk()
+            ->assertSee('Payments')
+            ->assertSee('Swal.fire', false);
+        $this->actingAs($owner)->get(route('billing.payment-methods.index'))
+            ->assertOk()
+            ->assertSee('Payment Methods')
+            ->assertSee('Swal.fire', false);
     }
 
     public function test_staff_without_billing_permission_cannot_checkout(): void
@@ -194,6 +217,45 @@ class BillingPosManagementTest extends TestCase
         $this->actingAs($staffUser)
             ->get(route('billing.checkout.appointments.create', $appointment))
             ->assertForbidden();
+    }
+
+    public function test_super_admin_can_view_invoice_receipt_modal_without_tenant_subscription(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        $cash = PaymentMethod::withoutTenantScope()->create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Cash',
+            'code' => 'cash',
+            'type' => PaymentMethod::TYPE_CASH,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $cash->id,
+                'amount' => 2800,
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()
+            ->where('tenant_id', $tenant->id)
+            ->where('appointment_id', $appointment->id)
+            ->firstOrFail();
+
+        Subscription::query()->where('tenant_id', $tenant->id)->delete();
+
+        $superAdmin = User::factory()->create([
+            'tenant_id' => null,
+            'email_verified_at' => now(),
+        ]);
+        $superAdmin->assignRole('Super Admin');
+
+        $this->actingAs($superAdmin)
+            ->get(route('billing.invoices.show', $invoice))
+            ->assertOk()
+            ->assertSee($invoice->invoice_number)
+            ->assertSee('invoiceShowReceiptModal')
+            ->assertSee('Thank you for visiting');
     }
 
     private function completedAppointmentSetup(): array

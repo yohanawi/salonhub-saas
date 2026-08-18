@@ -17,7 +17,7 @@
 
             <div class="menu-item pt-5">
                 <div class="menu-content">
-                    <span class="menu-heading fw-bold text-uppercase fs-7">Apps</span>
+                    <span class="menu-heading fw-bold text-uppercase fs-7">ADMINISTRATION</span>
                 </div>
             </div>
 
@@ -26,7 +26,7 @@
                     class="menu-item menu-accordion {{ request()->routeIs('plan-management.*') ? 'here show' : '' }}">
                     <span class="menu-link">
                         <span class="menu-icon">{!! getIcon('credit-cart', 'fs-2') !!}</span>
-                        <span class="menu-title">Plan Management</span>
+                        <span class="menu-title">Plans & Subscriptions</span>
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
@@ -62,10 +62,54 @@
             @endif
 
             <div data-kt-menu-trigger="click"
+                class="menu-item menu-accordion {{ request()->routeIs('user-management.*') ? 'here show' : '' }}">
+                <span class="menu-link">
+                    <span class="menu-icon">{!! getIcon('abstract-28', 'fs-2') !!}</span>
+                    <span class="menu-title">User Management</span>
+                    <span class="menu-arrow"></span>
+                </span>
+                <div class="menu-sub menu-sub-accordion">
+                    <div class="menu-item">
+                        <a class="menu-link {{ request()->routeIs('user-management.users.*') ? 'active' : '' }}"
+                            href="{{ route('user-management.users.index') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">Users</span>
+                        </a>
+                    </div>
+                    <div class="menu-item">
+                        <a class="menu-link {{ request()->routeIs('user-management.roles.*') ? 'active' : '' }}"
+                            href="{{ route('user-management.roles.index') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">Roles</span>
+                        </a>
+                    </div>
+                    <div class="menu-item">
+                        <a class="menu-link {{ request()->routeIs('user-management.permissions.*') ? 'active' : '' }}"
+                            href="{{ route('user-management.permissions.index') }}">
+                            <span class="menu-bullet">
+                                <span class="bullet bullet-dot"></span>
+                            </span>
+                            <span class="menu-title">Permissions</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-item pt-5">
+                <div class="menu-content">
+                    <span class="menu-heading fw-bold text-uppercase fs-7">SALON</span>
+                </div>
+            </div>
+
+            <div data-kt-menu-trigger="click"
                 class="menu-item menu-accordion {{ request()->routeIs('branches.*') ? 'here show' : '' }}">
                 <span class="menu-link">
                     <span class="menu-icon">{!! getIcon('abstract-41', 'fs-2') !!}</span>
-                    <span class="menu-title">Branch Management</span>
+                    <span class="menu-title">Branches</span>
                     <span class="menu-arrow"></span>
                 </span>
                 <div class="menu-sub menu-sub-accordion">
@@ -97,7 +141,7 @@
                     class="menu-item menu-accordion {{ request()->routeIs('services.*') || request()->routeIs('service-categories.*') ? 'here show' : '' }}">
                     <span class="menu-link">
                         <span class="menu-icon">{!! getIcon('abstract-26', 'fs-2') !!}</span>
-                        <span class="menu-title">Service Management</span>
+                        <span class="menu-title">Services</span>
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
@@ -128,7 +172,7 @@
                     class="menu-item menu-accordion {{ request()->routeIs('staff-management.*') ? 'here show' : '' }}">
                     <span class="menu-link">
                         <span class="menu-icon">{!! getIcon('profile-user', 'fs-2') !!}</span>
-                        <span class="menu-title">Staff Management</span>
+                        <span class="menu-title">Team</span>
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
@@ -161,7 +205,7 @@
                     class="menu-item menu-accordion {{ request()->routeIs('customer-management.*') ? 'here show' : '' }}">
                     <span class="menu-link">
                         <span class="menu-icon">{!! getIcon('people', 'fs-2') !!}</span>
-                        <span class="menu-title">Customer Management</span>
+                        <span class="menu-title">Customers</span>
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
@@ -194,7 +238,7 @@
                     class="menu-item menu-accordion {{ request()->routeIs('appointment-management.*') ? 'here show' : '' }}">
                     <span class="menu-link">
                         <span class="menu-icon">{!! getIcon('calendar-8', 'fs-2') !!}</span>
-                        <span class="menu-title">Appointment Management</span>
+                        <span class="menu-title">Appointments</span>
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
@@ -224,6 +268,56 @@
                                         <span class="bullet bullet-dot"></span>
                                     </span>
                                     <span class="menu-title">Create Appointment</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            <div class="menu-item pt-5">
+                <div class="menu-content">
+                    <span class="menu-heading fw-bold text-uppercase fs-7">SALES & GROWTH</span>
+                </div>
+            </div>
+
+            @can('viewAny', \App\Models\Invoice::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('billing.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('wallet', 'fs-2') !!}</span>
+                        <span class="menu-title">Billing / POS</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('billing.invoices.*') ? 'active' : '' }}"
+                                href="{{ route('billing.invoices.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Invoices</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\Payment::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.payments.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.payments.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Payments</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\PaymentMethod::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.payment-methods.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.payment-methods.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Payment Methods</span>
                                 </a>
                             </div>
                         @endcan
@@ -423,6 +517,12 @@
                 </div>
             @endcan
 
+            <div class="menu-item pt-5">
+                <div class="menu-content">
+                    <span class="menu-heading fw-bold text-uppercase fs-7">FINANCE & STAFF PAY</span>
+                </div>
+            </div>
+
             @can('viewAny', \App\Models\PayrollRun::class)
                 <div data-kt-menu-trigger="click"
                     class="menu-item menu-accordion {{ request()->routeIs('payroll.*') ? 'here show' : '' }}">
@@ -600,94 +700,6 @@
                     </div>
                 </div>
             @endcan
-
-            @can('viewAny', \App\Models\Invoice::class)
-                <div data-kt-menu-trigger="click"
-                    class="menu-item menu-accordion {{ request()->routeIs('billing.*') ? 'here show' : '' }}">
-                    <span class="menu-link">
-                        <span class="menu-icon">{!! getIcon('wallet', 'fs-2') !!}</span>
-                        <span class="menu-title">Billing / POS</span>
-                        <span class="menu-arrow"></span>
-                    </span>
-                    <div class="menu-sub menu-sub-accordion">
-                        <div class="menu-item">
-                            <a class="menu-link {{ request()->routeIs('billing.invoices.*') ? 'active' : '' }}"
-                                href="{{ route('billing.invoices.index') }}">
-                                <span class="menu-bullet">
-                                    <span class="bullet bullet-dot"></span>
-                                </span>
-                                <span class="menu-title">Invoices</span>
-                            </a>
-                        </div>
-                        @can('viewAny', \App\Models\Payment::class)
-                            <div class="menu-item">
-                                <a class="menu-link {{ request()->routeIs('billing.payments.*') ? 'active' : '' }}"
-                                    href="{{ route('billing.payments.index') }}">
-                                    <span class="menu-bullet">
-                                        <span class="bullet bullet-dot"></span>
-                                    </span>
-                                    <span class="menu-title">Payments</span>
-                                </a>
-                            </div>
-                        @endcan
-                        @can('viewAny', \App\Models\PaymentMethod::class)
-                            <div class="menu-item">
-                                <a class="menu-link {{ request()->routeIs('billing.payment-methods.*') ? 'active' : '' }}"
-                                    href="{{ route('billing.payment-methods.index') }}">
-                                    <span class="menu-bullet">
-                                        <span class="bullet bullet-dot"></span>
-                                    </span>
-                                    <span class="menu-title">Payment Methods</span>
-                                </a>
-                            </div>
-                        @endcan
-                    </div>
-                </div>
-            @endcan
-
-            <div data-kt-menu-trigger="click"
-                class="menu-item menu-accordion {{ request()->routeIs('user-management.*') ? 'here show' : '' }}">
-                <span class="menu-link">
-                    <span class="menu-icon">{!! getIcon('abstract-28', 'fs-2') !!}</span>
-                    <span class="menu-title">User Management</span>
-                    <span class="menu-arrow"></span>
-                </span>
-                <div class="menu-sub menu-sub-accordion">
-                    <div class="menu-item">
-                        <a class="menu-link {{ request()->routeIs('user-management.users.*') ? 'active' : '' }}"
-                            href="{{ route('user-management.users.index') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">Users</span>
-                        </a>
-                    </div>
-                    <div class="menu-item">
-                        <a class="menu-link {{ request()->routeIs('user-management.roles.*') ? 'active' : '' }}"
-                            href="{{ route('user-management.roles.index') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">Roles</span>
-                        </a>
-                    </div>
-                    <div class="menu-item">
-                        <a class="menu-link {{ request()->routeIs('user-management.permissions.*') ? 'active' : '' }}"
-                            href="{{ route('user-management.permissions.index') }}">
-                            <span class="menu-bullet">
-                                <span class="bullet bullet-dot"></span>
-                            </span>
-                            <span class="menu-title">Permissions</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="menu-item pt-5">
-                <div class="menu-content">
-                    <span class="menu-heading fw-bold text-uppercase fs-7">Help</span>
-                </div>
-            </div>
 
         </div>
     </div>

@@ -13,4 +13,6 @@
             @include('pages.apps.billing.payment-methods._form')
         </form>
     </div>
+
+    @include('pages.apps.billing._sweet-alerts')
 </x-default-layout>
