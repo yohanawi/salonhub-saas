@@ -93,6 +93,31 @@ class Staff extends Model
         return $this->hasMany(StaffCommission::class);
     }
 
+    public function commissionRules(): HasMany
+    {
+        return $this->hasMany(CommissionRule::class);
+    }
+
+    public function commissionPayouts(): HasMany
+    {
+        return $this->hasMany(CommissionPayout::class);
+    }
+
+    public function salaryStructures(): HasMany
+    {
+        return $this->hasMany(StaffSalaryStructure::class);
+    }
+
+    public function payrollItems(): HasMany
+    {
+        return $this->hasMany(PayrollItem::class);
+    }
+
+    public function salaryAdvances(): HasMany
+    {
+        return $this->hasMany(SalaryAdvance::class);
+    }
+
     public function commissionSettings(): HasMany
     {
         return $this->hasMany(StaffCommissionSetting::class);

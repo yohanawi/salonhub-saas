@@ -15,9 +15,15 @@ class SaleItem extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'quantity' => 'integer',
         'unit_price' => 'decimal:2',
+        'gross_amount' => 'decimal:2',
         'discount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'net_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'total_amount' => 'decimal:2',
     ];
 
     public function sale(): BelongsTo
@@ -38,5 +44,10 @@ class SaleItem extends Model
     public function commissions(): HasMany
     {
         return $this->hasMany(StaffCommission::class);
+    }
+
+    public function invoiceCommissions(): HasMany
+    {
+        return $this->hasMany(StaffCommission::class, 'invoice_item_id');
     }
 }

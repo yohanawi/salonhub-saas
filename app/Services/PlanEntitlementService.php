@@ -23,8 +23,14 @@ class PlanEntitlementService
 
     public const FEATURE_MESSAGES = [
         'services' => 'Your subscription plan does not include service management.',
+        'appointment_calendar' => 'Your subscription plan does not include appointment booking.',
         'customer_management' => 'Your subscription plan does not include customer management.',
+        'pos_billing' => 'Your subscription plan does not include POS and billing.',
         'inventory' => 'Your subscription plan does not include inventory management.',
+        'staff_commissions' => 'Your subscription plan does not include staff commission management.',
+        'payroll' => 'Your subscription plan does not include payroll management.',
+        'loyalty_membership' => 'Your subscription plan does not include loyalty and membership management.',
+        'promotions_discounts' => 'Your subscription plan does not include promotions and discounts.',
         'basic_reports' => 'Your subscription plan does not include reports.',
         'advanced_reports' => 'Your subscription plan does not include advanced reports.',
         'multi_branch_reports' => 'Your subscription plan does not include multi-branch reports.',

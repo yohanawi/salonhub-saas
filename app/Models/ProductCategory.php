@@ -13,6 +13,7 @@ class ProductCategory extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'sort_order' => 'integer',
         'is_active' => 'boolean',
     ];
 

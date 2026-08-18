@@ -10,12 +10,23 @@ class AppointmentService extends Model
 {
     use BelongsToTenant;
 
-    public $timestamps = false;
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_CONFIRMED = 'confirmed';
+    public const STATUS_IN_PROGRESS = 'in_progress';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_NO_SHOW = 'no_show';
 
     protected $guarded = [];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'unit_price' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'total_price' => 'decimal:2',
+        'duration_minutes' => 'integer',
+        'starts_at' => 'datetime',
+        'ends_at' => 'datetime',
     ];
 
     public function appointment(): BelongsTo

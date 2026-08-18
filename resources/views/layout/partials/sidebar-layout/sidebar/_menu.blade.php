@@ -189,6 +189,462 @@
                 </div>
             @endcan
 
+            @can('viewAny', \App\Models\Appointment::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('appointment-management.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('calendar-8', 'fs-2') !!}</span>
+                        <span class="menu-title">Appointment Management</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('appointment-management.appointments.index') || request()->routeIs('appointment-management.appointments.show') ? 'active' : '' }}"
+                                href="{{ route('appointment-management.appointments.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Appointments</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('appointment-management.appointments.calendar') ? 'active' : '' }}"
+                                href="{{ route('appointment-management.appointments.calendar') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Calendar</span>
+                            </a>
+                        </div>
+                        @can('create', \App\Models\Appointment::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('appointment-management.appointments.create') ? 'active' : '' }}"
+                                    href="{{ route('appointment-management.appointments.create') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Create Appointment</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\Product::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('inventory.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('parcel', 'fs-2') !!}</span>
+                        <span class="menu-title">Inventory</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('inventory.dashboard') ? 'active' : '' }}"
+                                href="{{ route('inventory.dashboard') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('inventory.products.*') ? 'active' : '' }}"
+                                href="{{ route('inventory.products.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Products</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\ProductCategory::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('inventory.categories.*') ? 'active' : '' }}"
+                                    href="{{ route('inventory.categories.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Categories</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\ProductBrand::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('inventory.brands.*') ? 'active' : '' }}"
+                                    href="{{ route('inventory.brands.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Brands</span>
+                                </a>
+                            </div>
+                        @endcan
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('inventory.stock.*') ? 'active' : '' }}"
+                                href="{{ route('inventory.stock.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Current Stock</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\StockMovement::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('inventory.movements.*') ? 'active' : '' }}"
+                                    href="{{ route('inventory.movements.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Stock Movements</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\StockAdjustment::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('inventory.adjustments.*') ? 'active' : '' }}"
+                                    href="{{ route('inventory.adjustments.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Stock Adjustments</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\LoyaltyProgram::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('loyalty-management.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('gift', 'fs-2') !!}</span>
+                        <span class="menu-title">Loyalty & Membership</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('loyalty-management.dashboard') ? 'active' : '' }}"
+                                href="{{ route('loyalty-management.dashboard') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('loyalty-management.programs.*') ? 'active' : '' }}"
+                                href="{{ route('loyalty-management.programs.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Loyalty Program</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('loyalty-management.rules.*') ? 'active' : '' }}"
+                                href="{{ route('loyalty-management.rules.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Earning Rules</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('loyalty-management.transactions.*') ? 'active' : '' }}"
+                                href="{{ route('loyalty-management.transactions.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Point Transactions</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\MembershipPlan::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('loyalty-management.membership-plans.*') ? 'active' : '' }}"
+                                    href="{{ route('loyalty-management.membership-plans.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Membership Plans</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\CustomerMembership::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('loyalty-management.memberships.*') ? 'active' : '' }}"
+                                    href="{{ route('loyalty-management.memberships.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Customer Memberships</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('loyalty_reports.view')
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('loyalty-management.reports.*') ? 'active' : '' }}"
+                                    href="{{ route('loyalty-management.reports.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Reports</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\Promotion::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('promotions.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('discount', 'fs-2') !!}</span>
+                        <span class="menu-title">Promotions & Discounts</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('promotions.dashboard') ? 'active' : '' }}"
+                                href="{{ route('promotions.dashboard') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('promotions.promotions.*') ? 'active' : '' }}"
+                                href="{{ route('promotions.promotions.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Promotions</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\PromotionCoupon::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('promotions.coupons.*') ? 'active' : '' }}"
+                                    href="{{ route('promotions.coupons.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Coupons</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\PromotionUsage::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('promotions.usages.*') ? 'active' : '' }}"
+                                    href="{{ route('promotions.usages.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Usage History</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('promotion_reports.view')
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('promotions.reports.*') ? 'active' : '' }}"
+                                    href="{{ route('promotions.reports.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Reports</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\PayrollRun::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('payroll.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('dollar', 'fs-2') !!}</span>
+                        <span class="menu-title">Payroll</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('payroll.dashboard') ? 'active' : '' }}"
+                                href="{{ route('payroll.dashboard') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('payroll.runs.*') ? 'active' : '' }}"
+                                href="{{ route('payroll.runs.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Payroll Runs</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('payroll.periods.*') ? 'active' : '' }}"
+                                href="{{ route('payroll.periods.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Payroll Periods</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\StaffSalaryStructure::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('payroll.salary-structures.*') ? 'active' : '' }}"
+                                    href="{{ route('payroll.salary-structures.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Salary Structures</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('payroll.report.view')
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('payroll.reports.*') ? 'active' : '' }}"
+                                    href="{{ route('payroll.reports.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Reports</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\StaffCommission::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('commission-management.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('chart-line-up', 'fs-2') !!}</span>
+                        <span class="menu-title">Staff Commissions</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('commission-management.dashboard') ? 'active' : '' }}"
+                                href="{{ route('commission-management.dashboard') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Overview</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\CommissionRule::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('commission-management.rules.*') ? 'active' : '' }}"
+                                    href="{{ route('commission-management.rules.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Rules</span>
+                                </a>
+                            </div>
+                        @endcan
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('commission-management.ledger.*') ? 'active' : '' }}"
+                                href="{{ route('commission-management.ledger.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Ledger</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\CommissionPayout::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('commission-management.payouts.*') ? 'active' : '' }}"
+                                    href="{{ route('commission-management.payouts.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Payouts</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('commission_reports.view')
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('commission-management.reports.*') ? 'active' : '' }}"
+                                    href="{{ route('commission-management.reports.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Reports</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\CommissionSetting::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('commission-management.settings.*') ? 'active' : '' }}"
+                                    href="{{ route('commission-management.settings.edit') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Settings</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\Expense::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('expense-management.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('bill', 'fs-2') !!}</span>
+                        <span class="menu-title">Expense Management</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('expense-management.dashboard') ? 'active' : '' }}"
+                                href="{{ route('expense-management.dashboard') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Dashboard</span>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('expense-management.expenses.*') ? 'active' : '' }}"
+                                href="{{ route('expense-management.expenses.index') }}">
+                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                <span class="menu-title">Expenses</span>
+                            </a>
+                        </div>
+                        @can('create', \App\Models\Expense::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('expense-management.expenses.create') ? 'active' : '' }}"
+                                    href="{{ route('expense-management.expenses.create') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Add Expense</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\ExpenseCategory::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('expense-management.categories.*') ? 'active' : '' }}"
+                                    href="{{ route('expense-management.categories.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Categories</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\Vendor::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('expense-management.vendors.*') ? 'active' : '' }}"
+                                    href="{{ route('expense-management.vendors.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Vendors</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('expense_reports.view')
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('expense-management.reports.*') ? 'active' : '' }}"
+                                    href="{{ route('expense-management.reports.index') }}">
+                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
+                                    <span class="menu-title">Reports</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
+            @can('viewAny', \App\Models\Invoice::class)
+                <div data-kt-menu-trigger="click"
+                    class="menu-item menu-accordion {{ request()->routeIs('billing.*') ? 'here show' : '' }}">
+                    <span class="menu-link">
+                        <span class="menu-icon">{!! getIcon('wallet', 'fs-2') !!}</span>
+                        <span class="menu-title">Billing / POS</span>
+                        <span class="menu-arrow"></span>
+                    </span>
+                    <div class="menu-sub menu-sub-accordion">
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('billing.invoices.*') ? 'active' : '' }}"
+                                href="{{ route('billing.invoices.index') }}">
+                                <span class="menu-bullet">
+                                    <span class="bullet bullet-dot"></span>
+                                </span>
+                                <span class="menu-title">Invoices</span>
+                            </a>
+                        </div>
+                        @can('viewAny', \App\Models\Payment::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.payments.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.payments.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Payments</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('viewAny', \App\Models\PaymentMethod::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.payment-methods.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.payment-methods.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Payment Methods</span>
+                                </a>
+                            </div>
+                        @endcan
+                    </div>
+                </div>
+            @endcan
+
             <div data-kt-menu-trigger="click"
                 class="menu-item menu-accordion {{ request()->routeIs('user-management.*') ? 'here show' : '' }}">
                 <span class="menu-link">

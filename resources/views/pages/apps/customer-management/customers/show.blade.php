@@ -710,7 +710,7 @@
 
                         @can('viewNotes', $customer)
 
-                            @forelse ($customer->noteEntries->sortByDesc('created_at') as $note)
+                            @forelse (($customer->noteEntries ?? collect())->sortByDesc('created_at') as $note)
                                 <div
                                     class="note-item rounded px-3 py-4
                                     {{ !$loop->last ? 'border-bottom' : '' }}">
@@ -835,7 +835,7 @@
 
                     <div class="card-body pt-3">
 
-                        @forelse ($customer->appointments
+                        @forelse (($customer->appointments ?? collect())
                                 ->sortByDesc('starts_at')
                                 ->take(8)
                             as $appointment)
@@ -910,7 +910,7 @@
                                 </div>
 
                                 <div class="text-muted fs-8">
-                                    This customer hasn't completed or scheduled any appointments yet.
+                                    No appointment history available yet.
                                 </div>
 
                             </div>

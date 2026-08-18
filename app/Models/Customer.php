@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
@@ -66,6 +67,35 @@ class Customer extends Model
     public function payments(): HasManyThrough
     {
         return $this->hasManyThrough(Payment::class, Sale::class);
+    }
+
+    public function loyaltyAccount(): HasOne
+    {
+        return $this->hasOne(CustomerLoyaltyAccount::class);
+    }
+
+    public function activeLoyaltyAccount(): HasOne
+    {
+        return $this->hasOne(CustomerLoyaltyAccount::class)->where('status', CustomerLoyaltyAccount::STATUS_ACTIVE);
+    }
+
+    public function loyaltyTransactions(): HasMany
+    {
+        return $this->hasMany(LoyaltyPointTransaction::class);
+    }
+
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(CustomerMembership::class);
+    }
+
+    public function activeMembership(): HasOne
+    {
+        return $this->hasOne(CustomerMembership::class)
+            ->where('status', CustomerMembership::STATUS_ACTIVE)
+            ->whereDate('start_date', '<=', today())
+            ->whereDate('end_date', '>=', today())
+            ->latest('end_date');
     }
 
     public function getFullNameAttribute(): string

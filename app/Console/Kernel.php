@@ -15,7 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('loyalty:expire-points')->dailyAt('01:00');
+        $schedule->command('memberships:expire')->dailyAt('01:15');
     }
 
     /**
