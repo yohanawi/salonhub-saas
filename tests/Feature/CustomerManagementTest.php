@@ -86,8 +86,8 @@ class CustomerManagementTest extends TestCase
         $this->actingAs($owner)
             ->get(route('customer-management.customers.show', $customer))
             ->assertOk()
-            ->assertSee('Customer Profile')
-            ->assertSee('No appointment history available yet.');
+            ->assertSee('Customer Details')
+            ->assertSee('This customer has not made any appointments yet.');
     }
 
     public function test_tenant_cannot_assign_customer_to_other_tenant_branch(): void
@@ -164,6 +164,41 @@ class CustomerManagementTest extends TestCase
             'tenant_id' => $tenant->id,
             'phone' => '0771234567',
         ]);
+    }
+
+    public function test_super_admin_can_access_customer_management_when_tenant_plan_disables_it(): void
+    {
+        [$tenant, $owner] = $this->tenantWithOwner(maxCustomers: 10);
+        $branch = $this->branch($tenant, 'Colombo', 'CMB');
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'customer_code' => 'CUS-000124',
+            'first_name' => 'Nadeesha',
+            'last_name' => 'Perera',
+            'phone' => '0712345678',
+            'status' => Customer::STATUS_ACTIVE,
+        ]);
+
+        $tenant->subscription->update([
+            'entitlements' => ['features' => ['customer_management' => false]],
+        ]);
+
+        $superAdmin = User::factory()->create([
+            'tenant_id' => null,
+            'email_verified_at' => now(),
+        ]);
+        $superAdmin->assignRole('Super Admin');
+
+        $this->actingAs($superAdmin)
+            ->get(route('customer-management.customers.show', $customer))
+            ->assertOk()
+            ->assertSee('Nadeesha Perera');
+
+        $this->actingAs($superAdmin)
+            ->get(route('customer-management.customers.create', ['tenant_id' => $tenant->id]))
+            ->assertOk()
+            ->assertSee('Add Customer');
     }
 
     private function tenantWithOwner(int $maxCustomers): array

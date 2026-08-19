@@ -14,4 +14,6 @@
             @include('pages/apps.staff-management.staff._form')
         </form>
     </div>
+
+    @include('pages.apps.staff-management.staff._sweet-alerts')
 </x-default-layout>

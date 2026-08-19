@@ -38,22 +38,22 @@
             </div>
         @endif
 
-        <div class="card border-0 bg-light-primary mb-8 overflow-hidden">
-            <div class="card-body py-8 px-8 px-lg-10">
+        <div class="card border-0 bg-light-primary mb-5 overflow-hidden">
+            <div class="card-body py-4 px-4 px-lg-6">
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-6">
                     <div class="d-flex align-items-center gap-5">
-                        <div class="symbol symbol-70px">
+                        <div class="symbol symbol-50px">
                             <div class="symbol-label bg-primary">
                                 <i class="bi bi-people-fill fs-1 text-white"></i>
                             </div>
                         </div>
                         <div>
-                            <div class="text-muted fw-semibold fs-7 text-uppercase mb-1">
+                            <div class="text-muted fw-semibold fs-8 text-uppercase mb-1">
                                 Staff Management
                             </div>
-                            <h1 class="fw-bolder text-gray-900 mb-2">
+                            <h3 class="fw-bolder text-gray-900 mb-2">
                                 Your Team
-                            </h1>
+                            </h3>
                             <div class="text-gray-600">
                                 Manage staff profiles, branches, services and booking availability.
                             </div>
@@ -61,7 +61,7 @@
                     </div>
                     @can('create', \App\Models\Staff::class)
                         <div>
-                            <a href="{{ route('staff-management.staff.create') }}" class="btn btn-primary btn-lg px-7">
+                            <a href="{{ route('staff-management.staff.create') }}" class="btn btn-primary btn-sm px-7">
                                 <i class="bi bi-person-plus-fill me-2"></i>
                                 Add Staff Member
                             </a>
@@ -69,89 +69,7 @@
                     @endcan
                 </div>
             </div>
-        </div>
-
-        <div class="row g-5 g-xl-8 mb-8">
-            <div class="col-md-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center gap-5">
-                        <div class="symbol symbol-55px">
-                            <div class="symbol-label bg-light-primary">
-                                <i class="bi bi-people fs-2 text-primary"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="fs-2 fw-bold text-gray-900">
-                                {{ $staff->total() }}
-                            </div>
-                            <div class="text-muted fw-semibold fs-7">
-                                Total Staff
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center gap-5">
-                        <div class="symbol symbol-55px">
-                            <div class="symbol-label bg-light-success">
-                                <i class="bi bi-person-check fs-2 text-success"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="fs-2 fw-bold text-gray-900">
-                                {{ $staff->getCollection()->where('status', 'active')->count() }}
-                            </div>
-                            <div class="text-muted fw-semibold fs-7">
-                                Active on Page
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center gap-5">
-                        <div class="symbol symbol-55px">
-                            <div class="symbol-label bg-light-info">
-                                <i class="bi bi-calendar-check fs-2 text-info"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="fs-2 fw-bold text-gray-900">
-                                {{ $staff->getCollection()->where('is_bookable', true)->count() }}
-                            </div>
-                            <div class="text-muted fw-semibold fs-7">
-                                Bookable on Page
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center gap-5">
-                        <div class="symbol symbol-55px">
-                            <div class="symbol-label bg-light-warning">
-                                <i class="bi bi-building fs-2 text-warning"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="fs-2 fw-bold text-gray-900">
-                                {{ $branches->count() }}
-                            </div>
-                            <div class="text-muted fw-semibold fs-7">
-                                Available Branches
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </div> 
 
         <div class="card border-0 shadow-sm mb-8">
             <div class="card-header border-0 pt-6">
@@ -568,4 +486,6 @@
             </div>
         </div>
     </div>
+
+    @include('pages.apps.staff-management.staff._sweet-alerts')
 </x-default-layout>

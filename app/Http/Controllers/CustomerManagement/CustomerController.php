@@ -31,7 +31,6 @@ class CustomerController extends Controller
         $customers = ($isSuperAdmin ? Customer::withoutTenantScope() : Customer::query()->where('tenant_id', $tenant->id))
             ->with(['tenant', 'branch'])
             ->withCount(['appointments', 'sales', 'noteEntries'])
-            ->when($isSuperAdmin && $request->filled('tenant_id'), fn (Builder $query) => $query->where('tenant_id', $request->integer('tenant_id')))
             ->when($request->filled('search'), function (Builder $query) use ($request) {
                 $search = $request->string('search')->toString();
 
@@ -43,22 +42,15 @@ class CustomerController extends Controller
                         ->orWhere('email', 'ilike', "%{$search}%");
                 });
             })
-            ->when($request->filled('branch_id'), fn (Builder $query) => $query->where('branch_id', $request->integer('branch_id')))
-            ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')->toString()))
-            ->when($request->filled('gender'), fn (Builder $query) => $query->where('gender', $request->string('gender')->toString()))
+            ->when($request->filled('status'), fn(Builder $query) => $query->where('status', $request->string('status')->toString()))
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
         return view('pages/apps.customer-management.customers.index', [
             'customers' => $customers,
-            'branches' => $isSuperAdmin
-                ? Branch::withoutTenantScope()->orderBy('name')->get()
-                : $tenant->branches()->orderBy('name')->get(),
-            'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'isSuperAdmin' => $isSuperAdmin,
             'statuses' => Customer::STATUSES,
-            'genders' => Customer::GENDERS,
         ]);
     }
 
@@ -72,8 +64,10 @@ class CustomerController extends Controller
             : ($isSuperAdmin ? null : $this->tenant($request));
 
         if ($tenant) {
-            $entitlements->ensureFeature($tenant, 'customer_management');
-            $entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+            if (! $isSuperAdmin) {
+                $entitlements->ensureFeature($tenant, 'customer_management');
+                $entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+            }
         }
 
         return view('pages/apps.customer-management.customers.create', $this->formData(new Customer([
@@ -86,8 +80,10 @@ class CustomerController extends Controller
     {
         $tenant = $this->tenantForWrite($request);
 
-        $entitlements->ensureFeature($tenant, 'customer_management');
-        $entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+        if (! $request->user()->hasRole('Super Admin')) {
+            $entitlements->ensureFeature($tenant, 'customer_management');
+            $entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+        }
 
         $customer = $customers->create($tenant, $request->validated(), $request->user());
 
@@ -99,22 +95,26 @@ class CustomerController extends Controller
     public function show(Request $request, Customer $customer, PlanEntitlementService $entitlements): View
     {
         $this->authorize('view', $customer);
-        $entitlements->ensureFeature($customer->tenant, 'customer_management');
+        if (! $request->user()->hasRole('Super Admin')) {
+            $entitlements->ensureFeature($customer->tenant, 'customer_management');
+        }
 
         $customer->load(['tenant', 'branch', 'noteEntries.user', 'appointments.branch', 'sales.payments']);
         $customer->loadCount(['appointments', 'sales', 'noteEntries']);
 
         return view('pages/apps.customer-management.customers.show', [
             'customer' => $customer,
-            'totalSpend' => $customer->sales->sum(fn ($sale) => (float) $sale->total),
-            'totalPaid' => $customer->sales->sum(fn ($sale) => $sale->payments->sum(fn ($payment) => (float) $payment->amount)),
+            'totalSpend' => $customer->sales->sum(fn($sale) => (float) $sale->total),
+            'totalPaid' => $customer->sales->sum(fn($sale) => $sale->payments->sum(fn($payment) => (float) $payment->amount)),
         ]);
     }
 
     public function edit(Request $request, Customer $customer, PlanEntitlementService $entitlements): View
     {
         $this->authorize('update', $customer);
-        $entitlements->ensureFeature($customer->tenant, 'customer_management');
+        if (! $request->user()->hasRole('Super Admin')) {
+            $entitlements->ensureFeature($customer->tenant, 'customer_management');
+        }
 
         return view('pages/apps.customer-management.customers.edit', $this->formData($customer, $customer->tenant, $request->user()->hasRole('Super Admin')));
     }

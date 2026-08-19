@@ -1,6 +1,6 @@
 <x-default-layout>
     @section('title')
-        Edit Customer
+        {{ $customer->first_name }} Edit Customer
     @endsection
 
     @section('breadcrumbs')
@@ -14,4 +14,6 @@
             @include('pages/apps.customer-management.customers._form')
         </form>
     </div>
+
+    @include('pages.apps.customer-management.customers._sweet-alerts')
 </x-default-layout>

@@ -94,7 +94,6 @@
                 <i class="bi bi-exclamation-triangle-fill text-white fs-4"></i>
             </div>
         </div>
-
         <div>
             <div class="fw-bold text-danger mb-1">
                 We couldn't save this staff member
@@ -170,145 +169,104 @@
                                     Salon / Tenant
                                 </label>
                                 <select name="tenant_id" id="staff_tenant_id" data-control="select2"
-                                    data-hide-search="true"
-                                    class="form-select form-select-solid @error('tenant_id') is-invalid @enderror"
-                                    required>
-
+                                    data-hide-search="true" required
+                                    class="form-select form-select-solid @error('tenant_id') is-invalid @enderror">
                                     <option value="">
                                         Select salon
                                     </option>
-
                                     @foreach ($tenants as $tenant)
                                         <option value="{{ $tenant->id }}" @selected((string) old('tenant_id', $selectedTenant?->id) === (string) $tenant->id)>
                                             {{ $tenant->name }}
                                             {{ $tenant->email ? ' — ' . $tenant->email : '' }}
                                         </option>
                                     @endforeach
-
                                 </select>
-
                                 <div class="text-muted fs-8 mt-2">
                                     <i class="bi bi-info-circle me-1"></i>
                                     Select a salon to load its branches, services and users.
                                 </div>
-
                                 @error('tenant_id')
                                     <div class="text-danger fs-7 mt-2">
                                         {{ $message }}
                                     </div>
                                 @enderror
-
                             </div>
-
                         </div>
-
                     @endif
-
 
                     {{-- Employee Code --}}
                     <div class="col-md-4">
-
                         <label class="form-label required fw-semibold">
                             Employee Code
                         </label>
-
                         <div class="position-relative">
-
                             <i class="bi bi-upc-scan position-absolute top-50 translate-middle-y ms-4 text-muted"></i>
-
                             <input type="text" name="employee_code"
                                 value="{{ old('employee_code', $staffMember->employee_code) }}"
                                 class="form-control ps-11 @error('employee_code') is-invalid @enderror"
                                 placeholder="STF-0001" required>
-
                         </div>
-
                         @error('employee_code')
                             <div class="text-danger fs-7 mt-2">
                                 {{ $message }}
                             </div>
                         @enderror
-
                     </div>
-
 
                     {{-- First Name --}}
                     <div class="col-md-4">
-
                         <label class="form-label required fw-semibold">
                             First Name
                         </label>
-
                         <input type="text" name="first_name"
                             value="{{ old('first_name', $staffMember->first_name) }}"
                             class="form-control @error('first_name') is-invalid @enderror" placeholder="Nadeesha"
                             required>
-
                         @error('first_name')
                             <div class="text-danger fs-7 mt-2">
                                 {{ $message }}
                             </div>
                         @enderror
-
                     </div>
-
 
                     {{-- Last Name --}}
                     <div class="col-md-4">
-
                         <label class="form-label required fw-semibold">
                             Last Name
                         </label>
-
                         <input type="text" name="last_name" value="{{ old('last_name', $staffMember->last_name) }}"
                             class="form-control @error('last_name') is-invalid @enderror" placeholder="Perera" required>
-
                         @error('last_name')
                             <div class="text-danger fs-7 mt-2">
                                 {{ $message }}
                             </div>
                         @enderror
-
                     </div>
-
 
                     {{-- Email --}}
                     <div class="col-md-6">
-
                         <label class="form-label fw-semibold">
                             Email Address
                         </label>
-
                         <div class="position-relative">
-
                             <i class="bi bi-envelope position-absolute top-50 translate-middle-y ms-4 text-muted"></i>
-
                             <input type="email" name="email" value="{{ old('email', $staffMember->email) }}"
                                 class="form-control ps-11 @error('email') is-invalid @enderror"
                                 placeholder="staff@example.com">
-
                         </div>
-
                     </div>
-
 
                     {{-- Phone --}}
                     <div class="col-md-6">
-
                         <label class="form-label fw-semibold">
                             Phone Number
                         </label>
-
                         <div class="position-relative">
-
                             <i class="bi bi-telephone position-absolute top-50 translate-middle-y ms-4 text-muted"></i>
-
                             <input type="text" name="phone" value="{{ old('phone', $staffMember->phone) }}"
                                 class="form-control ps-11 @error('phone') is-invalid @enderror"
                                 placeholder="+94 77 123 4567">
-
                         </div>
-
                     </div>
 
                     <div class="col-md-4">
@@ -371,445 +329,281 @@
                                     {{ $user->name }} — {{ $user->email }}
                                 </option>
                             @endforeach
-
                         </select>
-
                         <div class="text-muted fs-8 mt-2">
                             Link only if this employee requires dashboard access.
                         </div>
-
                     </div>
-
-
                     {{-- Bio --}}
                     <div class="col-12">
-
                         <label class="form-label fw-semibold">
                             Bio / Internal Notes
                         </label>
-
                         <textarea name="bio" rows="4" class="form-control"
                             placeholder="Experience, specialization or internal notes...">{{ old('bio', $staffMember->bio) }}</textarea>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
 
-
-        {{-- ============================= --}}
-        {{-- Branch Assignment --}}
-        {{-- ============================= --}}
         <div class="card border-0 shadow-sm mb-7">
-
             <div class="card-header border-0 pt-7">
-
                 <div class="card-title">
-
                     <div class="d-flex align-items-center gap-4">
-
                         <div class="symbol symbol-45px">
                             <div class="symbol-label bg-light-info">
                                 <i class="bi bi-shop-window text-info fs-3"></i>
                             </div>
                         </div>
-
                         <div>
                             <h3 class="fw-bold text-gray-900 mb-1">
                                 Branch Assignment
                             </h3>
-
                             <div class="text-muted fs-8">
                                 Select the locations where this employee can work.
                             </div>
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
 
-
             <div class="card-body pt-4">
-
                 <div class="row g-5">
-
                     @forelse ($branches as $branch)
                         @php
                             $isChecked = $selectedBranchIds->contains($branch->id);
-
                             $pivot = $staffMember->branches->firstWhere('id', $branch->id)?->pivot;
                         @endphp
 
-
                         <div class="col-md-6">
-
                             <div class="border border-gray-300 border-dashed rounded-3 p-5 h-100">
-
                                 <div class="d-flex justify-content-between align-items-start mb-5">
-
                                     <div class="d-flex align-items-center gap-3">
-
                                         <div class="symbol symbol-45px">
                                             <div class="symbol-label bg-light-primary">
                                                 <i class="bi bi-building text-primary"></i>
                                             </div>
                                         </div>
-
                                         <div>
                                             <div class="fw-bold text-gray-900">
                                                 {{ $branch->name }}
                                             </div>
-
                                             <div class="text-muted fs-8">
                                                 Work location
                                             </div>
                                         </div>
-
                                     </div>
-
-
                                     <input type="hidden" name="branches[{{ $branch->id }}][enabled]"
                                         value="0">
-
-
                                     <label class="form-check form-switch form-check-custom form-check-solid">
-
                                         <input class="form-check-input" type="checkbox"
                                             name="branches[{{ $branch->id }}][enabled]" value="1"
                                             @checked($isChecked)>
-
                                     </label>
-
                                 </div>
-
-
                                 <div class="d-flex flex-wrap align-items-center gap-4">
-
                                     <label class="form-check form-check-custom form-check-solid">
-
                                         <input class="form-check-input" type="radio" name="primary_branch_id"
                                             value="{{ $branch->id }}" @checked((string) $primaryBranchId === (string) $branch->id)>
-
                                         <span class="form-check-label fw-semibold fs-8">
                                             Primary branch
                                         </span>
-
                                     </label>
-
-
                                     <select name="branches[{{ $branch->id }}][status]" data-control="select2"
                                         data-hide-search="true" class="form-select form-select-sm w-150px">
-
                                         <option value="active" @selected(old("branches.{$branch->id}.status", $pivot?->status ?? 'active') === 'active')>
                                             Active
                                         </option>
-
                                         <option value="inactive" @selected(old("branches.{$branch->id}.status", $pivot?->status) === 'inactive')>
                                             Inactive
                                         </option>
-
                                     </select>
-
                                 </div>
-
                             </div>
-
                         </div>
-
                     @empty
-
                         <div class="col-12">
-
                             <div class="alert bg-light-warning border border-warning border-dashed mb-0">
-
                                 <div class="d-flex align-items-center">
-
                                     <i class="bi bi-building-exclamation fs-2 text-warning me-4"></i>
-
                                     <div>
                                         <div class="fw-bold">
                                             No branches available
                                         </div>
-
                                         <div>
                                             Create an active branch before assigning staff.
                                         </div>
                                     </div>
-
                                 </div>
-
                             </div>
-
                         </div>
                     @endforelse
-
                 </div>
-
-
                 @error('branches')
                     <div class="text-danger fs-7 mt-3">
                         {{ $message }}
                     </div>
                 @enderror
-
             </div>
-
         </div>
 
-
-        {{-- ============================= --}}
-        {{-- Service Assignment --}}
-        {{-- ============================= --}}
         <div class="card border-0 shadow-sm mb-7">
-
             <div class="card-header border-0 pt-7">
-
                 <div class="card-title">
-
                     <div class="d-flex align-items-center gap-4">
-
                         <div class="symbol symbol-45px">
                             <div class="symbol-label bg-light-success">
                                 <i class="bi bi-scissors text-success fs-3"></i>
                             </div>
                         </div>
-
                         <div>
                             <h3 class="fw-bold text-gray-900 mb-1">
                                 Service Assignment
                             </h3>
-
                             <div class="text-muted fs-8">
                                 Choose services this employee is qualified to perform.
                             </div>
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
 
-
             <div class="card-body pt-4">
-
                 <div class="row g-5">
-
                     @forelse ($services as $service)
                         @php
                             $pivot = $staffMember->services->firstWhere('id', $service->id)?->pivot;
                         @endphp
 
-
                         <div class="col-md-6">
-
                             <div class="border border-gray-300 border-dashed rounded-3 p-5 h-100">
-
                                 <div class="d-flex justify-content-between align-items-start mb-5">
-
                                     <div class="d-flex align-items-center gap-3">
-
                                         <div class="symbol symbol-45px">
                                             <div class="symbol-label bg-light-success">
                                                 <i class="bi bi-stars text-success"></i>
                                             </div>
                                         </div>
-
                                         <div>
                                             <div class="fw-bold text-gray-900">
                                                 {{ $service->name }}
                                             </div>
-
                                             <div class="text-muted fs-8">
                                                 {{ $service->category?->name ?? 'Uncategorized' }}
                                             </div>
                                         </div>
-
                                     </div>
-
-
                                     <input type="hidden" name="services[{{ $service->id }}][enabled]"
                                         value="0">
-
-
                                     <label class="form-check form-switch form-check-custom form-check-solid">
-
                                         <input class="form-check-input" type="checkbox"
                                             name="services[{{ $service->id }}][enabled]" value="1"
                                             @checked($selectedServiceIds->contains($service->id))>
-
                                     </label>
-
                                 </div>
 
-
                                 <div class="row g-3">
-
                                     <div class="col-6">
-
                                         <label class="form-label fs-8">
                                             Duration Override
                                         </label>
-
                                         <div class="input-group input-group-sm">
-
                                             <input type="number"
                                                 name="services[{{ $service->id }}][custom_duration_minutes]"
                                                 value="{{ old("services.{$service->id}.custom_duration_minutes", $pivot?->custom_duration_minutes) }}"
                                                 min="5" max="1440" class="form-control"
                                                 placeholder="{{ $service->default_duration_minutes ?? $service->duration_minutes }}">
-
                                             <span class="input-group-text">
                                                 min
                                             </span>
-
                                         </div>
-
                                     </div>
-
-
                                     <div class="col-6">
-
                                         <label class="form-label fs-8">
                                             Price Override
                                         </label>
-
                                         <input type="number" name="services[{{ $service->id }}][custom_price]"
                                             value="{{ old("services.{$service->id}.custom_price", $pivot?->custom_price) }}"
                                             min="0" step="0.01" class="form-control form-control-sm"
                                             placeholder="{{ $service->default_price ?? $service->price }}">
-
                                     </div>
-
-
                                     <div class="col-12">
-
                                         <label class="form-label fs-8">
                                             Assignment Status
                                         </label>
-
                                         <select name="services[{{ $service->id }}][status]" data-control="select2"
                                             data-hide-search="true" class="form-select form-select-sm">
-
                                             <option value="active" @selected(old("services.{$service->id}.status", $pivot?->status ?? 'active') === 'active')>
                                                 Active
                                             </option>
-
                                             <option value="inactive" @selected(old("services.{$service->id}.status", $pivot?->status) === 'inactive')>
                                                 Inactive
                                             </option>
-
                                         </select>
-
                                     </div>
-
                                 </div>
-
                             </div>
-
                         </div>
-
                     @empty
-
                         <div class="col-12">
-
                             <div class="alert bg-light-warning border border-warning border-dashed mb-0">
                                 Create active services before assigning them to staff.
                             </div>
-
                         </div>
                     @endforelse
-
                 </div>
-
-
                 @error('services')
                     <div class="text-danger fs-7 mt-3">
                         {{ $message }}
                     </div>
                 @enderror
-
             </div>
-
         </div>
 
-
-        {{-- ============================= --}}
-        {{-- Weekly Schedule --}}
-        {{-- ============================= --}}
         <div class="card border-0 shadow-sm mb-7">
-
             <div class="card-header border-0 pt-7">
-
                 <div class="card-title">
-
                     <div class="d-flex align-items-center gap-4">
-
                         <div class="symbol symbol-45px">
                             <div class="symbol-label bg-light-warning">
                                 <i class="bi bi-calendar-week text-warning fs-3"></i>
                             </div>
                         </div>
-
                         <div>
                             <h3 class="fw-bold text-gray-900 mb-1">
                                 Weekly Working Schedule
                             </h3>
-
                             <div class="text-muted fs-8">
                                 Define standard weekly working hours by branch.
                             </div>
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
 
-
             <div class="card-body pt-4">
-
                 <div class="table-responsive">
-
                     <table class="table align-middle table-row-dashed gy-5">
-
                         <thead>
-
                             <tr class="fw-bold text-muted fs-7 text-uppercase">
-
                                 <th class="min-w-90px">
                                     Working
                                 </th>
-
                                 <th class="min-w-120px">
                                     Day
                                 </th>
-
                                 <th class="min-w-180px">
                                     Branch
                                 </th>
-
                                 <th class="min-w-130px">
                                     Start
                                 </th>
-
                                 <th class="min-w-130px">
                                     End
                                 </th>
-
                             </tr>
-
                         </thead>
-
-
                         <tbody>
-
                             @foreach ($days as $dayNumber => $dayName)
                                 @php
                                     $schedule = $existingSchedules->firstWhere('day_of_week', $dayNumber) ?? [
@@ -820,466 +614,291 @@
                                         'end_time' => $dayNumber === 6 ? '20:00' : '17:00',
                                     ];
                                 @endphp
-
-
                                 <tr>
-
                                     <td>
-
                                         <input type="hidden" name="schedules[{{ $dayNumber }}][day_of_week]"
                                             value="{{ $dayNumber }}">
-
                                         <input type="hidden" name="schedules[{{ $dayNumber }}][is_working]"
                                             value="0">
-
-
                                         <label class="form-check form-switch form-check-custom form-check-solid">
-
                                             <input class="form-check-input" type="checkbox"
                                                 name="schedules[{{ $dayNumber }}][is_working]" value="1"
                                                 @checked(!empty($schedule['is_working']))>
-
                                         </label>
-
                                     </td>
-
-
                                     <td>
-
                                         <div class="fw-bold text-gray-900">
                                             {{ $dayName }}
                                         </div>
-
                                     </td>
-
-
                                     <td>
-
                                         <select name="schedules[{{ $dayNumber }}][branch_id]"
                                             data-control="select2" data-hide-search="true"
                                             class="form-select form-select-sm">
-
                                             <option value="">
                                                 Select branch
                                             </option>
-
                                             @foreach ($branches as $branch)
                                                 <option value="{{ $branch->id }}" @selected((string) ($schedule['branch_id'] ?? '') === (string) $branch->id)>
                                                     {{ $branch->name }}
                                                 </option>
                                             @endforeach
-
                                         </select>
-
                                     </td>
-
-
                                     <td>
-
                                         <input type="time" name="schedules[{{ $dayNumber }}][start_time]"
                                             value="{{ $schedule['start_time'] ?? '09:00' }}"
                                             class="form-control form-control-sm">
-
                                     </td>
-
-
                                     <td>
-
                                         <input type="time" name="schedules[{{ $dayNumber }}][end_time]"
                                             value="{{ $schedule['end_time'] ?? '17:00' }}"
                                             class="form-control form-control-sm">
-
                                     </td>
-
                                 </tr>
                             @endforeach
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
-
         </div>
 
-
-        {{-- ============================= --}}
-        {{-- Breaks & Time Off --}}
-        {{-- ============================= --}}
         <div class="card border-0 shadow-sm mb-7">
-
             <div class="card-header border-0 pt-7">
-
                 <div class="card-title">
-
                     <div class="d-flex align-items-center gap-4">
-
                         <div class="symbol symbol-45px">
                             <div class="symbol-label bg-light-danger">
                                 <i class="bi bi-clock-history text-danger fs-3"></i>
                             </div>
                         </div>
-
                         <div>
                             <h3 class="fw-bold text-gray-900 mb-1">
                                 Breaks & Time Off
                             </h3>
-
                             <div class="text-muted fs-8">
                                 Define recurring breaks and exceptional unavailability.
                             </div>
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
 
-
             <div class="card-body pt-4">
-
-
-                {{-- Breaks --}}
                 <div class="mb-10">
-
                     <div class="d-flex align-items-center justify-content-between mb-5">
-
                         <div>
                             <h4 class="fw-bold text-gray-900 mb-1">
                                 Recurring Breaks
                             </h4>
-
                             <div class="text-muted fs-8">
                                 Lunch breaks or other non-bookable periods.
                             </div>
                         </div>
-
                         <span class="badge badge-light-warning">
                             Weekly
                         </span>
-
                     </div>
 
-
                     @for ($i = 0; $i < max(1, $existingBreaks->count()); $i++)
-
                         @php($break = $existingBreaks->get($i, []))
-
-
                         <div class="border border-gray-300 border-dashed rounded-3 p-5 mb-4">
-
                             <div class="row g-4 align-items-end">
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Branch
                                     </label>
-
                                     <select name="breaks[{{ $i }}][branch_id]" data-control="select2"
                                         data-hide-search="true" class="form-select form-select-sm">
-
                                         <option value="">
                                             None
                                         </option>
-
                                         @foreach ($branches as $branch)
                                             <option value="{{ $branch->id }}" @selected((string) ($break['branch_id'] ?? '') === (string) $branch->id)>
                                                 {{ $branch->name }}
                                             </option>
                                         @endforeach
-
                                     </select>
-
                                 </div>
 
-
                                 <div class="col-md-2">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Day
                                     </label>
-
                                     <select name="breaks[{{ $i }}][day_of_week]" data-control="select2"
                                         data-hide-search="true" class="form-select form-select-sm">
-
                                         <option value="">
                                             Day
                                         </option>
-
                                         @foreach ($days as $dayNumber => $dayName)
                                             <option value="{{ $dayNumber }}" @selected((string) ($break['day_of_week'] ?? '') === (string) $dayNumber)>
                                                 {{ $dayName }}
                                             </option>
                                         @endforeach
-
                                     </select>
-
                                 </div>
-
-
                                 <div class="col-md-2">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Start
                                     </label>
-
                                     <input type="time" name="breaks[{{ $i }}][start_time]"
                                         value="{{ $break['start_time'] ?? '' }}"
                                         class="form-control form-control-sm">
-
                                 </div>
-
-
                                 <div class="col-md-2">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         End
                                     </label>
-
                                     <input type="time" name="breaks[{{ $i }}][end_time]"
                                         value="{{ $break['end_time'] ?? '' }}" class="form-control form-control-sm">
-
                                 </div>
-
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Title
                                     </label>
-
                                     <input type="text" name="breaks[{{ $i }}][title]"
                                         value="{{ $break['title'] ?? '' }}" class="form-control form-control-sm"
                                         placeholder="Lunch Break">
-
                                 </div>
-
                             </div>
-
                         </div>
-
                     @endfor
-
                 </div>
-
 
                 <div class="separator separator-dashed my-8"></div>
 
-
                 {{-- Time Off --}}
                 <div>
-
                     <div class="d-flex align-items-center justify-content-between mb-5">
-
                         <div>
                             <h4 class="fw-bold text-gray-900 mb-1">
                                 Time Off
                             </h4>
-
                             <div class="text-muted fs-8">
                                 Leave, training or temporary unavailability.
                             </div>
                         </div>
-
                         <span class="badge badge-light-danger">
                             Exceptions
                         </span>
-
                     </div>
 
-
                     @for ($i = 0; $i < max(1, $existingTimeOff->count()); $i++)
-
                         @php($item = $existingTimeOff->get($i, []))
-
-
                         <div class="border border-gray-300 border-dashed rounded-3 p-5 mb-4">
-
                             <div class="row g-4">
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Type
                                     </label>
-
                                     <select name="time_off[{{ $i }}][type]" data-control="select2"
                                         data-hide-search="true" class="form-select form-select-sm">
-
                                         @foreach ($timeOffTypes as $type)
                                             <option value="{{ $type }}" @selected(($item['type'] ?? 'unavailable') === $type)>
                                                 {{ str($type)->replace('_', ' ')->headline() }}
                                             </option>
                                         @endforeach
-
                                     </select>
-
                                 </div>
 
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Branch
                                     </label>
-
                                     <select name="time_off[{{ $i }}][branch_id]" data-control="select2"
                                         data-hide-search="true" class="form-select form-select-sm">
-
                                         <option value="">
                                             All branches
                                         </option>
-
                                         @foreach ($branches as $branch)
                                             <option value="{{ $branch->id }}" @selected((string) ($item['branch_id'] ?? '') === (string) $branch->id)>
                                                 {{ $branch->name }}
                                             </option>
                                         @endforeach
-
                                     </select>
-
                                 </div>
 
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         From
                                     </label>
-
                                     <input type="datetime-local" name="time_off[{{ $i }}][start_datetime]"
                                         value="{{ $item['start_datetime'] ?? '' }}"
                                         class="form-control form-control-sm">
-
                                 </div>
 
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Until
                                     </label>
-
                                     <input type="datetime-local" name="time_off[{{ $i }}][end_datetime]"
                                         value="{{ $item['end_datetime'] ?? '' }}"
                                         class="form-control form-control-sm">
-
                                 </div>
 
-
                                 <div class="col-md-9">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Reason
                                     </label>
-
                                     <input type="text" name="time_off[{{ $i }}][reason]"
                                         value="{{ $item['reason'] ?? '' }}" class="form-control form-control-sm"
                                         placeholder="Annual leave, training, personal leave...">
-
                                 </div>
 
-
                                 <div class="col-md-3">
-
                                     <label class="form-label fs-8 fw-semibold">
                                         Status
                                     </label>
-
                                     <select name="time_off[{{ $i }}][status]" data-control="select2"
                                         data-hide-search="true" class="form-select form-select-sm">
-
                                         @foreach (['approved', 'pending', 'rejected', 'cancelled'] as $status)
                                             <option value="{{ $status }}" @selected(($item['status'] ?? 'approved') === $status)>
                                                 {{ str($status)->headline() }}
                                             </option>
                                         @endforeach
-
                                     </select>
-
                                 </div>
-
                             </div>
-
                         </div>
-
                     @endfor
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-
-    {{-- ===================================================== --}}
-    {{-- Sidebar --}}
-    {{-- ===================================================== --}}
     <div class="col-xl-4">
-
         <div class="card border-0 shadow-sm position-sticky" style="top: 100px;">
-
-            {{-- Profile Summary --}}
             <div class="card-body pb-0">
-
                 <div class="text-center mb-7">
-
                     <div class="symbol symbol-80px symbol-circle mb-4">
-
                         <div class="symbol-label bg-light-primary">
-
                             <i class="bi bi-person-fill text-primary fs-1"></i>
-
                         </div>
-
                     </div>
-
                     <h3 class="fw-bold text-gray-900 mb-1">
-
                         {{ old('first_name', $staffMember->first_name ?: 'New') }}
-
                         {{ old('last_name', $staffMember->last_name ?: 'Staff Member') }}
-
                     </h3>
-
                     <div class="text-muted">
-
                         {{ old('job_title', $staffMember->job_title ?: 'Staff profile') }}
-
                     </div>
-
                 </div>
-
             </div>
-
 
             <div class="separator"></div>
 
-
             <div class="card-header border-0 pt-7">
-
                 <div class="card-title">
-
                     <div>
                         <h3 class="fw-bold text-gray-900 mb-1">
                             Booking & Settings
                         </h3>
-
                         <div class="text-muted fs-8">
                             Control availability and commissions.
                         </div>
                     </div>
-
                 </div>
-
             </div>
-
 
             <div class="card-body pt-4">
                 <div class="mb-7">
@@ -1313,57 +932,40 @@
                 </div>
 
                 <div class="border border-gray-300 border-dashed rounded-3 p-4 mb-7">
-
                     <label class="form-check form-switch form-check-custom form-check-solid">
-
                         <input type="hidden" name="show_online" value="0">
-
                         <input class="form-check-input" type="checkbox" name="show_online" value="1"
                             @checked(old('show_online', $staffMember->show_online ?? false))>
-
                         <span class="form-check-label ms-3">
-
                             <span class="fw-bold text-gray-900 d-block">
                                 Public Booking Profile
                             </span>
-
                             <span class="text-muted fs-8">
                                 Display this employee in online booking.
                             </span>
-
                         </span>
-
                     </label>
-
                 </div>
-
 
                 <div class="separator separator-dashed my-7"></div>
 
-
                 {{-- Commission --}}
                 <div class="mb-7">
-
                     <div class="d-flex align-items-center gap-3 mb-5">
-
                         <div class="symbol symbol-40px">
                             <div class="symbol-label bg-light-success">
                                 <i class="bi bi-percent text-success"></i>
                             </div>
                         </div>
-
                         <div>
                             <h4 class="fw-bold text-gray-900 mb-0">
                                 Default Commission
                             </h4>
-
                             <div class="text-muted fs-8">
                                 Applied when no service override exists.
                             </div>
                         </div>
-
                     </div>
-
 
                     <div class="row g-4">
                         <div class="col-6">
@@ -1473,15 +1075,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             const tenantSelect = document.getElementById('staff_tenant_id');
             tenantSelect?.addEventListener('change', function() {
-
                 if (!this.value) {
                     return;
                 }
-
                 const createUrl = @json(route('staff-management.staff.create'));
                 window.location.href = `${createUrl}?tenant_id=${encodeURIComponent(this.value)}`;
             });
-
         });
     </script>
 @endpush

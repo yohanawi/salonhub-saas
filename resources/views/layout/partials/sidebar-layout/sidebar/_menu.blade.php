@@ -172,7 +172,7 @@
                     class="menu-item menu-accordion {{ request()->routeIs('staff-management.*') ? 'here show' : '' }}">
                     <span class="menu-link">
                         <span class="menu-icon">{!! getIcon('profile-user', 'fs-2') !!}</span>
-                        <span class="menu-title">Team</span>
+                        <span class="menu-title">Teams</span>
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
@@ -182,7 +182,7 @@
                                 <span class="menu-bullet">
                                     <span class="bullet bullet-dot"></span>
                                 </span>
-                                <span class="menu-title">Staff</span>
+                                <span class="menu-title">Staff Members</span>
                             </a>
                         </div>
                         @can('create', \App\Models\Staff::class)
@@ -192,7 +192,7 @@
                                     <span class="menu-bullet">
                                         <span class="bullet bullet-dot"></span>
                                     </span>
-                                    <span class="menu-title">Add Staff</span>
+                                    <span class="menu-title">Add Staff Member</span>
                                 </a>
                             </div>
                         @endcan
