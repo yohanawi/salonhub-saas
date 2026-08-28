@@ -45,7 +45,7 @@
                                 <span class="menu-bullet">
                                     <span class="bullet bullet-dot"></span>
                                 </span>
-                                <span class="menu-title">Add Plan</span>
+                                <span class="menu-title">Add New Plan</span>
                             </a>
                         </div>
                         <div class="menu-item">

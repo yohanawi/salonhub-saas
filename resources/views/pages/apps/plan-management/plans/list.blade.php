@@ -18,103 +18,6 @@
             </div>
         @endif
 
-        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-end gap-5 mb-8">
-            <a href="{{ route('plan-management.plans.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-2"></i>
-                Add New Plan
-            </a>
-        </div>
-
-        <div class="row g-5 mb-8">
-            {{-- Total Plans --}}
-            <div class="col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="symbol symbol-50px me-4">
-                            <div class="symbol-label bg-light-primary">
-                                <i class="bi bi-grid fs-2 text-primary"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-muted fs-7 fw-semibold">
-                                Total Plans
-                            </div>
-
-                            <div class="fw-bold fs-2 text-gray-900">
-                                {{ $plans->total() }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Active Plans --}}
-            <div class="col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="symbol symbol-50px me-4">
-                            <div class="symbol-label bg-light-success">
-                                <i class="bi bi-check-circle fs-2 text-success"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-muted fs-7 fw-semibold">
-                                Active On Page
-                            </div>
-                            <div class="fw-bold fs-2 text-gray-900">
-                                {{ $plans->where('is_active', true)->count() }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Subscribers --}}
-            <div class="col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="symbol symbol-50px me-4">
-                            <div class="symbol-label bg-light-info">
-                                <i class="bi bi-buildings fs-2 text-info"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-muted fs-7 fw-semibold">
-                                Subscribers On Page
-                            </div>
-                            <div class="fw-bold fs-2 text-gray-900">
-                                {{ number_format($plans->sum('subscriptions_count')) }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Recommended --}}
-            <div class="col-sm-6 col-xl-3">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="symbol symbol-50px me-4">
-                            <div class="symbol-label bg-light-warning">
-                                <i class="bi bi-star fs-2 text-warning"></i>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-muted fs-7 fw-semibold">
-                                Recommended
-                            </div>
-                            <div class="fw-bold fs-5 text-gray-900">
-                                {{ optional($plans->firstWhere('is_recommended', true))->name ?? 'Not Set' }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- =========================================================
-            Plans Card
-        ========================================================== --}}
         <div class="card border-0 shadow-sm">
             {{-- Search / Filters --}}
             <div class="card-header border-0 py-6">
@@ -123,8 +26,11 @@
                         class="d-flex align-items-center gap-3">
                         <div class="position-relative">
                             <i class="bi bi-search position-absolute top-50 translate-middle-y ms-4 text-muted"></i>
-                            <input type="text" name="search" value="{{ request('search') }}"
-                                class="form-control ps-10 w-250px" placeholder="Search plans...">
+                            <input type="text" name="search" id="plan-search-input" value="{{ request('search') }}"
+                                class="form-control ps-10 w-250px" placeholder="Search plans..." autocomplete="off">
+                            <span id="plan-search-spinner"
+                                class="spinner-border spinner-border-sm text-primary position-absolute top-50 translate-middle-y end-0 me-4 d-none"
+                                role="status" aria-hidden="true"></span>
                         </div>
                         {{-- Status --}}
                         <select name="status" class="form-select" data-control="select2" data-hide-search="true">
@@ -153,17 +59,14 @@
                     </form>
                 </div>
 
-                <div class="card-toolbar">
-                    <span class="text-muted fs-7 fw-semibold">
-                        Showing {{ $plans->firstItem() ?? 0 }} - {{ $plans->lastItem() ?? 0 }} of
-                        {{ $plans->total() }} plans
-                    </span>
+                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-end gap-5 mb-8">
+                    <a href="{{ route('plan-management.plans.create') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Add New Plan
+                    </a>
                 </div>
             </div>
 
-            {{-- =====================================================
-                Table
-            ====================================================== --}}
             <div class="card-body pt-0">
                 <div class="table-responsive">
                     <table class="table align-middle table-row-dashed table-hover fs-6 gy-5">
@@ -193,9 +96,10 @@
                             </tr>
                         </thead>
 
-                        <tbody class="text-gray-700 fw-semibold">
+                        <tbody id="plans-table-body" class="text-gray-700 fw-semibold">
                             @forelse ($plans as $plan)
-                                <tr class="{{ $plan->is_recommended ? 'recommended-plan-row' : '' }}">
+                                <tr class="plan-row {{ $plan->is_recommended ? 'recommended-plan-row' : '' }}"
+                                    data-plan-search="{{ strtolower($plan->name . ' ' . $plan->slug) }}">
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="d-flex flex-column">
@@ -345,7 +249,15 @@
                                             {{-- Status --}}
                                             <div class="menu-item px-3">
                                                 <form method="POST"
-                                                    action="{{ route('plan-management.plans.status.update', $plan) }}">
+                                                    action="{{ route('plan-management.plans.status.update', $plan) }}"
+                                                    @if ($plan->is_active)
+                                                        data-swal-confirm
+                                                        data-swal-title="Deactivate {{ $plan->name }}?"
+                                                        data-swal-text="Tenants will no longer be able to select this plan. Existing subscriptions are not affected."
+                                                        data-swal-icon="warning"
+                                                        data-swal-confirm-button="Yes, deactivate"
+                                                        data-swal-cancel-button="Keep active"
+                                                    @endif>
                                                     @csrf
                                                     @method('PATCH')
                                                     <input type="hidden" name="is_active"
@@ -401,13 +313,34 @@
                                     </td>
                                 </tr>
                             @endforelse
+
+                            @if ($plans->isNotEmpty())
+                                <tr id="plan-search-no-match" class="d-none">
+                                    <td colspan="7" class="text-center py-15">
+                                        <div class="symbol symbol-80px mb-5">
+                                            <div class="symbol-label bg-light-primary">
+                                                <i class="bi bi-search fs-1 text-primary"></i>
+                                            </div>
+                                        </div>
+
+                                        <h3 class="fw-bold text-gray-900 mb-2">
+                                            No plans match "<span id="plan-search-no-match-term"></span>"
+                                        </h3>
+                                        <div class="text-muted fs-6 mb-6">
+                                            Try a different name or clear the search.
+                                        </div>
+
+                                        <button type="button" id="plan-search-clear" class="btn btn-light-primary">
+                                            <i class="bi bi-x-lg me-1"></i>
+                                            Clear Search
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>
 
-                {{-- =================================================
-                    Pagination
-                ================================================== --}}
                 @if ($plans->hasPages())
                     <div
                         class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-4 border-top pt-6 mt-3">
@@ -481,7 +414,112 @@
                 }
 
             }
+
+            .plan-row {
+                transition: opacity .15s ease;
+            }
+
+            #plan-search-input {
+                transition: box-shadow .2s ease;
+            }
         </style>
+    @endpush
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const searchInput = document.getElementById('plan-search-input');
+                if (!searchInput) {
+                    return;
+                }
+
+                const spinner = document.getElementById('plan-search-spinner');
+                const rows = Array.from(document.querySelectorAll('#plans-table-body .plan-row'));
+                const noMatchRow = document.getElementById('plan-search-no-match');
+                const noMatchTerm = document.getElementById('plan-search-no-match-term');
+                const clearBtn = document.getElementById('plan-search-clear');
+
+                let debounceTimer = null;
+
+                const applyFilter = (rawTerm) => {
+                    const term = rawTerm.trim().toLowerCase();
+                    let visibleCount = 0;
+
+                    rows.forEach((row) => {
+                        const haystack = row.dataset.planSearch || '';
+                        const isMatch = term === '' || haystack.includes(term);
+                        row.classList.toggle('d-none', !isMatch);
+                        if (isMatch) {
+                            visibleCount++;
+                        }
+                    });
+
+                    if (noMatchRow) {
+                        const showNoMatch = term !== '' && visibleCount === 0 && rows.length > 0;
+                        noMatchRow.classList.toggle('d-none', !showNoMatch);
+                        if (showNoMatch && noMatchTerm) {
+                            noMatchTerm.textContent = rawTerm.trim();
+                        }
+                    }
+
+                    spinner?.classList.add('d-none');
+                };
+
+                searchInput.addEventListener('input', (event) => {
+                    spinner?.classList.remove('d-none');
+                    clearTimeout(debounceTimer);
+                    const value = event.target.value;
+                    debounceTimer = setTimeout(() => applyFilter(value), 180);
+                });
+
+                clearBtn?.addEventListener('click', () => {
+                    searchInput.value = '';
+                    applyFilter('');
+                    searchInput.focus();
+                });
+
+                if (searchInput.value) {
+                    applyFilter(searchInput.value);
+                }
+            });
+        </script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                if (typeof Swal === 'undefined') {
+                    return;
+                }
+
+                document.querySelectorAll('form[data-swal-confirm]').forEach((form) => {
+                    form.addEventListener('submit', (event) => {
+                        if (form.dataset.swalSubmitting === 'true') {
+                            return;
+                        }
+
+                        event.preventDefault();
+
+                        Swal.fire({
+                            title: form.dataset.swalTitle || 'Are you sure?',
+                            text: form.dataset.swalText || 'This action cannot be undone.',
+                            icon: form.dataset.swalIcon || 'warning',
+                            showCancelButton: true,
+                            buttonsStyling: false,
+                            confirmButtonText: form.dataset.swalConfirmButton || 'Yes, continue',
+                            cancelButtonText: form.dataset.swalCancelButton || 'Cancel',
+                            customClass: {
+                                confirmButton: 'btn btn-warning',
+                                cancelButton: 'btn btn-light',
+                            },
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.dataset.swalSubmitting = 'true';
+                                form.submit();
+                            }
+                        });
+                    });
+                });
+            });
+        </script>
     @endpush
 
 </x-default-layout>

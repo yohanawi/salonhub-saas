@@ -145,7 +145,11 @@ class StaffManagementTest extends TestCase
         $this->actingAs($superAdmin)
             ->get(route('staff-management.staff.index'))
             ->assertOk()
-            ->assertSee('Staff Directory');
+            ->assertSee('Staff Directory')
+            ->assertSee('data-staff-realtime-search', false)
+            ->assertSee('staff-search-spinner')
+            ->assertSee('data-kt-menu-trigger="click"', false)
+            ->assertSee('Apply Filters');
 
         $this->actingAs($superAdmin)
             ->post(route('staff-management.staff.store'), array_merge($this->staffPayload($branch, $service), [

@@ -64,13 +64,19 @@ class ServiceController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('pages/apps.service-management.services.index', [
+        $viewData = [
             'services' => $services,
             'categories' => ($isSuperAdmin ? ServiceCategory::withoutTenantScope() : ServiceCategory::query()->where('tenant_id', $tenant->id))->orderBy('name')->get(),
             'branches' => $visibleBranches,
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'isSuperAdmin' => $isSuperAdmin,
-        ]);
+        ];
+
+        if ($request->ajax()) {
+            return view('pages/apps.service-management.services._results', $viewData);
+        }
+
+        return view('pages/apps.service-management.services.index', $viewData);
     }
 
     public function create(Request $request, BranchContext $branchContext, PlanEntitlementService $entitlements): View

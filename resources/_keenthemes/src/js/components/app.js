@@ -242,6 +242,14 @@ var KTApp = function () {
                 options.minimumResultsForSearch = Infinity;
             }
 
+            // Keep Select2's results dropdown anchored inside its KTMenu
+            // parent so option clicks aren't treated as outside clicks
+            // (which would otherwise dismiss the whole menu on selection).
+            var ktMenuParent = element.closest('[data-kt-menu="true"]');
+            if (ktMenuParent) {
+                options.dropdownParent = $(ktMenuParent);
+            }
+
             $(element).select2(options);
 
             // Handle Select2's KTMenu parent case

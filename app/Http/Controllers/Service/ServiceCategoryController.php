@@ -47,11 +47,17 @@ class ServiceCategoryController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('pages/apps.service-management.categories.index', [
+        $viewData = [
             'categories' => $categories,
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'isSuperAdmin' => $isSuperAdmin,
-        ]);
+        ];
+
+        if ($request->ajax()) {
+            return view('pages/apps.service-management.categories._results', $viewData);
+        }
+
+        return view('pages/apps.service-management.categories.index', $viewData);
     }
 
     public function create(Request $request, PlanEntitlementService $entitlements): View

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Plan\StorePlanRequest;
 use App\Http\Requests\Plan\UpdatePlanRequest;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Services\PlanEntitlementService;
 use Illuminate\Http\RedirectResponse;
@@ -142,9 +143,19 @@ class PlanManagementController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        // Include archived plans that are still assigned to a tenant so the
+        // dropdown always has a matching, pre-selected option for them.
+        $assignedPlanIds = Subscription::query()->whereNotNull('plan_id')->distinct()->pluck('plan_id');
+
         return view('pages/apps.plan-management.subscriptions.index', [
             'tenants' => $tenants,
-            'plans' => Plan::active()->orderBy('sort_order')->orderBy('price')->get(),
+            'plans' => Plan::query()
+                ->where(function ($query) use ($assignedPlanIds) {
+                    $query->where('is_active', true)->orWhereIn('id', $assignedPlanIds);
+                })
+                ->orderBy('sort_order')
+                ->orderBy('price')
+                ->get(),
             'statuses' => ['trialing', 'active', 'past_due', 'cancelled'],
         ]);
     }

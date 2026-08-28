@@ -76,11 +76,12 @@
                                 <span class="input-group-text">
                                     <i class="bi bi-link-45deg"></i>
                                 </span>
-                                <input type="text" name="slug" value="{{ old('slug', $plan->slug) }}"
-                                    class="form-control" placeholder="professional">
+                                <input type="text" name="slug" id="plan-slug-input"
+                                    value="{{ old('slug', $plan->slug) }}" class="form-control"
+                                    placeholder="professional" autocomplete="off">
                             </div>
                             <div class="text-muted fs-8 mt-2">
-                                Leave empty to generate automatically.
+                                Auto-generated from the plan name. Edit anytime to customize.
                             </div>
                         </div>
                         <div class="col-12">
@@ -455,6 +456,7 @@
 
                 const nameInput = document.querySelector('input[name="name"]');
                 const priceInput = document.querySelector('input[name="price"]');
+                const slugInput = document.querySelector('input[name="slug"]');
                 const previewName = document.getElementById('preview_plan_name');
                 const previewPrice = document.getElementById('preview_plan_price');
 
@@ -469,10 +471,30 @@
                     }
                 }
 
-                nameInput?.addEventListener(
-                    'input',
-                    updatePreview
-                );
+                function slugify(value) {
+                    return value
+                        .toString()
+                        .trim()
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-+|-+$/g, '');
+                }
+
+                // Auto-generate the slug from the name, unless the user has
+                // already typed a slug of their own (existing plan or manual edit).
+                let slugManuallyEdited = Boolean(slugInput?.value.trim());
+
+                slugInput?.addEventListener('input', () => {
+                    slugManuallyEdited = slugInput.value.trim() !== '';
+                });
+
+                nameInput?.addEventListener('input', () => {
+                    updatePreview();
+
+                    if (slugInput && !slugManuallyEdited) {
+                        slugInput.value = slugify(nameInput.value);
+                    }
+                });
 
                 priceInput?.addEventListener(
                     'input',

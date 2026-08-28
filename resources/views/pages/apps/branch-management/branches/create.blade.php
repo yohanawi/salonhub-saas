@@ -8,7 +8,7 @@
         {{ Breadcrumbs::render('branches.create') }}
     @endsection
 
-    <div id="kt_app_content_container" class="app-container container-xxl">
+    <div id="kt_app_content_container">
         @if ($errors->any())
             <div class="alert alert-danger mb-6">{{ $errors->first() }}</div>
         @endif

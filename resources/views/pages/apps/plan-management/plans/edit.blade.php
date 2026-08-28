@@ -1,7 +1,7 @@
 <x-default-layout>
 
     @section('title')
-        Edit Plan
+       {{ $plan->name }} Edit Plan
     @endsection
 
     @section('breadcrumbs')
