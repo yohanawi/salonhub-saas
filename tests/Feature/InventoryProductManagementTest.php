@@ -220,15 +220,67 @@ class InventoryProductManagementTest extends TestCase
         $ownProduct = $this->productWithStock($tenant, $branch, 10);
         [$otherTenant, , $otherBranch] = $this->tenantSetup();
         $otherProduct = $this->productWithStock($otherTenant, $otherBranch, 8);
+        StockMovement::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'product_id' => $ownProduct->id,
+            'type' => StockMovement::TYPE_OPENING_STOCK,
+            'quantity' => 10,
+            'quantity_before' => 0,
+            'quantity_after' => 10,
+            'unit_cost' => 500,
+            'total_cost' => 5000,
+            'reason' => 'Opening stock',
+            'created_by' => $owner->id,
+        ]);
+        StockMovement::create([
+            'tenant_id' => $otherTenant->id,
+            'branch_id' => $otherBranch->id,
+            'product_id' => $otherProduct->id,
+            'type' => StockMovement::TYPE_OPENING_STOCK,
+            'quantity' => 8,
+            'quantity_before' => 0,
+            'quantity_after' => 8,
+            'unit_cost' => 500,
+            'total_cost' => 4000,
+            'reason' => 'Opening stock',
+        ]);
 
         $this->actingAs($owner)
             ->get(route('inventory.products.index'))
             ->assertOk()
+            ->assertSee('Product Directory')
+            ->assertSee('data-product-realtime-search', false)
+            ->assertSee('product-search-spinner')
+            ->assertSee('Filter Products')
+            ->assertSee('Apply Filters')
             ->assertSee($ownProduct->name)
             ->assertDontSee($otherProduct->name);
 
         $this->actingAs($owner)
             ->get(route('inventory.stock.index'))
+            ->assertOk()
+            ->assertSee('Stock Levels')
+            ->assertSee('data-stock-realtime-search', false)
+            ->assertSee('stock-search-spinner')
+            ->assertSee('Filter Stock')
+            ->assertSee('Apply Filters')
+            ->assertSee($ownProduct->sku)
+            ->assertDontSee($otherProduct->sku);
+
+        $this->actingAs($owner)
+            ->get(route('inventory.movements.index'))
+            ->assertOk()
+            ->assertSee('Stock Movement Ledger')
+            ->assertSee('data-movement-realtime-search', false)
+            ->assertSee('movement-search-spinner')
+            ->assertSee('Filter Movements')
+            ->assertSee('Apply Filters')
+            ->assertSee($ownProduct->sku)
+            ->assertDontSee($otherProduct->sku);
+
+        $this->actingAs($owner)
+            ->get(route('inventory.movements.index', ['search' => $ownProduct->sku]))
             ->assertOk()
             ->assertSee($ownProduct->sku)
             ->assertDontSee($otherProduct->sku);

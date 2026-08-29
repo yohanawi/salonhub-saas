@@ -41,6 +41,20 @@ class StockMovementController extends Controller
             ->when($request->filled('type'), fn (Builder $query) => $query->where('type', $request->string('type')->toString()))
             ->when($request->filled('date_from'), fn (Builder $query) => $query->whereDate('created_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn (Builder $query) => $query->whereDate('created_at', '<=', $request->date('date_to')))
+            ->when($request->filled('search'), function (Builder $query) use ($request) {
+                $search = $request->string('search')->toString();
+
+                $query->where(function (Builder $query) use ($search) {
+                    $query->where('reason', 'like', "%{$search}%")
+                        ->orWhere('notes', 'like', "%{$search}%")
+                        ->orWhereHas('product', function (Builder $query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%")
+                                ->orWhere('sku', 'like', "%{$search}%")
+                                ->orWhere('barcode', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('branch', fn (Builder $query) => $query->where('name', 'like', "%{$search}%"));
+                });
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();
