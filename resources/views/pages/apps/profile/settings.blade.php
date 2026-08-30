@@ -1,6 +1,23 @@
 <x-default-layout>
     @include('pages.apps.profile.partials._profile-navbar')
 
+    @if (session('status'))
+        <div class="alert alert-success d-flex align-items-center p-5 mb-5">
+            <span class="fw-semibold">{{ session('status') }}</span>
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div class="alert alert-danger d-flex flex-column p-5 mb-5">
+            <span class="fw-bold mb-2">Please fix the following:</span>
+            <ul class="mb-0 ps-4">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!--begin::Basic info-->
     <div class="card mb-5 mb-xl-10">
         <!--begin::Card header-->
@@ -16,7 +33,10 @@
         <!--begin::Content-->
         <div id="kt_account_settings_profile_details" class="collapse show">
             <!--begin::Form-->
-            <form id="kt_account_profile_details_form" class="form">
+            <form id="kt_account_profile_details_form" class="form" method="POST"
+                action="{{ route('profile.settings.update') }}" enctype="multipart/form-data">
+                @csrf
+                @method('PATCH')
                 <!--begin::Card body-->
                 <div class="card-body border-top p-9">
                     <!--begin::Input group-->
@@ -28,10 +48,11 @@
                         <div class="col-lg-8">
                             <!--begin::Image input-->
                             <div class="image-input image-input-outline" data-kt-image-input="true"
-                                style="background-image: url('assets/media/svg/avatars/blank.svg')">
+                                style="background-image: url('{{ asset('assets/media/svg/avatars/blank.svg') }}')">
                                 <!--begin::Preview existing avatar-->
                                 <div class="image-input-wrapper w-125px h-125px"
-                                    style="background-image: url(assets/media/avatars/300-1.jpg)"></div>
+                                    style="background-image: url('{{ $user->profile_photo_url ?: asset('assets/media/avatars/blank.png') }}')">
+                                </div>
                                 <!--end::Preview existing avatar-->
                                 <!--begin::Label-->
                                 <label
@@ -89,14 +110,14 @@
                                 <div class="col-lg-6 fv-row">
                                     <input type="text" name="fname"
                                         class="form-control form-control-lg form-control-solid mb-3 mb-lg-0"
-                                        placeholder="First name" value="Max" />
+                                        placeholder="First name" value="{{ old('fname', $user->first_name) }}" />
                                 </div>
                                 <!--end::Col-->
                                 <!--begin::Col-->
                                 <div class="col-lg-6 fv-row">
                                     <input type="text" name="lname"
                                         class="form-control form-control-lg form-control-solid" placeholder="Last name"
-                                        value="Smith" />
+                                        value="{{ old('lname', $user->last_name) }}" />
                                 </div>
                                 <!--end::Col-->
                             </div>
@@ -113,7 +134,7 @@
                         <!--begin::Col-->
                         <div class="col-lg-8 fv-row">
                             <input type="text" name="company" class="form-control form-control-lg form-control-solid"
-                                placeholder="Company name" value="Keenthemes" />
+                                placeholder="Company name" value="{{ old('company', $tenant?->name) }}" />
                         </div>
                         <!--end::Col-->
                     </div>
@@ -135,7 +156,7 @@
                         <!--begin::Col-->
                         <div class="col-lg-8 fv-row">
                             <input type="tel" name="phone" class="form-control form-control-lg form-control-solid"
-                                placeholder="Phone number" value="044 3276 454 935" />
+                                placeholder="Phone number" value="{{ old('phone', $user->phone) }}" />
                         </div>
                         <!--end::Col-->
                     </div>
@@ -148,7 +169,7 @@
                         <!--begin::Col-->
                         <div class="col-lg-8 fv-row">
                             <input type="text" name="website" class="form-control form-control-lg form-control-solid"
-                                placeholder="Company website" value="keenthemes.com" />
+                                placeholder="Company website" value="{{ old('website', $tenant?->website) }}" />
                         </div>
                         <!--end::Col-->
                     </div>
@@ -173,263 +194,80 @@
                                 data-placeholder="Select a country..."
                                 class="form-select form-select-solid form-select-lg fw-semibold">
                                 <option value="">Select a Country...</option>
-                                <option data-kt-flag="flags/afghanistan.svg" value="AF">Afghanistan</option>
-                                <option data-kt-flag="flags/aland-islands.svg" value="AX">Aland Islands</option>
-                                <option data-kt-flag="flags/albania.svg" value="AL">Albania</option>
-                                <option data-kt-flag="flags/algeria.svg" value="DZ">Algeria</option>
-                                <option data-kt-flag="flags/american-samoa.svg" value="AS">American Samoa</option>
-                                <option data-kt-flag="flags/andorra.svg" value="AD">Andorra</option>
-                                <option data-kt-flag="flags/angola.svg" value="AO">Angola</option>
-                                <option data-kt-flag="flags/anguilla.svg" value="AI">Anguilla</option>
-                                <option data-kt-flag="flags/antigua-and-barbuda.svg" value="AG">Antigua and
-                                    Barbuda</option>
-                                <option data-kt-flag="flags/argentina.svg" value="AR">Argentina</option>
-                                <option data-kt-flag="flags/armenia.svg" value="AM">Armenia</option>
-                                <option data-kt-flag="flags/aruba.svg" value="AW">Aruba</option>
-                                <option data-kt-flag="flags/australia.svg" value="AU">Australia</option>
-                                <option data-kt-flag="flags/austria.svg" value="AT">Austria</option>
-                                <option data-kt-flag="flags/azerbaijan.svg" value="AZ">Azerbaijan</option>
-                                <option data-kt-flag="flags/bahamas.svg" value="BS">Bahamas</option>
-                                <option data-kt-flag="flags/bahrain.svg" value="BH">Bahrain</option>
-                                <option data-kt-flag="flags/bangladesh.svg" value="BD">Bangladesh</option>
-                                <option data-kt-flag="flags/barbados.svg" value="BB">Barbados</option>
-                                <option data-kt-flag="flags/belarus.svg" value="BY">Belarus</option>
-                                <option data-kt-flag="flags/belgium.svg" value="BE">Belgium</option>
-                                <option data-kt-flag="flags/belize.svg" value="BZ">Belize</option>
-                                <option data-kt-flag="flags/benin.svg" value="BJ">Benin</option>
-                                <option data-kt-flag="flags/bermuda.svg" value="BM">Bermuda</option>
-                                <option data-kt-flag="flags/bhutan.svg" value="BT">Bhutan</option>
-                                <option data-kt-flag="flags/bolivia.svg" value="BO">Bolivia, Plurinational State
-                                    of</option>
-                                <option data-kt-flag="flags/bonaire.svg" value="BQ">Bonaire, Sint Eustatius and
-                                    Saba</option>
-                                <option data-kt-flag="flags/bosnia-and-herzegovina.svg" value="BA">Bosnia and
-                                    Herzegovina</option>
-                                <option data-kt-flag="flags/botswana.svg" value="BW">Botswana</option>
-                                <option data-kt-flag="flags/brazil.svg" value="BR">Brazil</option>
-                                <option data-kt-flag="flags/british-indian-ocean-territory.svg" value="IO">British
-                                    Indian Ocean Territory</option>
-                                <option data-kt-flag="flags/brunei.svg" value="BN">Brunei Darussalam</option>
-                                <option data-kt-flag="flags/bulgaria.svg" value="BG">Bulgaria</option>
-                                <option data-kt-flag="flags/burkina-faso.svg" value="BF">Burkina Faso</option>
-                                <option data-kt-flag="flags/burundi.svg" value="BI">Burundi</option>
-                                <option data-kt-flag="flags/cambodia.svg" value="KH">Cambodia</option>
-                                <option data-kt-flag="flags/cameroon.svg" value="CM">Cameroon</option>
-                                <option data-kt-flag="flags/canada.svg" value="CA">Canada</option>
-                                <option data-kt-flag="flags/cape-verde.svg" value="CV">Cape Verde</option>
-                                <option data-kt-flag="flags/cayman-islands.svg" value="KY">Cayman Islands</option>
-                                <option data-kt-flag="flags/central-african-republic.svg" value="CF">Central
-                                    African Republic</option>
-                                <option data-kt-flag="flags/chad.svg" value="TD">Chad</option>
-                                <option data-kt-flag="flags/chile.svg" value="CL">Chile</option>
-                                <option data-kt-flag="flags/china.svg" value="CN">China</option>
-                                <option data-kt-flag="flags/christmas-island.svg" value="CX">Christmas Island
-                                </option>
-                                <option data-kt-flag="flags/cocos-island.svg" value="CC">Cocos (Keeling) Islands
-                                </option>
-                                <option data-kt-flag="flags/colombia.svg" value="CO">Colombia</option>
-                                <option data-kt-flag="flags/comoros.svg" value="KM">Comoros</option>
-                                <option data-kt-flag="flags/cook-islands.svg" value="CK">Cook Islands</option>
-                                <option data-kt-flag="flags/costa-rica.svg" value="CR">Costa Rica</option>
-                                <option data-kt-flag="flags/ivory-coast.svg" value="CI">Côte d'Ivoire</option>
-                                <option data-kt-flag="flags/croatia.svg" value="HR">Croatia</option>
-                                <option data-kt-flag="flags/cuba.svg" value="CU">Cuba</option>
-                                <option data-kt-flag="flags/curacao.svg" value="CW">Curaçao</option>
-                                <option data-kt-flag="flags/czech-republic.svg" value="CZ">Czech Republic</option>
-                                <option data-kt-flag="flags/denmark.svg" value="DK">Denmark</option>
-                                <option data-kt-flag="flags/djibouti.svg" value="DJ">Djibouti</option>
-                                <option data-kt-flag="flags/dominica.svg" value="DM">Dominica</option>
-                                <option data-kt-flag="flags/dominican-republic.svg" value="DO">Dominican Republic
-                                </option>
-                                <option data-kt-flag="flags/ecuador.svg" value="EC">Ecuador</option>
-                                <option data-kt-flag="flags/egypt.svg" value="EG">Egypt</option>
-                                <option data-kt-flag="flags/el-salvador.svg" value="SV">El Salvador</option>
-                                <option data-kt-flag="flags/equatorial-guinea.svg" value="GQ">Equatorial Guinea
-                                </option>
-                                <option data-kt-flag="flags/eritrea.svg" value="ER">Eritrea</option>
-                                <option data-kt-flag="flags/estonia.svg" value="EE">Estonia</option>
-                                <option data-kt-flag="flags/ethiopia.svg" value="ET">Ethiopia</option>
-                                <option data-kt-flag="flags/falkland-islands.svg" value="FK">Falkland Islands
-                                    (Malvinas)</option>
-                                <option data-kt-flag="flags/fiji.svg" value="FJ">Fiji</option>
-                                <option data-kt-flag="flags/finland.svg" value="FI">Finland</option>
-                                <option data-kt-flag="flags/france.svg" value="FR">France</option>
-                                <option data-kt-flag="flags/french-polynesia.svg" value="PF">French Polynesia
-                                </option>
-                                <option data-kt-flag="flags/gabon.svg" value="GA">Gabon</option>
-                                <option data-kt-flag="flags/gambia.svg" value="GM">Gambia</option>
-                                <option data-kt-flag="flags/georgia.svg" value="GE">Georgia</option>
-                                <option data-kt-flag="flags/germany.svg" value="DE">Germany</option>
-                                <option data-kt-flag="flags/ghana.svg" value="GH">Ghana</option>
-                                <option data-kt-flag="flags/gibraltar.svg" value="GI">Gibraltar</option>
-                                <option data-kt-flag="flags/greece.svg" value="GR">Greece</option>
-                                <option data-kt-flag="flags/greenland.svg" value="GL">Greenland</option>
-                                <option data-kt-flag="flags/grenada.svg" value="GD">Grenada</option>
-                                <option data-kt-flag="flags/guam.svg" value="GU">Guam</option>
-                                <option data-kt-flag="flags/guatemala.svg" value="GT">Guatemala</option>
-                                <option data-kt-flag="flags/guernsey.svg" value="GG">Guernsey</option>
-                                <option data-kt-flag="flags/guinea.svg" value="GN">Guinea</option>
-                                <option data-kt-flag="flags/guinea-bissau.svg" value="GW">Guinea-Bissau</option>
-                                <option data-kt-flag="flags/haiti.svg" value="HT">Haiti</option>
-                                <option data-kt-flag="flags/vatican-city.svg" value="VA">Holy See (Vatican City
-                                    State)</option>
-                                <option data-kt-flag="flags/honduras.svg" value="HN">Honduras</option>
-                                <option data-kt-flag="flags/hong-kong.svg" value="HK">Hong Kong</option>
-                                <option data-kt-flag="flags/hungary.svg" value="HU">Hungary</option>
-                                <option data-kt-flag="flags/iceland.svg" value="IS">Iceland</option>
-                                <option data-kt-flag="flags/india.svg" value="IN">India</option>
-                                <option data-kt-flag="flags/indonesia.svg" value="ID">Indonesia</option>
-                                <option data-kt-flag="flags/iran.svg" value="IR">Iran, Islamic Republic of
-                                </option>
-                                <option data-kt-flag="flags/iraq.svg" value="IQ">Iraq</option>
-                                <option data-kt-flag="flags/ireland.svg" value="IE">Ireland</option>
-                                <option data-kt-flag="flags/isle-of-man.svg" value="IM">Isle of Man</option>
-                                <option data-kt-flag="flags/israel.svg" value="IL">Israel</option>
-                                <option data-kt-flag="flags/italy.svg" value="IT">Italy</option>
-                                <option data-kt-flag="flags/jamaica.svg" value="JM">Jamaica</option>
-                                <option data-kt-flag="flags/japan.svg" value="JP">Japan</option>
-                                <option data-kt-flag="flags/jersey.svg" value="JE">Jersey</option>
-                                <option data-kt-flag="flags/jordan.svg" value="JO">Jordan</option>
-                                <option data-kt-flag="flags/kazakhstan.svg" value="KZ">Kazakhstan</option>
-                                <option data-kt-flag="flags/kenya.svg" value="KE">Kenya</option>
-                                <option data-kt-flag="flags/kiribati.svg" value="KI">Kiribati</option>
-                                <option data-kt-flag="flags/north-korea.svg" value="KP">Korea, Democratic People's
-                                    Republic of</option>
-                                <option data-kt-flag="flags/kuwait.svg" value="KW">Kuwait</option>
-                                <option data-kt-flag="flags/kyrgyzstan.svg" value="KG">Kyrgyzstan</option>
-                                <option data-kt-flag="flags/laos.svg" value="LA">Lao People's Democratic Republic
-                                </option>
-                                <option data-kt-flag="flags/latvia.svg" value="LV">Latvia</option>
-                                <option data-kt-flag="flags/lebanon.svg" value="LB">Lebanon</option>
-                                <option data-kt-flag="flags/lesotho.svg" value="LS">Lesotho</option>
-                                <option data-kt-flag="flags/liberia.svg" value="LR">Liberia</option>
-                                <option data-kt-flag="flags/libya.svg" value="LY">Libya</option>
-                                <option data-kt-flag="flags/liechtenstein.svg" value="LI">Liechtenstein</option>
-                                <option data-kt-flag="flags/lithuania.svg" value="LT">Lithuania</option>
-                                <option data-kt-flag="flags/luxembourg.svg" value="LU">Luxembourg</option>
-                                <option data-kt-flag="flags/macao.svg" value="MO">Macao</option>
-                                <option data-kt-flag="flags/madagascar.svg" value="MG">Madagascar</option>
-                                <option data-kt-flag="flags/malawi.svg" value="MW">Malawi</option>
-                                <option data-kt-flag="flags/malaysia.svg" value="MY">Malaysia</option>
-                                <option data-kt-flag="flags/maldives.svg" value="MV">Maldives</option>
-                                <option data-kt-flag="flags/mali.svg" value="ML">Mali</option>
-                                <option data-kt-flag="flags/malta.svg" value="MT">Malta</option>
-                                <option data-kt-flag="flags/marshall-island.svg" value="MH">Marshall Islands
-                                </option>
-                                <option data-kt-flag="flags/martinique.svg" value="MQ">Martinique</option>
-                                <option data-kt-flag="flags/mauritania.svg" value="MR">Mauritania</option>
-                                <option data-kt-flag="flags/mauritius.svg" value="MU">Mauritius</option>
-                                <option data-kt-flag="flags/mexico.svg" value="MX">Mexico</option>
-                                <option data-kt-flag="flags/micronesia.svg" value="FM">Micronesia, Federated
-                                    States of</option>
-                                <option data-kt-flag="flags/moldova.svg" value="MD">Moldova, Republic of</option>
-                                <option data-kt-flag="flags/monaco.svg" value="MC">Monaco</option>
-                                <option data-kt-flag="flags/mongolia.svg" value="MN">Mongolia</option>
-                                <option data-kt-flag="flags/montenegro.svg" value="ME">Montenegro</option>
-                                <option data-kt-flag="flags/montserrat.svg" value="MS">Montserrat</option>
-                                <option data-kt-flag="flags/morocco.svg" value="MA">Morocco</option>
-                                <option data-kt-flag="flags/mozambique.svg" value="MZ">Mozambique</option>
-                                <option data-kt-flag="flags/myanmar.svg" value="MM">Myanmar</option>
-                                <option data-kt-flag="flags/namibia.svg" value="NA">Namibia</option>
-                                <option data-kt-flag="flags/nauru.svg" value="NR">Nauru</option>
-                                <option data-kt-flag="flags/nepal.svg" value="NP">Nepal</option>
-                                <option data-kt-flag="flags/netherlands.svg" value="NL">Netherlands</option>
-                                <option data-kt-flag="flags/new-zealand.svg" value="NZ">New Zealand</option>
-                                <option data-kt-flag="flags/nicaragua.svg" value="NI">Nicaragua</option>
-                                <option data-kt-flag="flags/niger.svg" value="NE">Niger</option>
-                                <option data-kt-flag="flags/nigeria.svg" value="NG">Nigeria</option>
-                                <option data-kt-flag="flags/niue.svg" value="NU">Niue</option>
-                                <option data-kt-flag="flags/norfolk-island.svg" value="NF">Norfolk Island</option>
-                                <option data-kt-flag="flags/northern-mariana-islands.svg" value="MP">Northern
-                                    Mariana Islands</option>
-                                <option data-kt-flag="flags/norway.svg" value="NO">Norway</option>
-                                <option data-kt-flag="flags/oman.svg" value="OM">Oman</option>
-                                <option data-kt-flag="flags/pakistan.svg" value="PK">Pakistan</option>
-                                <option data-kt-flag="flags/palau.svg" value="PW">Palau</option>
-                                <option data-kt-flag="flags/palestine.svg" value="PS">Palestinian Territory,
-                                    Occupied</option>
-                                <option data-kt-flag="flags/panama.svg" value="PA">Panama</option>
-                                <option data-kt-flag="flags/papua-new-guinea.svg" value="PG">Papua New Guinea
-                                </option>
-                                <option data-kt-flag="flags/paraguay.svg" value="PY">Paraguay</option>
-                                <option data-kt-flag="flags/peru.svg" value="PE">Peru</option>
-                                <option data-kt-flag="flags/philippines.svg" value="PH">Philippines</option>
-                                <option data-kt-flag="flags/poland.svg" value="PL">Poland</option>
-                                <option data-kt-flag="flags/portugal.svg" value="PT">Portugal</option>
-                                <option data-kt-flag="flags/puerto-rico.svg" value="PR">Puerto Rico</option>
-                                <option data-kt-flag="flags/qatar.svg" value="QA">Qatar</option>
-                                <option data-kt-flag="flags/romania.svg" value="RO">Romania</option>
-                                <option data-kt-flag="flags/russia.svg" value="RU">Russian Federation</option>
-                                <option data-kt-flag="flags/rwanda.svg" value="RW">Rwanda</option>
-                                <option data-kt-flag="flags/st-barts.svg" value="BL">Saint Barthélemy</option>
-                                <option data-kt-flag="flags/saint-kitts-and-nevis.svg" value="KN">Saint Kitts and
-                                    Nevis</option>
-                                <option data-kt-flag="flags/st-lucia.svg" value="LC">Saint Lucia</option>
-                                <option data-kt-flag="flags/sint-maarten.svg" value="MF">Saint Martin (French
-                                    part)</option>
-                                <option data-kt-flag="flags/st-vincent-and-the-grenadines.svg" value="VC">Saint
-                                    Vincent and the Grenadines</option>
-                                <option data-kt-flag="flags/samoa.svg" value="WS">Samoa</option>
-                                <option data-kt-flag="flags/san-marino.svg" value="SM">San Marino</option>
-                                <option data-kt-flag="flags/sao-tome-and-prince.svg" value="ST">Sao Tome and
-                                    Principe</option>
-                                <option data-kt-flag="flags/saudi-arabia.svg" value="SA">Saudi Arabia</option>
-                                <option data-kt-flag="flags/senegal.svg" value="SN">Senegal</option>
-                                <option data-kt-flag="flags/serbia.svg" value="RS">Serbia</option>
-                                <option data-kt-flag="flags/seychelles.svg" value="SC">Seychelles</option>
-                                <option data-kt-flag="flags/sierra-leone.svg" value="SL">Sierra Leone</option>
-                                <option data-kt-flag="flags/singapore.svg" value="SG">Singapore</option>
-                                <option data-kt-flag="flags/sint-maarten.svg" value="SX">Sint Maarten (Dutch part)
-                                </option>
-                                <option data-kt-flag="flags/slovakia.svg" value="SK">Slovakia</option>
-                                <option data-kt-flag="flags/slovenia.svg" value="SI">Slovenia</option>
-                                <option data-kt-flag="flags/solomon-islands.svg" value="SB">Solomon Islands
-                                </option>
-                                <option data-kt-flag="flags/somalia.svg" value="SO">Somalia</option>
-                                <option data-kt-flag="flags/south-africa.svg" value="ZA">South Africa</option>
-                                <option data-kt-flag="flags/south-korea.svg" value="KR">South Korea</option>
-                                <option data-kt-flag="flags/south-sudan.svg" value="SS">South Sudan</option>
-                                <option data-kt-flag="flags/spain.svg" value="ES">Spain</option>
-                                <option data-kt-flag="flags/sri-lanka.svg" value="LK">Sri Lanka</option>
-                                <option data-kt-flag="flags/sudan.svg" value="SD">Sudan</option>
-                                <option data-kt-flag="flags/suriname.svg" value="SR">Suriname</option>
-                                <option data-kt-flag="flags/swaziland.svg" value="SZ">Swaziland</option>
-                                <option data-kt-flag="flags/sweden.svg" value="SE">Sweden</option>
-                                <option data-kt-flag="flags/switzerland.svg" value="CH">Switzerland</option>
-                                <option data-kt-flag="flags/syria.svg" value="SY">Syrian Arab Republic</option>
-                                <option data-kt-flag="flags/taiwan.svg" value="TW">Taiwan, Province of China
-                                </option>
-                                <option data-kt-flag="flags/tajikistan.svg" value="TJ">Tajikistan</option>
-                                <option data-kt-flag="flags/tanzania.svg" value="TZ">Tanzania, United Republic of
-                                </option>
-                                <option data-kt-flag="flags/thailand.svg" value="TH">Thailand</option>
-                                <option data-kt-flag="flags/togo.svg" value="TG">Togo</option>
-                                <option data-kt-flag="flags/tokelau.svg" value="TK">Tokelau</option>
-                                <option data-kt-flag="flags/tonga.svg" value="TO">Tonga</option>
-                                <option data-kt-flag="flags/trinidad-and-tobago.svg" value="TT">Trinidad and
-                                    Tobago</option>
-                                <option data-kt-flag="flags/tunisia.svg" value="TN">Tunisia</option>
-                                <option data-kt-flag="flags/turkey.svg" value="TR">Turkey</option>
-                                <option data-kt-flag="flags/turkmenistan.svg" value="TM">Turkmenistan</option>
-                                <option data-kt-flag="flags/turks-and-caicos.svg" value="TC">Turks and Caicos
-                                    Islands</option>
-                                <option data-kt-flag="flags/tuvalu.svg" value="TV">Tuvalu</option>
-                                <option data-kt-flag="flags/uganda.svg" value="UG">Uganda</option>
-                                <option data-kt-flag="flags/ukraine.svg" value="UA">Ukraine</option>
-                                <option data-kt-flag="flags/united-arab-emirates.svg" value="AE">United Arab
-                                    Emirates</option>
-                                <option data-kt-flag="flags/united-kingdom.svg" value="GB">United Kingdom</option>
-                                <option data-kt-flag="flags/united-states.svg" value="US">United States</option>
-                                <option data-kt-flag="flags/uruguay.svg" value="UY">Uruguay</option>
-                                <option data-kt-flag="flags/uzbekistan.svg" value="UZ">Uzbekistan</option>
-                                <option data-kt-flag="flags/vanuatu.svg" value="VU">Vanuatu</option>
-                                <option data-kt-flag="flags/venezuela.svg" value="VE">Venezuela, Bolivarian
-                                    Republic of</option>
-                                <option data-kt-flag="flags/vietnam.svg" value="VN">Vietnam</option>
-                                <option data-kt-flag="flags/virgin-islands.svg" value="VI">Virgin Islands</option>
-                                <option data-kt-flag="flags/yemen.svg" value="YE">Yemen</option>
-                                <option data-kt-flag="flags/zambia.svg" value="ZM">Zambia</option>
-                                <option data-kt-flag="flags/zimbabwe.svg" value="ZW">Zimbabwe</option>
+                                @foreach ([
+                                    'AF' => 'Afghanistan', 'AX' => 'Aland Islands', 'AL' => 'Albania', 'DZ' => 'Algeria',
+                                    'AS' => 'American Samoa', 'AD' => 'Andorra', 'AO' => 'Angola', 'AI' => 'Anguilla',
+                                    'AG' => 'Antigua and Barbuda', 'AR' => 'Argentina', 'AM' => 'Armenia', 'AW' => 'Aruba',
+                                    'AU' => 'Australia', 'AT' => 'Austria', 'AZ' => 'Azerbaijan', 'BS' => 'Bahamas',
+                                    'BH' => 'Bahrain', 'BD' => 'Bangladesh', 'BB' => 'Barbados', 'BY' => 'Belarus',
+                                    'BE' => 'Belgium', 'BZ' => 'Belize', 'BJ' => 'Benin', 'BM' => 'Bermuda',
+                                    'BT' => 'Bhutan', 'BO' => 'Bolivia, Plurinational State of',
+                                    'BQ' => 'Bonaire, Sint Eustatius and Saba', 'BA' => 'Bosnia and Herzegovina',
+                                    'BW' => 'Botswana', 'BR' => 'Brazil', 'IO' => 'British Indian Ocean Territory',
+                                    'BN' => 'Brunei Darussalam', 'BG' => 'Bulgaria', 'BF' => 'Burkina Faso',
+                                    'BI' => 'Burundi', 'KH' => 'Cambodia', 'CM' => 'Cameroon', 'CA' => 'Canada',
+                                    'CV' => 'Cape Verde', 'KY' => 'Cayman Islands', 'CF' => 'Central African Republic',
+                                    'TD' => 'Chad', 'CL' => 'Chile', 'CN' => 'China', 'CX' => 'Christmas Island',
+                                    'CC' => 'Cocos (Keeling) Islands', 'CO' => 'Colombia', 'KM' => 'Comoros',
+                                    'CK' => 'Cook Islands', 'CR' => 'Costa Rica', 'CI' => "Côte d'Ivoire",
+                                    'HR' => 'Croatia', 'CU' => 'Cuba', 'CW' => 'Curaçao', 'CZ' => 'Czech Republic',
+                                    'DK' => 'Denmark', 'DJ' => 'Djibouti', 'DM' => 'Dominica',
+                                    'DO' => 'Dominican Republic', 'EC' => 'Ecuador', 'EG' => 'Egypt',
+                                    'SV' => 'El Salvador', 'GQ' => 'Equatorial Guinea', 'ER' => 'Eritrea',
+                                    'EE' => 'Estonia', 'ET' => 'Ethiopia', 'FK' => 'Falkland Islands (Malvinas)',
+                                    'FJ' => 'Fiji', 'FI' => 'Finland', 'FR' => 'France', 'PF' => 'French Polynesia',
+                                    'GA' => 'Gabon', 'GM' => 'Gambia', 'GE' => 'Georgia', 'DE' => 'Germany',
+                                    'GH' => 'Ghana', 'GI' => 'Gibraltar', 'GR' => 'Greece', 'GL' => 'Greenland',
+                                    'GD' => 'Grenada', 'GU' => 'Guam', 'GT' => 'Guatemala', 'GG' => 'Guernsey',
+                                    'GN' => 'Guinea', 'GW' => 'Guinea-Bissau', 'HT' => 'Haiti',
+                                    'VA' => 'Holy See (Vatican City State)', 'HN' => 'Honduras', 'HK' => 'Hong Kong',
+                                    'HU' => 'Hungary', 'IS' => 'Iceland', 'IN' => 'India', 'ID' => 'Indonesia',
+                                    'IR' => 'Iran, Islamic Republic of', 'IQ' => 'Iraq', 'IE' => 'Ireland',
+                                    'IM' => 'Isle of Man', 'IL' => 'Israel', 'IT' => 'Italy', 'JM' => 'Jamaica',
+                                    'JP' => 'Japan', 'JE' => 'Jersey', 'JO' => 'Jordan', 'KZ' => 'Kazakhstan',
+                                    'KE' => 'Kenya', 'KI' => 'Kiribati', 'KP' => "Korea, Democratic People's Republic of",
+                                    'KW' => 'Kuwait', 'KG' => 'Kyrgyzstan', 'LA' => "Lao People's Democratic Republic",
+                                    'LV' => 'Latvia', 'LB' => 'Lebanon', 'LS' => 'Lesotho', 'LR' => 'Liberia',
+                                    'LY' => 'Libya', 'LI' => 'Liechtenstein', 'LT' => 'Lithuania', 'LU' => 'Luxembourg',
+                                    'MO' => 'Macao', 'MG' => 'Madagascar', 'MW' => 'Malawi', 'MY' => 'Malaysia',
+                                    'MV' => 'Maldives', 'ML' => 'Mali', 'MT' => 'Malta', 'MH' => 'Marshall Islands',
+                                    'MQ' => 'Martinique', 'MR' => 'Mauritania', 'MU' => 'Mauritius', 'MX' => 'Mexico',
+                                    'FM' => 'Micronesia, Federated States of', 'MD' => 'Moldova, Republic of',
+                                    'MC' => 'Monaco', 'MN' => 'Mongolia', 'ME' => 'Montenegro', 'MS' => 'Montserrat',
+                                    'MA' => 'Morocco', 'MZ' => 'Mozambique', 'MM' => 'Myanmar', 'NA' => 'Namibia',
+                                    'NR' => 'Nauru', 'NP' => 'Nepal', 'NL' => 'Netherlands', 'NZ' => 'New Zealand',
+                                    'NI' => 'Nicaragua', 'NE' => 'Niger', 'NG' => 'Nigeria', 'NU' => 'Niue',
+                                    'NF' => 'Norfolk Island', 'MP' => 'Northern Mariana Islands', 'NO' => 'Norway',
+                                    'OM' => 'Oman', 'PK' => 'Pakistan', 'PW' => 'Palau',
+                                    'PS' => 'Palestinian Territory, Occupied', 'PA' => 'Panama',
+                                    'PG' => 'Papua New Guinea', 'PY' => 'Paraguay', 'PE' => 'Peru',
+                                    'PH' => 'Philippines', 'PL' => 'Poland', 'PT' => 'Portugal', 'PR' => 'Puerto Rico',
+                                    'QA' => 'Qatar', 'RO' => 'Romania', 'RU' => 'Russian Federation', 'RW' => 'Rwanda',
+                                    'BL' => 'Saint Barthélemy', 'KN' => 'Saint Kitts and Nevis', 'LC' => 'Saint Lucia',
+                                    'MF' => 'Saint Martin (French part)', 'VC' => 'Saint Vincent and the Grenadines',
+                                    'WS' => 'Samoa', 'SM' => 'San Marino', 'ST' => 'Sao Tome and Principe',
+                                    'SA' => 'Saudi Arabia', 'SN' => 'Senegal', 'RS' => 'Serbia', 'SC' => 'Seychelles',
+                                    'SL' => 'Sierra Leone', 'SG' => 'Singapore', 'SX' => 'Sint Maarten (Dutch part)',
+                                    'SK' => 'Slovakia', 'SI' => 'Slovenia', 'SB' => 'Solomon Islands',
+                                    'SO' => 'Somalia', 'ZA' => 'South Africa', 'KR' => 'South Korea',
+                                    'SS' => 'South Sudan', 'ES' => 'Spain', 'LK' => 'Sri Lanka', 'SD' => 'Sudan',
+                                    'SR' => 'Suriname', 'SZ' => 'Swaziland', 'SE' => 'Sweden', 'CH' => 'Switzerland',
+                                    'SY' => 'Syrian Arab Republic', 'TW' => 'Taiwan, Province of China',
+                                    'TJ' => 'Tajikistan', 'TZ' => 'Tanzania, United Republic of', 'TH' => 'Thailand',
+                                    'TG' => 'Togo', 'TK' => 'Tokelau', 'TO' => 'Tonga',
+                                    'TT' => 'Trinidad and Tobago', 'TN' => 'Tunisia', 'TR' => 'Turkey',
+                                    'TM' => 'Turkmenistan', 'TC' => 'Turks and Caicos Islands', 'TV' => 'Tuvalu',
+                                    'UG' => 'Uganda', 'UA' => 'Ukraine', 'AE' => 'United Arab Emirates',
+                                    'GB' => 'United Kingdom', 'US' => 'United States', 'UY' => 'Uruguay',
+                                    'UZ' => 'Uzbekistan', 'VU' => 'Vanuatu', 'VE' => 'Venezuela, Bolivarian Republic of',
+                                    'VN' => 'Vietnam', 'VI' => 'Virgin Islands', 'YE' => 'Yemen', 'ZM' => 'Zambia',
+                                    'ZW' => 'Zimbabwe',
+                                ] as $countryCode => $countryName)
+                                    <option value="{{ $countryCode }}"
+                                        @selected(trim((string) ($tenant->country ?? '')) === $countryName)>
+                                        {{ $countryName }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                         <!--end::Col-->
@@ -447,65 +285,58 @@
                                 data-placeholder="Select a language..."
                                 class="form-select form-select-solid form-select-lg">
                                 <option value="">Select a Language...</option>
-                                <option data-kt-flag="flags/indonesia.svg" value="id">Bahasa Indonesia -
-                                    Indonesian</option>
-                                <option data-kt-flag="flags/malaysia.svg" value="msa">Bahasa Melayu - Malay
-                                </option>
-                                <option data-kt-flag="flags/canada.svg" value="ca">Català - Catalan</option>
-                                <option data-kt-flag="flags/czech-republic.svg" value="cs">Čeština - Czech
-                                </option>
-                                <option data-kt-flag="flags/netherlands.svg" value="da">Dansk - Danish</option>
-                                <option data-kt-flag="flags/germany.svg" value="de">Deutsch - German</option>
-                                <option data-kt-flag="flags/united-kingdom.svg" value="en">English</option>
-                                <option data-kt-flag="flags/united-kingdom.svg" value="en-gb">English UK - British
-                                    English</option>
-                                <option data-kt-flag="flags/spain.svg" value="es">Español - Spanish</option>
-                                <option data-kt-flag="flags/philippines.svg" value="fil">Filipino</option>
-                                <option data-kt-flag="flags/france.svg" value="fr">Français - French</option>
-                                <option data-kt-flag="flags/gabon.svg" value="ga">Gaeilge - Irish (beta)</option>
-                                <option data-kt-flag="flags/greenland.svg" value="gl">Galego - Galician (beta)
-                                </option>
-                                <option data-kt-flag="flags/croatia.svg" value="hr">Hrvatski - Croatian</option>
-                                <option data-kt-flag="flags/italy.svg" value="it">Italiano - Italian</option>
-                                <option data-kt-flag="flags/hungary.svg" value="hu">Magyar - Hungarian</option>
-                                <option data-kt-flag="flags/netherlands.svg" value="nl">Nederlands - Dutch
-                                </option>
-                                <option data-kt-flag="flags/norway.svg" value="no">Norsk - Norwegian</option>
-                                <option data-kt-flag="flags/poland.svg" value="pl">Polski - Polish</option>
-                                <option data-kt-flag="flags/portugal.svg" value="pt">Português - Portuguese
-                                </option>
-                                <option data-kt-flag="flags/romania.svg" value="ro">Română - Romanian</option>
-                                <option data-kt-flag="flags/slovakia.svg" value="sk">Slovenčina - Slovak</option>
-                                <option data-kt-flag="flags/finland.svg" value="fi">Suomi - Finnish</option>
-                                <option data-kt-flag="flags/el-salvador.svg" value="sv">Svenska - Swedish</option>
-                                <option data-kt-flag="flags/virgin-islands.svg" value="vi">Tiếng Việt - Vietnamese
-                                </option>
-                                <option data-kt-flag="flags/turkey.svg" value="tr">Türkçe - Turkish</option>
-                                <option data-kt-flag="flags/greece.svg" value="el">Ελληνικά - Greek</option>
-                                <option data-kt-flag="flags/bulgaria.svg" value="bg">Български език - Bulgarian
-                                </option>
-                                <option data-kt-flag="flags/russia.svg" value="ru">Русский - Russian</option>
-                                <option data-kt-flag="flags/suriname.svg" value="sr">Српски - Serbian</option>
-                                <option data-kt-flag="flags/ukraine.svg" value="uk">Українська мова - Ukrainian
-                                </option>
-                                <option data-kt-flag="flags/israel.svg" value="he">עִבְרִית - Hebrew</option>
-                                <option data-kt-flag="flags/pakistan.svg" value="ur">اردو - Urdu (beta)</option>
-                                <option data-kt-flag="flags/argentina.svg" value="ar">العربية - Arabic</option>
-                                <option data-kt-flag="flags/argentina.svg" value="fa">فارسی - Persian</option>
-                                <option data-kt-flag="flags/mauritania.svg" value="mr">मराठी - Marathi</option>
-                                <option data-kt-flag="flags/india.svg" value="hi">हिन्दी - Hindi</option>
-                                <option data-kt-flag="flags/bangladesh.svg" value="bn">বাংলা - Bangla</option>
-                                <option data-kt-flag="flags/guam.svg" value="gu">ગુજરાતી - Gujarati</option>
-                                <option data-kt-flag="flags/india.svg" value="ta">தமிழ் - Tamil</option>
-                                <option data-kt-flag="flags/saint-kitts-and-nevis.svg" value="kn">ಕನ್ನಡ - Kannada
-                                </option>
-                                <option data-kt-flag="flags/thailand.svg" value="th">ภาษาไทย - Thai</option>
-                                <option data-kt-flag="flags/south-korea.svg" value="ko">한국어 - Korean</option>
-                                <option data-kt-flag="flags/japan.svg" value="ja">日本語 - Japanese</option>
-                                <option data-kt-flag="flags/china.svg" value="zh-cn">简体中文 - Simplified Chinese
-                                </option>
-                                <option data-kt-flag="flags/taiwan.svg" value="zh-tw">繁體中文 - Traditional Chinese
-                                </option>
+                                @foreach ([
+                                    'id' => 'Bahasa Indonesia - Indonesian',
+                                    'msa' => 'Bahasa Melayu - Malay',
+                                    'ca' => 'Català - Catalan',
+                                    'cs' => 'Čeština - Czech',
+                                    'da' => 'Dansk - Danish',
+                                    'de' => 'Deutsch - German',
+                                    'en' => 'English',
+                                    'en-gb' => 'English UK - British English',
+                                    'es' => 'Español - Spanish',
+                                    'fil' => 'Filipino',
+                                    'fr' => 'Français - French',
+                                    'ga' => 'Gaeilge - Irish (beta)',
+                                    'gl' => 'Galego - Galician (beta)',
+                                    'hr' => 'Hrvatski - Croatian',
+                                    'it' => 'Italiano - Italian',
+                                    'hu' => 'Magyar - Hungarian',
+                                    'nl' => 'Nederlands - Dutch',
+                                    'no' => 'Norsk - Norwegian',
+                                    'pl' => 'Polski - Polish',
+                                    'pt' => 'Português - Portuguese',
+                                    'ro' => 'Română - Romanian',
+                                    'sk' => 'Slovenčina - Slovak',
+                                    'fi' => 'Suomi - Finnish',
+                                    'sv' => 'Svenska - Swedish',
+                                    'vi' => 'Tiếng Việt - Vietnamese',
+                                    'tr' => 'Türkçe - Turkish',
+                                    'el' => 'Ελληνικά - Greek',
+                                    'bg' => 'Български език - Bulgarian',
+                                    'ru' => 'Русский - Russian',
+                                    'sr' => 'Српски - Serbian',
+                                    'uk' => 'Українська мова - Ukrainian',
+                                    'he' => 'עִבְרִית - Hebrew',
+                                    'ur' => 'اردو - Urdu (beta)',
+                                    'ar' => 'العربية - Arabic',
+                                    'fa' => 'فارسی - Persian',
+                                    'mr' => 'मराठी - Marathi',
+                                    'hi' => 'हिन्दी - Hindi',
+                                    'bn' => 'বাংলা - Bangla',
+                                    'gu' => 'ગુજરાતી - Gujarati',
+                                    'ta' => 'தமிழ் - Tamil',
+                                    'kn' => 'ಕನ್ನಡ - Kannada',
+                                    'th' => 'ภาษาไทย - Thai',
+                                    'ko' => '한국어 - Korean',
+                                    'ja' => '日本語 - Japanese',
+                                    'zh-cn' => '简体中文 - Simplified Chinese',
+                                    'zh-tw' => '繁體中文 - Traditional Chinese',
+                                ] as $langCode => $langLabel)
+                                    <option value="{{ $langCode }}" @selected(($language ?? null) === $langCode)>
+                                        {{ $langLabel }}
+                                    </option>
+                                @endforeach
                             </select>
                             <!--end::Input-->
                             <!--begin::Hint-->
@@ -527,163 +358,143 @@
                                 data-placeholder="Select a timezone.."
                                 class="form-select form-select-solid form-select-lg">
                                 <option value="">Select a Timezone..</option>
-                                <option data-bs-offset="-39600" value="International Date Line West">(GMT-11:00)
-                                    International Date Line West</option>
-                                <option data-bs-offset="-39600" value="Midway Island">(GMT-11:00) Midway Island
-                                </option>
-                                <option data-bs-offset="-39600" value="Samoa">(GMT-11:00) Samoa</option>
-                                <option data-bs-offset="-36000" value="Hawaii">(GMT-10:00) Hawaii</option>
-                                <option data-bs-offset="-28800" value="Alaska">(GMT-08:00) Alaska</option>
-                                <option data-bs-offset="-25200" value="Pacific Time (US & Canada)">(GMT-07:00) Pacific
-                                    Time (US & Canada)</option>
-                                <option data-bs-offset="-25200" value="Tijuana">(GMT-07:00) Tijuana</option>
-                                <option data-bs-offset="-25200" value="Arizona">(GMT-07:00) Arizona</option>
-                                <option data-bs-offset="-21600" value="Mountain Time (US & Canada)">(GMT-06:00)
-                                    Mountain Time (US & Canada)</option>
-                                <option data-bs-offset="-21600" value="Chihuahua">(GMT-06:00) Chihuahua</option>
-                                <option data-bs-offset="-21600" value="Mazatlan">(GMT-06:00) Mazatlan</option>
-                                <option data-bs-offset="-21600" value="Saskatchewan">(GMT-06:00) Saskatchewan</option>
-                                <option data-bs-offset="-21600" value="Central America">(GMT-06:00) Central America
-                                </option>
-                                <option data-bs-offset="-18000" value="Central Time (US & Canada)">(GMT-05:00) Central
-                                    Time (US & Canada)</option>
-                                <option data-bs-offset="-18000" value="Guadalajara">(GMT-05:00) Guadalajara</option>
-                                <option data-bs-offset="-18000" value="Mexico City">(GMT-05:00) Mexico City</option>
-                                <option data-bs-offset="-18000" value="Monterrey">(GMT-05:00) Monterrey</option>
-                                <option data-bs-offset="-18000" value="Bogota">(GMT-05:00) Bogota</option>
-                                <option data-bs-offset="-18000" value="Lima">(GMT-05:00) Lima</option>
-                                <option data-bs-offset="-18000" value="Quito">(GMT-05:00) Quito</option>
-                                <option data-bs-offset="-14400" value="Eastern Time (US & Canada)">(GMT-04:00) Eastern
-                                    Time (US & Canada)</option>
-                                <option data-bs-offset="-14400" value="Indiana (East)">(GMT-04:00) Indiana (East)
-                                </option>
-                                <option data-bs-offset="-14400" value="Caracas">(GMT-04:00) Caracas</option>
-                                <option data-bs-offset="-14400" value="La Paz">(GMT-04:00) La Paz</option>
-                                <option data-bs-offset="-14400" value="Georgetown">(GMT-04:00) Georgetown</option>
-                                <option data-bs-offset="-10800" value="Atlantic Time (Canada)">(GMT-03:00) Atlantic
-                                    Time (Canada)</option>
-                                <option data-bs-offset="-10800" value="Santiago">(GMT-03:00) Santiago</option>
-                                <option data-bs-offset="-10800" value="Brasilia">(GMT-03:00) Brasilia</option>
-                                <option data-bs-offset="-10800" value="Buenos Aires">(GMT-03:00) Buenos Aires</option>
-                                <option data-bs-offset="-9000" value="Newfoundland">(GMT-02:30) Newfoundland</option>
-                                <option data-bs-offset="-7200" value="Greenland">(GMT-02:00) Greenland</option>
-                                <option data-bs-offset="-7200" value="Mid-Atlantic">(GMT-02:00) Mid-Atlantic</option>
-                                <option data-bs-offset="-3600" value="Cape Verde Is.">(GMT-01:00) Cape Verde Is.
-                                </option>
-                                <option data-bs-offset="0" value="Azores">(GMT) Azores</option>
-                                <option data-bs-offset="0" value="Monrovia">(GMT) Monrovia</option>
-                                <option data-bs-offset="0" value="UTC">(GMT) UTC</option>
-                                <option data-bs-offset="3600" value="Dublin">(GMT+01:00) Dublin</option>
-                                <option data-bs-offset="3600" value="Edinburgh">(GMT+01:00) Edinburgh</option>
-                                <option data-bs-offset="3600" value="Lisbon">(GMT+01:00) Lisbon</option>
-                                <option data-bs-offset="3600" value="London">(GMT+01:00) London</option>
-                                <option data-bs-offset="3600" value="Casablanca">(GMT+01:00) Casablanca</option>
-                                <option data-bs-offset="3600" value="West Central Africa">(GMT+01:00) West Central
-                                    Africa</option>
-                                <option data-bs-offset="7200" value="Belgrade">(GMT+02:00) Belgrade</option>
-                                <option data-bs-offset="7200" value="Bratislava">(GMT+02:00) Bratislava</option>
-                                <option data-bs-offset="7200" value="Budapest">(GMT+02:00) Budapest</option>
-                                <option data-bs-offset="7200" value="Ljubljana">(GMT+02:00) Ljubljana</option>
-                                <option data-bs-offset="7200" value="Prague">(GMT+02:00) Prague</option>
-                                <option data-bs-offset="7200" value="Sarajevo">(GMT+02:00) Sarajevo</option>
-                                <option data-bs-offset="7200" value="Skopje">(GMT+02:00) Skopje</option>
-                                <option data-bs-offset="7200" value="Warsaw">(GMT+02:00) Warsaw</option>
-                                <option data-bs-offset="7200" value="Zagreb">(GMT+02:00) Zagreb</option>
-                                <option data-bs-offset="7200" value="Brussels">(GMT+02:00) Brussels</option>
-                                <option data-bs-offset="7200" value="Copenhagen">(GMT+02:00) Copenhagen</option>
-                                <option data-bs-offset="7200" value="Madrid">(GMT+02:00) Madrid</option>
-                                <option data-bs-offset="7200" value="Paris">(GMT+02:00) Paris</option>
-                                <option data-bs-offset="7200" value="Amsterdam">(GMT+02:00) Amsterdam</option>
-                                <option data-bs-offset="7200" value="Berlin">(GMT+02:00) Berlin</option>
-                                <option data-bs-offset="7200" value="Bern">(GMT+02:00) Bern</option>
-                                <option data-bs-offset="7200" value="Rome">(GMT+02:00) Rome</option>
-                                <option data-bs-offset="7200" value="Stockholm">(GMT+02:00) Stockholm</option>
-                                <option data-bs-offset="7200" value="Vienna">(GMT+02:00) Vienna</option>
-                                <option data-bs-offset="7200" value="Cairo">(GMT+02:00) Cairo</option>
-                                <option data-bs-offset="7200" value="Harare">(GMT+02:00) Harare</option>
-                                <option data-bs-offset="7200" value="Pretoria">(GMT+02:00) Pretoria</option>
-                                <option data-bs-offset="10800" value="Bucharest">(GMT+03:00) Bucharest</option>
-                                <option data-bs-offset="10800" value="Helsinki">(GMT+03:00) Helsinki</option>
-                                <option data-bs-offset="10800" value="Kiev">(GMT+03:00) Kiev</option>
-                                <option data-bs-offset="10800" value="Kyiv">(GMT+03:00) Kyiv</option>
-                                <option data-bs-offset="10800" value="Riga">(GMT+03:00) Riga</option>
-                                <option data-bs-offset="10800" value="Sofia">(GMT+03:00) Sofia</option>
-                                <option data-bs-offset="10800" value="Tallinn">(GMT+03:00) Tallinn</option>
-                                <option data-bs-offset="10800" value="Vilnius">(GMT+03:00) Vilnius</option>
-                                <option data-bs-offset="10800" value="Athens">(GMT+03:00) Athens</option>
-                                <option data-bs-offset="10800" value="Istanbul">(GMT+03:00) Istanbul</option>
-                                <option data-bs-offset="10800" value="Minsk">(GMT+03:00) Minsk</option>
-                                <option data-bs-offset="10800" value="Jerusalem">(GMT+03:00) Jerusalem</option>
-                                <option data-bs-offset="10800" value="Moscow">(GMT+03:00) Moscow</option>
-                                <option data-bs-offset="10800" value="St. Petersburg">(GMT+03:00) St. Petersburg
-                                </option>
-                                <option data-bs-offset="10800" value="Volgograd">(GMT+03:00) Volgograd</option>
-                                <option data-bs-offset="10800" value="Kuwait">(GMT+03:00) Kuwait</option>
-                                <option data-bs-offset="10800" value="Riyadh">(GMT+03:00) Riyadh</option>
-                                <option data-bs-offset="10800" value="Nairobi">(GMT+03:00) Nairobi</option>
-                                <option data-bs-offset="10800" value="Baghdad">(GMT+03:00) Baghdad</option>
-                                <option data-bs-offset="14400" value="Abu Dhabi">(GMT+04:00) Abu Dhabi</option>
-                                <option data-bs-offset="14400" value="Muscat">(GMT+04:00) Muscat</option>
-                                <option data-bs-offset="14400" value="Baku">(GMT+04:00) Baku</option>
-                                <option data-bs-offset="14400" value="Tbilisi">(GMT+04:00) Tbilisi</option>
-                                <option data-bs-offset="14400" value="Yerevan">(GMT+04:00) Yerevan</option>
-                                <option data-bs-offset="16200" value="Tehran">(GMT+04:30) Tehran</option>
-                                <option data-bs-offset="16200" value="Kabul">(GMT+04:30) Kabul</option>
-                                <option data-bs-offset="18000" value="Ekaterinburg">(GMT+05:00) Ekaterinburg</option>
-                                <option data-bs-offset="18000" value="Islamabad">(GMT+05:00) Islamabad</option>
-                                <option data-bs-offset="18000" value="Karachi">(GMT+05:00) Karachi</option>
-                                <option data-bs-offset="18000" value="Tashkent">(GMT+05:00) Tashkent</option>
-                                <option data-bs-offset="19800" value="Chennai">(GMT+05:30) Chennai</option>
-                                <option data-bs-offset="19800" value="Kolkata">(GMT+05:30) Kolkata</option>
-                                <option data-bs-offset="19800" value="Mumbai">(GMT+05:30) Mumbai</option>
-                                <option data-bs-offset="19800" value="New Delhi">(GMT+05:30) New Delhi</option>
-                                <option data-bs-offset="19800" value="Sri Jayawardenepura">(GMT+05:30) Sri
-                                    Jayawardenepura</option>
-                                <option data-bs-offset="20700" value="Kathmandu">(GMT+05:45) Kathmandu</option>
-                                <option data-bs-offset="21600" value="Astana">(GMT+06:00) Astana</option>
-                                <option data-bs-offset="21600" value="Dhaka">(GMT+06:00) Dhaka</option>
-                                <option data-bs-offset="21600" value="Almaty">(GMT+06:00) Almaty</option>
-                                <option data-bs-offset="21600" value="Urumqi">(GMT+06:00) Urumqi</option>
-                                <option data-bs-offset="23400" value="Rangoon">(GMT+06:30) Rangoon</option>
-                                <option data-bs-offset="25200" value="Novosibirsk">(GMT+07:00) Novosibirsk</option>
-                                <option data-bs-offset="25200" value="Bangkok">(GMT+07:00) Bangkok</option>
-                                <option data-bs-offset="25200" value="Hanoi">(GMT+07:00) Hanoi</option>
-                                <option data-bs-offset="25200" value="Jakarta">(GMT+07:00) Jakarta</option>
-                                <option data-bs-offset="25200" value="Krasnoyarsk">(GMT+07:00) Krasnoyarsk</option>
-                                <option data-bs-offset="28800" value="Beijing">(GMT+08:00) Beijing</option>
-                                <option data-bs-offset="28800" value="Chongqing">(GMT+08:00) Chongqing</option>
-                                <option data-bs-offset="28800" value="Hong Kong">(GMT+08:00) Hong Kong</option>
-                                <option data-bs-offset="28800" value="Kuala Lumpur">(GMT+08:00) Kuala Lumpur</option>
-                                <option data-bs-offset="28800" value="Singapore">(GMT+08:00) Singapore</option>
-                                <option data-bs-offset="28800" value="Taipei">(GMT+08:00) Taipei</option>
-                                <option data-bs-offset="28800" value="Perth">(GMT+08:00) Perth</option>
-                                <option data-bs-offset="28800" value="Irkutsk">(GMT+08:00) Irkutsk</option>
-                                <option data-bs-offset="28800" value="Ulaan Bataar">(GMT+08:00) Ulaan Bataar</option>
-                                <option data-bs-offset="32400" value="Seoul">(GMT+09:00) Seoul</option>
-                                <option data-bs-offset="32400" value="Osaka">(GMT+09:00) Osaka</option>
-                                <option data-bs-offset="32400" value="Sapporo">(GMT+09:00) Sapporo</option>
-                                <option data-bs-offset="32400" value="Tokyo">(GMT+09:00) Tokyo</option>
-                                <option data-bs-offset="32400" value="Yakutsk">(GMT+09:00) Yakutsk</option>
-                                <option data-bs-offset="34200" value="Darwin">(GMT+09:30) Darwin</option>
-                                <option data-bs-offset="34200" value="Adelaide">(GMT+09:30) Adelaide</option>
-                                <option data-bs-offset="36000" value="Canberra">(GMT+10:00) Canberra</option>
-                                <option data-bs-offset="36000" value="Melbourne">(GMT+10:00) Melbourne</option>
-                                <option data-bs-offset="36000" value="Sydney">(GMT+10:00) Sydney</option>
-                                <option data-bs-offset="36000" value="Brisbane">(GMT+10:00) Brisbane</option>
-                                <option data-bs-offset="36000" value="Hobart">(GMT+10:00) Hobart</option>
-                                <option data-bs-offset="36000" value="Vladivostok">(GMT+10:00) Vladivostok</option>
-                                <option data-bs-offset="36000" value="Guam">(GMT+10:00) Guam</option>
-                                <option data-bs-offset="36000" value="Port Moresby">(GMT+10:00) Port Moresby</option>
-                                <option data-bs-offset="36000" value="Solomon Is.">(GMT+10:00) Solomon Is.</option>
-                                <option data-bs-offset="39600" value="Magadan">(GMT+11:00) Magadan</option>
-                                <option data-bs-offset="39600" value="New Caledonia">(GMT+11:00) New Caledonia
-                                </option>
-                                <option data-bs-offset="43200" value="Fiji">(GMT+12:00) Fiji</option>
-                                <option data-bs-offset="43200" value="Kamchatka">(GMT+12:00) Kamchatka</option>
-                                <option data-bs-offset="43200" value="Marshall Is.">(GMT+12:00) Marshall Is.</option>
-                                <option data-bs-offset="43200" value="Auckland">(GMT+12:00) Auckland</option>
-                                <option data-bs-offset="43200" value="Wellington">(GMT+12:00) Wellington</option>
-                                <option data-bs-offset="46800" value="Nuku'alofa">(GMT+13:00) Nuku'alofa</option>
+                                @foreach ([
+                                    'Etc/GMT+12' => ['-39600', 'International Date Line West'],
+                                    'Pacific/Midway' => ['-39600', 'Midway Island'],
+                                    'Pacific/Pago_Pago' => ['-39600', 'Samoa'],
+                                    'Pacific/Honolulu' => ['-36000', 'Hawaii'],
+                                    'America/Juneau' => ['-28800', 'Alaska'],
+                                    'America/Los_Angeles' => ['-25200', 'Pacific Time (US & Canada)'],
+                                    'America/Tijuana' => ['-25200', 'Tijuana'],
+                                    'America/Phoenix' => ['-25200', 'Arizona'],
+                                    'America/Denver' => ['-21600', 'Mountain Time (US & Canada)'],
+                                    'America/Chihuahua' => ['-21600', 'Chihuahua'],
+                                    'America/Mazatlan' => ['-21600', 'Mazatlan'],
+                                    'America/Regina' => ['-21600', 'Saskatchewan'],
+                                    'America/Guatemala' => ['-21600', 'Central America'],
+                                    'America/Chicago' => ['-18000', 'Central Time (US & Canada)'],
+                                    'America/Mexico_City' => ['-18000', 'Guadalajara'],
+                                    'America/Monterrey' => ['-18000', 'Monterrey'],
+                                    'America/Bogota' => ['-18000', 'Bogota'],
+                                    'America/Lima' => ['-18000', 'Lima'],
+                                    'America/New_York' => ['-14400', 'Eastern Time (US & Canada)'],
+                                    'America/Indiana/Indianapolis' => ['-14400', 'Indiana (East)'],
+                                    'America/Caracas' => ['-14400', 'Caracas'],
+                                    'America/La_Paz' => ['-14400', 'La Paz'],
+                                    'America/Guyana' => ['-14400', 'Georgetown'],
+                                    'America/Halifax' => ['-10800', 'Atlantic Time (Canada)'],
+                                    'America/Santiago' => ['-10800', 'Santiago'],
+                                    'America/Sao_Paulo' => ['-10800', 'Brasilia'],
+                                    'America/Argentina/Buenos_Aires' => ['-10800', 'Buenos Aires'],
+                                    'America/St_Johns' => ['-9000', 'Newfoundland'],
+                                    'America/Nuuk' => ['-7200', 'Greenland'],
+                                    'Atlantic/South_Georgia' => ['-7200', 'Mid-Atlantic'],
+                                    'Atlantic/Cape_Verde' => ['-3600', 'Cape Verde Is.'],
+                                    'Atlantic/Azores' => ['0', 'Azores'],
+                                    'Africa/Monrovia' => ['0', 'Monrovia'],
+                                    'UTC' => ['0', 'UTC'],
+                                    'Europe/Dublin' => ['3600', 'Dublin'],
+                                    'Europe/London' => ['3600', 'Edinburgh'],
+                                    'Europe/Lisbon' => ['3600', 'Lisbon'],
+                                    'Africa/Casablanca' => ['3600', 'Casablanca'],
+                                    'Africa/Algiers' => ['3600', 'West Central Africa'],
+                                    'Europe/Belgrade' => ['7200', 'Belgrade'],
+                                    'Europe/Bratislava' => ['7200', 'Bratislava'],
+                                    'Europe/Budapest' => ['7200', 'Budapest'],
+                                    'Europe/Ljubljana' => ['7200', 'Ljubljana'],
+                                    'Europe/Prague' => ['7200', 'Prague'],
+                                    'Europe/Sarajevo' => ['7200', 'Sarajevo'],
+                                    'Europe/Skopje' => ['7200', 'Skopje'],
+                                    'Europe/Warsaw' => ['7200', 'Warsaw'],
+                                    'Europe/Zagreb' => ['7200', 'Zagreb'],
+                                    'Europe/Brussels' => ['7200', 'Brussels'],
+                                    'Europe/Copenhagen' => ['7200', 'Copenhagen'],
+                                    'Europe/Madrid' => ['7200', 'Madrid'],
+                                    'Europe/Paris' => ['7200', 'Paris'],
+                                    'Europe/Amsterdam' => ['7200', 'Amsterdam'],
+                                    'Europe/Berlin' => ['7200', 'Berlin'],
+                                    'Europe/Zurich' => ['7200', 'Bern'],
+                                    'Europe/Rome' => ['7200', 'Rome'],
+                                    'Europe/Stockholm' => ['7200', 'Stockholm'],
+                                    'Europe/Vienna' => ['7200', 'Vienna'],
+                                    'Africa/Cairo' => ['7200', 'Cairo'],
+                                    'Africa/Harare' => ['7200', 'Harare'],
+                                    'Africa/Johannesburg' => ['7200', 'Pretoria'],
+                                    'Europe/Bucharest' => ['10800', 'Bucharest'],
+                                    'Europe/Helsinki' => ['10800', 'Helsinki'],
+                                    'Europe/Kyiv' => ['10800', 'Kiev'],
+                                    'Europe/Riga' => ['10800', 'Riga'],
+                                    'Europe/Sofia' => ['10800', 'Sofia'],
+                                    'Europe/Tallinn' => ['10800', 'Tallinn'],
+                                    'Europe/Vilnius' => ['10800', 'Vilnius'],
+                                    'Europe/Athens' => ['10800', 'Athens'],
+                                    'Europe/Istanbul' => ['10800', 'Istanbul'],
+                                    'Europe/Minsk' => ['10800', 'Minsk'],
+                                    'Asia/Jerusalem' => ['10800', 'Jerusalem'],
+                                    'Europe/Moscow' => ['10800', 'Moscow'],
+                                    'Europe/Volgograd' => ['10800', 'Volgograd'],
+                                    'Asia/Kuwait' => ['10800', 'Kuwait'],
+                                    'Asia/Riyadh' => ['10800', 'Riyadh'],
+                                    'Africa/Nairobi' => ['10800', 'Nairobi'],
+                                    'Asia/Baghdad' => ['10800', 'Baghdad'],
+                                    'Asia/Muscat' => ['14400', 'Abu Dhabi'],
+                                    'Asia/Baku' => ['14400', 'Baku'],
+                                    'Asia/Tbilisi' => ['14400', 'Tbilisi'],
+                                    'Asia/Yerevan' => ['14400', 'Yerevan'],
+                                    'Asia/Tehran' => ['16200', 'Tehran'],
+                                    'Asia/Kabul' => ['16200', 'Kabul'],
+                                    'Asia/Yekaterinburg' => ['18000', 'Ekaterinburg'],
+                                    'Asia/Karachi' => ['18000', 'Islamabad'],
+                                    'Asia/Tashkent' => ['18000', 'Tashkent'],
+                                    'Asia/Kolkata' => ['19800', 'Chennai'],
+                                    'Asia/Colombo' => ['19800', 'Sri Jayawardenepura'],
+                                    'Asia/Kathmandu' => ['20700', 'Kathmandu'],
+                                    'Asia/Almaty' => ['21600', 'Astana'],
+                                    'Asia/Dhaka' => ['21600', 'Dhaka'],
+                                    'Asia/Urumqi' => ['21600', 'Urumqi'],
+                                    'Asia/Yangon' => ['23400', 'Rangoon'],
+                                    'Asia/Novosibirsk' => ['25200', 'Novosibirsk'],
+                                    'Asia/Bangkok' => ['25200', 'Bangkok'],
+                                    'Asia/Jakarta' => ['25200', 'Jakarta'],
+                                    'Asia/Krasnoyarsk' => ['25200', 'Krasnoyarsk'],
+                                    'Asia/Shanghai' => ['28800', 'Beijing'],
+                                    'Asia/Chongqing' => ['28800', 'Chongqing'],
+                                    'Asia/Hong_Kong' => ['28800', 'Hong Kong'],
+                                    'Asia/Kuala_Lumpur' => ['28800', 'Kuala Lumpur'],
+                                    'Asia/Singapore' => ['28800', 'Singapore'],
+                                    'Asia/Taipei' => ['28800', 'Taipei'],
+                                    'Australia/Perth' => ['28800', 'Perth'],
+                                    'Asia/Irkutsk' => ['28800', 'Irkutsk'],
+                                    'Asia/Ulaanbaatar' => ['28800', 'Ulaan Bataar'],
+                                    'Asia/Seoul' => ['32400', 'Seoul'],
+                                    'Asia/Tokyo' => ['32400', 'Tokyo'],
+                                    'Asia/Yakutsk' => ['32400', 'Yakutsk'],
+                                    'Australia/Darwin' => ['34200', 'Darwin'],
+                                    'Australia/Adelaide' => ['34200', 'Adelaide'],
+                                    'Australia/Canberra' => ['36000', 'Canberra'],
+                                    'Australia/Melbourne' => ['36000', 'Melbourne'],
+                                    'Australia/Sydney' => ['36000', 'Sydney'],
+                                    'Australia/Brisbane' => ['36000', 'Brisbane'],
+                                    'Australia/Hobart' => ['36000', 'Hobart'],
+                                    'Asia/Vladivostok' => ['36000', 'Vladivostok'],
+                                    'Pacific/Guam' => ['36000', 'Guam'],
+                                    'Pacific/Port_Moresby' => ['36000', 'Port Moresby'],
+                                    'Pacific/Guadalcanal' => ['36000', 'Solomon Is.'],
+                                    'Asia/Magadan' => ['39600', 'Magadan'],
+                                    'Pacific/Noumea' => ['39600', 'New Caledonia'],
+                                    'Pacific/Fiji' => ['43200', 'Fiji'],
+                                    'Asia/Kamchatka' => ['43200', 'Kamchatka'],
+                                    'Pacific/Majuro' => ['43200', 'Marshall Is.'],
+                                    'Pacific/Auckland' => ['43200', 'Auckland'],
+                                    'Pacific/Tongatapu' => ['46800', "Nuku'alofa"],
+                                ] as $tzId => $tzMeta)
+                                    <option data-bs-offset="{{ $tzMeta[0] }}" value="{{ $tzId }}"
+                                        @selected(($tenant->timezone ?? null) === $tzId)>
+                                        @php $tzOffset = (int) $tzMeta[0]; @endphp
+                                        (GMT{{ $tzOffset === 0 ? '' : (($tzOffset > 0 ? '+' : '-') . gmdate('H:i', abs($tzOffset))) }})
+                                        {{ $tzMeta[1] }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                         <!--end::Col-->
@@ -696,29 +507,36 @@
                         <!--end::Label-->
                         <!--begin::Col-->
                         <div class="col-lg-8 fv-row">
-                            <select name="currnecy" aria-label="Select a Currency" data-control="select2"
+                            <select name="currency" aria-label="Select a Currency" data-control="select2"
                                 data-placeholder="Select a currency.."
                                 class="form-select form-select-solid form-select-lg">
                                 <option value="">Select a currency..</option>
-                                <option data-kt-flag="flags/united-states.svg" value="USD">
+                                <option data-kt-flag="flags/united-states.svg" value="USD"
+                                    @selected(($tenant->currency ?? null) === 'USD')>
                                     <b>USD</b>&nbsp;-&nbsp;USA dollar
                                 </option>
-                                <option data-kt-flag="flags/united-kingdom.svg" value="GBP">
+                                <option data-kt-flag="flags/united-kingdom.svg" value="GBP"
+                                    @selected(($tenant->currency ?? null) === 'GBP')>
                                     <b>GBP</b>&nbsp;-&nbsp;British pound
                                 </option>
-                                <option data-kt-flag="flags/australia.svg" value="AUD">
+                                <option data-kt-flag="flags/australia.svg" value="AUD"
+                                    @selected(($tenant->currency ?? null) === 'AUD')>
                                     <b>AUD</b>&nbsp;-&nbsp;Australian dollar
                                 </option>
-                                <option data-kt-flag="flags/japan.svg" value="JPY">
+                                <option data-kt-flag="flags/japan.svg" value="JPY"
+                                    @selected(($tenant->currency ?? null) === 'JPY')>
                                     <b>JPY</b>&nbsp;-&nbsp;Japanese yen
                                 </option>
-                                <option data-kt-flag="flags/sweden.svg" value="SEK">
+                                <option data-kt-flag="flags/sweden.svg" value="SEK"
+                                    @selected(($tenant->currency ?? null) === 'SEK')>
                                     <b>SEK</b>&nbsp;-&nbsp;Swedish krona
                                 </option>
-                                <option data-kt-flag="flags/canada.svg" value="CAD">
+                                <option data-kt-flag="flags/canada.svg" value="CAD"
+                                    @selected(($tenant->currency ?? null) === 'CAD')>
                                     <b>CAD</b>&nbsp;-&nbsp;Canadian dollar
                                 </option>
-                                <option data-kt-flag="flags/switzerland.svg" value="CHF">
+                                <option data-kt-flag="flags/switzerland.svg" value="CHF"
+                                    @selected(($tenant->currency ?? null) === 'CHF')>
                                     <b>CHF</b>&nbsp;-&nbsp;Swiss franc
                                 </option>
                             </select>
@@ -738,14 +556,14 @@
                                 <!--begin::Option-->
                                 <label class="form-check form-check-custom form-check-inline form-check-solid me-5">
                                     <input class="form-check-input" name="communication[]" type="checkbox"
-                                        value="1" />
+                                        value="1" @checked(in_array('1', $communicationChannels ?? [])) />
                                     <span class="fw-semibold ps-2 fs-6">Email</span>
                                 </label>
                                 <!--end::Option-->
                                 <!--begin::Option-->
                                 <label class="form-check form-check-custom form-check-inline form-check-solid">
                                     <input class="form-check-input" name="communication[]" type="checkbox"
-                                        value="2" />
+                                        value="2" @checked(in_array('2', $communicationChannels ?? [])) />
                                     <span class="fw-semibold ps-2 fs-6">Phone</span>
                                 </label>
                                 <!--end::Option-->
@@ -764,7 +582,7 @@
                         <div class="col-lg-8 d-flex align-items-center">
                             <div class="form-check form-check-solid form-switch form-check-custom fv-row">
                                 <input class="form-check-input w-45px h-30px" type="checkbox" id="allowmarketing"
-                                    checked="checked" />
+                                    name="allow_marketing" value="1" @checked($marketingOptIn) />
                                 <label class="form-check-label" for="allowmarketing"></label>
                             </div>
                         </div>
@@ -805,13 +623,16 @@
                     <!--begin::Label-->
                     <div id="kt_signin_email">
                         <div class="fs-6 fw-bold mb-1">Email Address</div>
-                        <div class="fw-semibold text-gray-600">support@keenthemes.com</div>
+                        <div class="fw-semibold text-gray-600">{{ $user->email }}</div>
                     </div>
                     <!--end::Label-->
                     <!--begin::Edit-->
                     <div id="kt_signin_email_edit" class="flex-row-fluid d-none">
                         <!--begin::Form-->
-                        <form id="kt_signin_change_email" class="form" novalidate="novalidate">
+                        <form id="kt_signin_change_email" class="form" method="POST"
+                            action="{{ route('profile.settings.email') }}" novalidate="novalidate">
+                            @csrf
+                            @method('PATCH')
                             <div class="row mb-6">
                                 <div class="col-lg-6 mb-4 mb-lg-0">
                                     <div class="fv-row mb-0">
@@ -820,7 +641,7 @@
                                         <input type="email"
                                             class="form-control form-control-lg form-control-solid"
                                             id="emailaddress" placeholder="Email Address" name="emailaddress"
-                                            value="support@keenthemes.com" />
+                                            value="{{ old('emailaddress', $user->email) }}" />
                                     </div>
                                 </div>
                                 <div class="col-lg-6">
@@ -834,7 +655,7 @@
                                 </div>
                             </div>
                             <div class="d-flex">
-                                <button id="kt_signin_submit" type="button"
+                                <button id="kt_signin_submit" type="submit"
                                     class="btn btn-primary me-2 px-6">Update Email</button>
                                 <button id="kt_signin_cancel" type="button"
                                     class="btn btn-color-gray-500 btn-active-light-primary px-6">Cancel</button>
@@ -864,7 +685,10 @@
                     <!--begin::Edit-->
                     <div id="kt_signin_password_edit" class="flex-row-fluid d-none">
                         <!--begin::Form-->
-                        <form id="kt_signin_change_password" class="form" novalidate="novalidate">
+                        <form id="kt_signin_change_password" class="form" method="POST"
+                            action="{{ route('profile.settings.password') }}" novalidate="novalidate">
+                            @csrf
+                            @method('PATCH')
                             <div class="row mb-1">
                                 <div class="col-lg-4">
                                     <div class="fv-row mb-0">
@@ -890,14 +714,14 @@
                                             New Password</label>
                                         <input type="password"
                                             class="form-control form-control-lg form-control-solid"
-                                            name="confirmpassword" id="confirmpassword" />
+                                            name="newpassword_confirmation" id="confirmpassword" />
                                     </div>
                                 </div>
                             </div>
                             <div class="form-text mb-5">Password must be at least 8 character and contain symbols
                             </div>
                             <div class="d-flex">
-                                <button id="kt_password_submit" type="button"
+                                <button id="kt_password_submit" type="submit"
                                     class="btn btn-primary me-2 px-6">Update Password</button>
                                 <button id="kt_password_cancel" type="button"
                                     class="btn btn-color-gray-500 btn-active-light-primary px-6">Cancel</button>
@@ -958,7 +782,9 @@
         <!--begin::Content-->
         <div id="kt_account_settings_deactivate" class="collapse show">
             <!--begin::Form-->
-            <form id="kt_account_deactivate_form" class="form">
+            <form id="kt_account_deactivate_form" class="form" method="POST"
+                action="{{ route('profile.settings.deactivate') }}">
+                @csrf
                 <!--begin::Card body-->
                 <div class="card-body border-top p-9">
                     <!--begin::Notice-->
@@ -988,7 +814,7 @@
                     <!--end::Notice-->
                     <!--begin::Form input row-->
                     <div class="form-check form-check-solid fv-row">
-                        <input name="deactivate" class="form-check-input" type="checkbox" value=""
+                        <input name="deactivate" class="form-check-input" type="checkbox" value="1"
                             id="deactivate" />
                         <label class="form-check-label fw-semibold ps-2 fs-6" for="deactivate">I confirm my account
                             deactivation</label>
@@ -1008,4 +834,41 @@
         <!--end::Content-->
     </div>
     <!--end::Deactivate Account-->
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const toggle = function (mainId, buttonWrapperId, editId, cancelId) {
+                    const mainEl = document.getElementById(mainId);
+                    const buttonWrapperEl = document.getElementById(buttonWrapperId);
+                    const editEl = document.getElementById(editId);
+
+                    if (!mainEl || !buttonWrapperEl || !editEl) {
+                        return;
+                    }
+
+                    const show = function () {
+                        mainEl.classList.add('d-none');
+                        buttonWrapperEl.classList.add('d-none');
+                        editEl.classList.remove('d-none');
+                    };
+
+                    const hide = function () {
+                        mainEl.classList.remove('d-none');
+                        buttonWrapperEl.classList.remove('d-none');
+                        editEl.classList.add('d-none');
+                    };
+
+                    buttonWrapperEl.querySelector('button')?.addEventListener('click', show);
+                    document.getElementById(cancelId)?.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        hide();
+                    });
+                };
+
+                toggle('kt_signin_email', 'kt_signin_email_button', 'kt_signin_email_edit', 'kt_signin_cancel');
+                toggle('kt_signin_password', 'kt_signin_password_button', 'kt_signin_password_edit', 'kt_password_cancel');
+            });
+        </script>
+    @endpush
 </x-default-layout>

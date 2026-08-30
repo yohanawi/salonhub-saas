@@ -63,6 +63,22 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        if (Auth::user()->status !== 'active') {
+            $user = Auth::user();
+            Auth::logout();
+
+            app(AuditLogService::class)->recordAuthentication(
+                AuditLog::ACTION_FAILED_LOGIN,
+                $user,
+                $this,
+                ['email' => $this->input('email'), 'reason' => 'account_inactive']
+            );
+
+            throw ValidationException::withMessages([
+                'email' => 'This account has been deactivated. Please contact support.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

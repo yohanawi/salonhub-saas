@@ -63,6 +63,7 @@ use App\Http\Controllers\Promotions\PromotionController;
 use App\Http\Controllers\Promotions\PromotionCouponController;
 use App\Http\Controllers\Promotions\PromotionDashboardController;
 use App\Http\Controllers\Promotions\PromotionReportController;
+use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\Promotions\PromotionUsageController;
 use App\Http\Controllers\Search\GlobalSearchController;
 use App\Http\Controllers\Service\ServiceCategoryController;
@@ -91,14 +92,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/global-search', GlobalSearchController::class)->name('global-search');
 
-    Route::view('/my-profile', 'pages.apps.profile.my-profile')->name('profile.show');
+    Route::get('/my-profile', [ProfileController::class, 'show'])->name('profile.show');
     Route::prefix('my-profile')->name('profile.')->group(function () {
-        Route::view('/settings', 'pages.apps.profile.settings')->name('settings');
-        Route::view('/security', 'pages.apps.profile.security')->name('security');
-        Route::view('/activity', 'pages.apps.profile.activity')->name('activity');
-        Route::view('/billing', 'pages.apps.profile.billing')->name('billing');
-        Route::view('/statements', 'pages.apps.profile.statements')->name('statements');
-        Route::view('/logs', 'pages.apps.profile.logs')->name('logs');
+        Route::get('/settings', [ProfileController::class, 'settingsEdit'])->name('settings');
+        Route::patch('/settings', [ProfileController::class, 'updateDetails'])->name('settings.update');
+        Route::patch('/settings/email', [ProfileController::class, 'updateEmail'])->name('settings.email');
+        Route::patch('/settings/password', [ProfileController::class, 'updatePassword'])->name('settings.password');
+        Route::post('/settings/deactivate', [ProfileController::class, 'deactivate'])->name('settings.deactivate');
+        Route::get('/security', [ProfileController::class, 'security'])->name('security');
+        Route::get('/activity', [ProfileController::class, 'activity'])->name('activity');
+        Route::get('/billing', [ProfileController::class, 'billing'])->name('billing');
+        Route::get('/statements', [ProfileController::class, 'statements'])->name('statements');
+        Route::get('/logs', [ProfileController::class, 'logs'])->name('logs');
+        Route::get('/logs/export', [ProfileController::class, 'exportLogs'])->name('logs.export');
     });
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');

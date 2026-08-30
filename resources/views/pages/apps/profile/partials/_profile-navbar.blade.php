@@ -2,6 +2,25 @@
             $profileUser = Auth::user();
             $profileRole = $profileUser?->roles?->first()?->name ?? 'Account Owner';
             $profileLocation = $profileUser?->branch?->name ?? 'Main Branch';
+            $profileTenant = $profileUser?->tenant;
+            $profileBranchCount = $profileTenant?->branches()->count() ?? 0;
+            $profileStaffCount = $profileTenant?->staff()->count() ?? 0;
+            $profileLoginCount30d = $profileUser
+                ? \App\Models\AuditLog::where('user_id', $profileUser->id)
+                    ->where('action', \App\Models\AuditLog::ACTION_LOGIN)
+                    ->where('created_at', '>=', now()->subDays(30))
+                    ->count()
+                : 0;
+            $profileCompletionFields = [
+                (bool) ($profileUser?->first_name),
+                (bool) ($profileUser?->phone),
+                (bool) ($profileUser?->profile_photo_path),
+                (bool) ($profileTenant?->country),
+                (bool) ($profileTenant?->website),
+            ];
+            $profileCompletionPercent = (int) round(
+                (count(array_filter($profileCompletionFields)) / max(count($profileCompletionFields), 1)) * 100
+            );
         @endphp
 
         <!--begin::Navbar-->
@@ -87,12 +106,12 @@
                                                 <span class="path2"></span>
                                             </i>
                                             <div class="fs-2 fw-bold" data-kt-countup="true"
-                                                data-kt-countup-value="4500" data-kt-countup-prefix="$">0
+                                                data-kt-countup-value="{{ $profileBranchCount }}">0
                                             </div>
                                         </div>
                                         <!--end::Number-->
                                         <!--begin::Label-->
-                                        <div class="fw-semibold fs-6 text-gray-500">Earnings</div>
+                                        <div class="fw-semibold fs-6 text-gray-500">Branches</div>
                                         <!--end::Label-->
                                     </div>
                                     <!--end::Stat-->
@@ -105,12 +124,13 @@
                                                 <span class="path1"></span>
                                                 <span class="path2"></span>
                                             </i>
-                                            <div class="fs-2 fw-bold" data-kt-countup="true" data-kt-countup-value="80">
+                                            <div class="fs-2 fw-bold" data-kt-countup="true"
+                                                data-kt-countup-value="{{ $profileStaffCount }}">
                                                 0</div>
                                         </div>
                                         <!--end::Number-->
                                         <!--begin::Label-->
-                                        <div class="fw-semibold fs-6 text-gray-500">Projects</div>
+                                        <div class="fw-semibold fs-6 text-gray-500">Staff</div>
                                         <!--end::Label-->
                                     </div>
                                     <!--end::Stat-->
@@ -123,13 +143,13 @@
                                                 <span class="path1"></span>
                                                 <span class="path2"></span>
                                             </i>
-                                            <div class="fs-2 fw-bold" data-kt-countup="true" data-kt-countup-value="60"
-                                                data-kt-countup-prefix="%">0
+                                            <div class="fs-2 fw-bold" data-kt-countup="true"
+                                                data-kt-countup-value="{{ $profileLoginCount30d }}">0
                                             </div>
                                         </div>
                                         <!--end::Number-->
                                         <!--begin::Label-->
-                                        <div class="fw-semibold fs-6 text-gray-500">Success Rate</div>
+                                        <div class="fw-semibold fs-6 text-gray-500">Logins (30d)</div>
                                         <!--end::Label-->
                                     </div>
                                     <!--end::Stat-->
@@ -140,12 +160,14 @@
                             <!--begin::Progress-->
                             <div class="d-flex align-items-center w-200px w-sm-300px flex-column mt-3">
                                 <div class="d-flex justify-content-between w-100 mt-auto mb-2">
-                                    <span class="fw-semibold fs-6 text-gray-500">Profile Compleation</span>
-                                    <span class="fw-bold fs-6">50%</span>
+                                    <span class="fw-semibold fs-6 text-gray-500">Profile Completion</span>
+                                    <span class="fw-bold fs-6">{{ $profileCompletionPercent }}%</span>
                                 </div>
                                 <div class="h-5px mx-3 w-100 bg-light mb-3">
-                                    <div class="bg-success rounded h-5px" role="progressbar" style="width: 50%;"
-                                        aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                                    <div class="bg-success rounded h-5px" role="progressbar"
+                                        style="width: {{ $profileCompletionPercent }}%;"
+                                        aria-valuenow="{{ $profileCompletionPercent }}" aria-valuemin="0"
+                                        aria-valuemax="100"></div>
                                 </div>
                             </div>
                             <!--end::Progress-->

@@ -14,16 +14,18 @@
             <div class="card-toolbar">
                 <div class="my-1 me-4">
                     <!--begin::Select-->
-                    <select class="form-select form-select-sm form-select-solid w-125px" data-control="select2"
-                        data-placeholder="Select Hours" data-hide-search="true">
-                        <option value="1" selected="selected">1 Hours</option>
-                        <option value="2">6 Hours</option>
-                        <option value="3">12 Hours</option>
-                        <option value="4">24 Hours</option>
-                    </select>
+                    <form method="GET" action="{{ route('profile.logs') }}">
+                        <select name="hours" class="form-select form-select-sm form-select-solid w-125px"
+                            data-control="select2" data-placeholder="Select Hours" data-hide-search="true"
+                            onchange="this.form.submit()">
+                            <option value="1" @selected($hours === 1)>1 Hours</option>
+                            <option value="6" @selected($hours === 6)>6 Hours</option>
+                            <option value="12" @selected($hours === 12)>12 Hours</option>
+                            <option value="24" @selected($hours === 24)>24 Hours</option>
+                        </select>
+                    </form>
                     <!--end::Select-->
                 </div>
-                <a href="#" class="btn btn-sm btn-primary my-1">View All</a>
             </div>
             <!--end::Toolbar-->
         </div>
@@ -37,7 +39,7 @@
                     <!--begin::Thead-->
                     <thead class="border-gray-200 fs-5 fw-semibold bg-lighten">
                         <tr>
-                            <th class="min-w-250px">Location</th>
+                            <th class="min-w-150px">Event</th>
                             <th class="min-w-100px">Status</th>
                             <th class="min-w-150px">Device</th>
                             <th class="min-w-150px">IP Address</th>
@@ -47,61 +49,25 @@
                     <!--end::Thead-->
                     <!--begin::Tbody-->
                     <tbody class="fw-6 fw-semibold text-gray-600">
-                        <tr>
-                            <td>
-                                <a href="#" class="text-hover-primary text-gray-600">USA(5)</a>
-                            </td>
-                            <td>
-                                <span class="badge badge-light-success fs-7 fw-bold">OK</span>
-                            </td>
-                            <td>Chrome - Windows</td>
-                            <td>236.125.56.78</td>
-                            <td>2 mins ago</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <a href="#" class="text-hover-primary text-gray-600">United Kingdom(10)</a>
-                            </td>
-                            <td>
-                                <span class="badge badge-light-success fs-7 fw-bold">OK</span>
-                            </td>
-                            <td>Safari - Mac OS</td>
-                            <td>236.125.56.78</td>
-                            <td>10 mins ago</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <a href="#" class="text-hover-primary text-gray-600">Norway(-)</a>
-                            </td>
-                            <td>
-                                <span class="badge badge-light-danger fs-7 fw-bold">ERR</span>
-                            </td>
-                            <td>Firefox - Windows</td>
-                            <td>236.125.56.10</td>
-                            <td>20 mins ago</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <a href="#" class="text-hover-primary text-gray-600">Japan(112)</a>
-                            </td>
-                            <td>
-                                <span class="badge badge-light-success fs-7 fw-bold">OK</span>
-                            </td>
-                            <td>iOS - iPhone Pro</td>
-                            <td>236.125.56.54</td>
-                            <td>30 mins ago</td>
-                        </tr>
-                        <tr>
-                            <td>
-                                <a href="#" class="text-hover-primary text-gray-600">Italy(5)</a>
-                            </td>
-                            <td>
-                                <span class="badge badge-light-warning fs-7 fw-bold">WRN</span>
-                            </td>
-                            <td>Samsung Noted 5- Android</td>
-                            <td>236.100.56.50</td>
-                            <td>40 mins ago</td>
-                        </tr>
+                        @forelse ($loginSessions as $session)
+                            <tr>
+                                <td>{{ $session->action_label }}</td>
+                                <td>
+                                    @if ($session->action === \App\Models\AuditLog::ACTION_FAILED_LOGIN)
+                                        <span class="badge badge-light-danger fs-7 fw-bold">ERR</span>
+                                    @else
+                                        <span class="badge badge-light-success fs-7 fw-bold">OK</span>
+                                    @endif
+                                </td>
+                                <td>{{ $session->device ?: 'Unknown device' }}</td>
+                                <td>{{ $session->ip_address ?: 'N/A' }}</td>
+                                <td>{{ $session->created_at?->diffForHumans() }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-10">No login sessions in this window.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                     <!--end::Tbody-->
                 </table>
@@ -124,11 +90,11 @@
             <!--begin::Card toolbar-->
             <div class="card-toolbar">
                 <!--begin::Button-->
-                <button type="button" class="btn btn-sm btn-light-primary">
+                <a href="{{ route('profile.logs.export') }}" class="btn btn-sm btn-light-primary">
                     <i class="ki-duotone ki-cloud-download fs-3">
                         <span class="path1"></span>
                         <span class="path2"></span>
-                    </i>Download Report</button>
+                    </i>Download Report</a>
                 <!--end::Button-->
             </div>
             <!--end::Card toolbar-->
@@ -143,156 +109,29 @@
                     id="kt_table_customers_logs">
                     <!--begin::Table body-->
                     <tbody>
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-warning">404 WRN</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/customer/c_6543cc8648576/not_found</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">10 Nov 2023, 10:30 am</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_5916_7818/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">05 May 2023, 10:30 am</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-danger">500 ERR</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoice/in_9515_3445/invalid</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">20 Jun 2023, 11:30 am</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_5568_9078/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">25 Oct 2023, 6:43 am</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_7666_3231/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">20 Dec 2023, 6:43 am</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_5916_7818/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">25 Oct 2023, 6:05 pm</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_5916_7818/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">19 Aug 2023, 11:05 am</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_4489_4518/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">24 Jun 2023, 9:23 pm</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-danger">500 ERR</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoice/in_9515_3445/invalid</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">20 Dec 2023, 6:05 pm</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
-                        <!--begin::Table row-->
-                        <tr>
-                            <!--begin::Badge=-->
-                            <td class="min-w-70px">
-                                <div class="badge badge-light-success">200 OK</div>
-                            </td>
-                            <!--end::Badge=-->
-                            <!--begin::Status=-->
-                            <td>POST /v1/invoices/in_8498_5974/payment</td>
-                            <!--end::Status=-->
-                            <!--begin::Timestamp=-->
-                            <td class="pe-0 text-end min-w-200px">25 Jul 2023, 5:30 pm</td>
-                            <!--end::Timestamp=-->
-                        </tr>
-                        <!--end::Table row-->
+                        @forelse ($systemLogs as $log)
+                            <!--begin::Table row-->
+                            <tr>
+                                <!--begin::Badge=-->
+                                <td class="min-w-70px">
+                                    <div class="badge badge-light-{{ $log->action === \App\Models\AuditLog::ACTION_FAILED_LOGIN ? 'danger' : 'success' }}">
+                                        {{ $log->module_label }}
+                                    </div>
+                                </td>
+                                <!--end::Badge=-->
+                                <!--begin::Status=-->
+                                <td>{{ $log->description ?: $log->action_label }}</td>
+                                <!--end::Status=-->
+                                <!--begin::Timestamp=-->
+                                <td class="pe-0 text-end min-w-200px">{{ $log->created_at?->format('d M Y, g:i a') }}</td>
+                                <!--end::Timestamp=-->
+                            </tr>
+                            <!--end::Table row-->
+                        @empty
+                            <tr>
+                                <td class="text-center text-muted py-10">No logs recorded yet.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                     <!--end::Table body-->
                 </table>

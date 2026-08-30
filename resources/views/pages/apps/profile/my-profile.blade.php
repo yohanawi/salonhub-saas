@@ -171,101 +171,38 @@
                     <div class="card-header flex-nowrap pt-5">
                         <!--begin::Title-->
                         <h3 class="card-title align-items-start flex-column">
-                            <span class="card-label fw-bold text-gray-900">Top Selling Categories</span>
-                            <span class="text-gray-500 pt-2 fw-semibold fs-6">8k social visitors</span>
+                            <span class="card-label fw-bold text-gray-900">Recent Activity</span>
+                            <span class="text-gray-500 pt-2 fw-semibold fs-6">Your latest account activity</span>
                         </h3>
                         <!--end::Title-->
                         <!--begin::Toolbar-->
                         <div class="card-toolbar">
-                            <!--begin::Menu-->
-                            <button class="btn btn-icon btn-color-gray-500 btn-active-color-primary justify-content-end"
-                                data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end"
-                                data-kt-menu-overflow="true">
-                                <i class="ki-duotone ki-dots-square fs-1 text-gray-500 me-n1">
-                                    <span class="path1"></span>
-                                    <span class="path2"></span>
-                                    <span class="path3"></span>
-                                    <span class="path4"></span>
-                                </i>
-                            </button>
-                            <!--begin::Menu 2-->
-                            <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-semibold w-200px"
-                                data-kt-menu="true">
-                                <!--begin::Menu item-->
-                                <div class="menu-item px-3">
-                                    <div class="menu-content fs-6 text-gray-900 fw-bold px-3 py-4">Quick
-                                        Actions</div>
-                                </div>
-                                <!--end::Menu item-->
-                                <!--begin::Menu separator-->
-                                <div class="separator mb-3 opacity-75"></div>
-                                <!--end::Menu separator-->
-                                <!--begin::Menu item-->
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3">New Ticket</a>
-                                </div>
-                                <!--end::Menu item-->
-                                <!--begin::Menu item-->
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3">New Customer</a>
-                                </div>
-                                <!--end::Menu item-->
-                                <!--begin::Menu item-->
-                                <div class="menu-item px-3" data-kt-menu-trigger="hover"
-                                    data-kt-menu-placement="right-start">
-                                    <!--begin::Menu item-->
-                                    <a href="#" class="menu-link px-3">
-                                        <span class="menu-title">New Group</span>
-                                        <span class="menu-arrow"></span>
-                                    </a>
-                                    <!--end::Menu item-->
-                                    <!--begin::Menu sub-->
-                                    <div class="menu-sub menu-sub-dropdown w-175px py-4">
-                                        <!--begin::Menu item-->
-                                        <div class="menu-item px-3">
-                                            <a href="#" class="menu-link px-3">Admin Group</a>
-                                        </div>
-                                        <!--end::Menu item-->
-                                        <!--begin::Menu item-->
-                                        <div class="menu-item px-3">
-                                            <a href="#" class="menu-link px-3">Staff Group</a>
-                                        </div>
-                                        <!--end::Menu item-->
-                                        <!--begin::Menu item-->
-                                        <div class="menu-item px-3">
-                                            <a href="#" class="menu-link px-3">Member Group</a>
-                                        </div>
-                                        <!--end::Menu item-->
-                                    </div>
-                                    <!--end::Menu sub-->
-                                </div>
-                                <!--end::Menu item-->
-                                <!--begin::Menu item-->
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3">New Contact</a>
-                                </div>
-                                <!--end::Menu item-->
-                                <!--begin::Menu separator-->
-                                <div class="separator mt-3 opacity-75"></div>
-                                <!--end::Menu separator-->
-                                <!--begin::Menu item-->
-                                <div class="menu-item px-3">
-                                    <div class="menu-content px-3 py-3">
-                                        <a class="btn btn-primary btn-sm px-4" href="#">Generate
-                                            Reports</a>
-                                    </div>
-                                </div>
-                                <!--end::Menu item-->
-                            </div>
-                            <!--end::Menu 2-->
-                            <!--end::Menu-->
+                            <a href="{{ route('profile.activity') }}" class="btn btn-sm btn-light-primary">View
+                                all activity</a>
                         </div>
                         <!--end::Toolbar-->
                     </div>
                     <!--end::Header-->
                     <!--begin::Body-->
                     <div class="card-body pt-5 ps-6">
-                        <div id="kt_charts_widget_5" class="min-h-auto"></div>
+                        @forelse (($recentActivity ?? []) as $activityItem)
+                            <div class="d-flex align-items-center mb-7">
+                                <div class="symbol symbol-45px me-5">
+                                    <span class="symbol-label bg-light-primary">
+                                        <i class="ki-duotone ki-flash fs-2 text-primary">
+                                            <span class="path1"></span>
+                                            <span class="path2"></span>
+                                        </i>
+                                    </span>
+                                </div>
+                                <div class="d-flex flex-column flex-grow-1">
+                                    <span class="text-gray-800 fw-bold fs-6">{{ $activityItem->description ?: $activityItem->action_label }}</span>
+                                    <span class="text-muted fw-semibold d-block fs-7">{{ $activityItem->module_label }} &middot; {{ $activityItem->created_at?->diffForHumans() }}</span>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-muted fs-6">No recent activity yet.</div>
+                        @endforelse
                     </div>
                     <!--end::Body-->
                 </div>
@@ -288,9 +225,9 @@
                             <!--end::Title-->
                             <!--begin::Illustration-->
                             <div class="py-10 text-center">
-                                <img src="assets/media/svg/illustrations/easy/1.svg" class="theme-light-show w-200px"
-                                    alt="" />
-                                <img src="assets/media/svg/illustrations/easy/1-dark.svg"
+                                <img src="{{ asset('assets/media/svg/illustrations/easy/1.svg') }}"
+                                    class="theme-light-show w-200px" alt="" />
+                                <img src="{{ asset('assets/media/svg/illustrations/easy/1-dark.svg') }}"
                                     class="theme-dark-show w-200px" alt="" />
                             </div>
                             <!--end::Illustration-->
@@ -303,7 +240,7 @@
                                 data-bs-toggle="modal">Try now</a>
                             <!--end::Link-->
                             <!--begin::Link-->
-                            <a class="btn btn-sm btn-light" href="apps/invoices/view/invoice-1.html">Learn
+                            <a class="btn btn-sm btn-light" href="#">Learn
                                 more</a>
                             <!--end::Link-->
                         </div>
