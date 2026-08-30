@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\User;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -71,6 +72,20 @@ class SampleUserApi
 
         $updated = User::create($user);
 
+        app(AuditLogService::class)->log([
+            'tenant_id' => $request->user()?->tenant_id ?? $updated->tenant_id,
+            'branch_id' => $request->user()?->branch_id ?? $updated->branch_id,
+            'user_id' => $request->user()?->id,
+            'action' => 'user.created',
+            'event' => 'user.created',
+            'module' => 'users',
+            'description' => 'User account created.',
+            'auditable_type' => User::class,
+            'auditable_id' => $updated->id,
+            'new_values' => $updated->only(['name', 'email']),
+            'metadata' => ['source' => 'sample_user_api'],
+        ], $request);
+
         return response()->json(['success' => $updated]);
     }
 
@@ -88,15 +103,63 @@ class SampleUserApi
         ]);
 
         $user = User::findOrFail($id);
+        $oldValues = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->roles?->pluck('name')->values()->all(),
+        ];
+
         $user->update($data);
 
         $user->assignRole($request->role);
+
+        app(AuditLogService::class)->log([
+            'tenant_id' => $request->user()?->tenant_id ?? $user->tenant_id,
+            'branch_id' => $request->user()?->branch_id ?? $user->branch_id,
+            'user_id' => $request->user()?->id,
+            'action' => 'user.updated',
+            'event' => 'user.updated',
+            'module' => 'users',
+            'description' => 'User profile or role updated.',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+            'old_values' => $oldValues,
+            'new_values' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->roles?->pluck('name')->values()->all(),
+            ],
+            'metadata' => ['source' => 'sample_user_api'],
+        ], $request);
 
         return response()->json(['success' => true]);
     }
 
     public function delete($id)
     {
-        return User::destroy($id);
+        $user = User::findOrFail($id);
+        $oldValues = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->roles?->pluck('name')->values()->all(),
+        ];
+
+        $deleted = $user->delete();
+
+        app(AuditLogService::class)->log([
+            'tenant_id' => request()->user()?->tenant_id ?? $user->tenant_id,
+            'branch_id' => request()->user()?->branch_id ?? $user->branch_id,
+            'user_id' => request()->user()?->id,
+            'action' => 'user.deleted',
+            'event' => 'user.deleted',
+            'module' => 'users',
+            'description' => 'User account deleted.',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+            'old_values' => $oldValues,
+            'metadata' => ['source' => 'sample_user_api'],
+        ], request());
+
+        return $deleted;
     }
 }

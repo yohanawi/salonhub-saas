@@ -68,7 +68,7 @@
 				<div class="menu-item p-0 m-0">
 					<!--begin:Menu link-->
 					<a href="{{ route('dashboard') }}" class="menu-link">
-						<span class="menu-title">Referrals</span>
+						<span class="menu-title">API Keys</span>
 					</a>
 					<!--end:Menu link-->
 				</div>

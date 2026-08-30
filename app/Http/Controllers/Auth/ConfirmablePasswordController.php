@@ -39,6 +39,12 @@ class ConfirmablePasswordController extends Controller
 
         $request->session()->put('auth.password_confirmed_at', time());
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect' => redirect()->intended(RouteServiceProvider::HOME)->getTargetUrl(),
+            ]);
+        }
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 }

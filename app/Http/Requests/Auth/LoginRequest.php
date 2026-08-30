@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\AuditLog;
+use App\Models\User;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -48,8 +51,31 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
+            app(AuditLogService::class)->recordAuthentication(
+                AuditLog::ACTION_FAILED_LOGIN,
+                User::query()->where('email', $this->input('email'))->first(),
+                $this,
+                ['email' => $this->input('email')]
+            );
+
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
+            ]);
+        }
+
+        if (Auth::user()->status !== 'active') {
+            $user = Auth::user();
+            Auth::logout();
+
+            app(AuditLogService::class)->recordAuthentication(
+                AuditLog::ACTION_FAILED_LOGIN,
+                $user,
+                $this,
+                ['email' => $this->input('email'), 'reason' => 'account_inactive']
+            );
+
+            throw ValidationException::withMessages([
+                'email' => 'This account has been deactivated. Please contact support.',
             ]);
         }
 

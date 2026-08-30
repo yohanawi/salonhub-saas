@@ -165,7 +165,7 @@
 					<!--begin::Content-->
 					<div class="me-5">
 						<!--begin::Title-->
-						<a href="#" class="text-gray-800 fw-bold text-hover-primary fs-6">Referrals Customers</a>
+						<a href="#" class="text-gray-800 fw-bold text-hover-primary fs-6">Customer Growth</a>
 						<!--end::Title-->
 						<!--begin::Desc-->
 						<span class="text-gray-500 fw-semibold fs-7 d-block text-start ps-0">Direct link clicks</span>

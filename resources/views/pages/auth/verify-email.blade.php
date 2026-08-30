@@ -1,39 +1,56 @@
 <x-auth-layout>
-    <!--begin::Verify Email Form-->
     <div class="w-100">
-
         <div class="text-center mb-11">
-            <!--begin::Title-->
-            <h1 class="text-gray-900 fw-bolder mb-3">Verify Email</h1>
-            <!--end::Title-->
-            <!--begin::Subtitle-->
-            <div class="text-gray-500 fw-semibold fs-6">Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another</div>
-            <!--end::Subtitle=-->
+            <h1 class="text-gray-900 fw-bolder mb-3">
+                Verify your email
+            </h1>
 
-            <!--begin::Session Status-->
+            <div class="text-gray-500 fw-semibold fs-6">
+                We sent a verification link to
+                <span class="text-gray-800 fw-bold">{{ auth()->user()->email }}</span>.
+                Open that email and click the verification link to activate your account.
+            </div>
+
             @if (session('status') === 'verification-link-sent')
-                <p class="font-medium text-sm text-gray-500 mt-4">
-                    {{ __('A new verification link has been sent to the email address you provided during registration.') }}
-                </p>
+                <div class="alert alert-success d-flex align-items-center p-5 mt-8 mb-0">
+                    <div class="d-flex flex-column">
+                        <span class="fw-semibold">
+                            A new verification link has been sent to your email address.
+                        </span>
+                    </div>
+                </div>
             @endif
-        <!--end::Session Status-->
+
+            @if (session('status') === 'verification-link-failed')
+                <div class="alert alert-danger d-flex align-items-center p-5 mt-8 mb-0">
+                    <div class="d-flex flex-column">
+                        <span class="fw-semibold">
+                            We could not send the verification email right now. Please check the SMTP settings and try
+                            again.
+                        </span>
+                    </div>
+                </div>
+            @endif
         </div>
 
-        <!--begin::Actions-->
-        <div class="d-flex flex-wrap justify-content-center pb-lg-0">
-
+        <div class="d-grid gap-4">
             <form method="POST" action="{{ route('verification.send') }}">
                 @csrf
-                <button type="submit" class="btn btn-lg btn-primary fw-bolder me-4">{{ __('Resend Verification Email') }}</button>
+                <button type="submit" class="btn btn-lg btn-primary fw-bolder w-100">
+                    Resend verification email
+                </button>
             </form>
 
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="btn btn-lg btn-light-primary fw-bolder me-4">{{ __('Log out') }}</button>
+                <button type="submit" class="btn btn-lg btn-light-primary fw-bolder w-100">
+                    Log out
+                </button>
             </form>
         </div>
-        <!--end::Actions-->
-    </div>
 
-    <!--end::Verify Email Form-->
+        <div class="text-center text-muted fw-semibold fs-7 mt-8">
+            After verification, you will be redirected to the dashboard.
+        </div>
+    </div>
 </x-auth-layout>

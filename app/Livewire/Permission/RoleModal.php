@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Permission;
 
+use App\Services\Audit\AuditLogService;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Spatie\Permission\Models\Permission;
@@ -78,6 +80,11 @@ class RoleModal extends Component
     {
         $this->validate();
 
+        $oldValues = [
+            'name' => $this->role->exists ? $this->role->name : null,
+            'permissions' => $this->role->exists ? $this->role->permissions->pluck('name')->values()->all() : [],
+        ];
+
         $this->role->name = $this->name;
         if ($this->role->isDirty()) {
             $this->role->save();
@@ -85,6 +92,25 @@ class RoleModal extends Component
 
         // Sync the role's permissions with the checked permissions property.
         $this->role->syncPermissions($this->checked_permissions);
+        $this->role->load('permissions');
+
+        app(AuditLogService::class)->log([
+            'tenant_id' => Auth::user()?->tenant_id,
+            'branch_id' => Auth::user()?->branch_id,
+            'user_id' => Auth::id(),
+            'action' => 'role.permissions_updated',
+            'event' => 'role.permissions_updated',
+            'module' => 'users',
+            'description' => 'Role permissions updated.',
+            'auditable_type' => Role::class,
+            'auditable_id' => $this->role->id,
+            'old_values' => $oldValues,
+            'new_values' => [
+                'name' => $this->role->name,
+                'permissions' => $this->role->permissions->pluck('name')->values()->all(),
+            ],
+            'metadata' => ['source' => 'role_permissions_modal'],
+        ], request());
 
         // Emit a success event with a message indicating that the permissions have been updated.
         $this->dispatch('success', 'Permissions for ' . ucwords($this->role->name) . ' role updated');

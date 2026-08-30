@@ -1,120 +1,31 @@
-<!--begin::Recently viewed-->
-<div class="mb-5" data-kt-search-element="main">
-	<!--begin::Heading-->
-	<div class="d-flex flex-stack fw-semibold mb-4">
-		<!--begin::Label-->
-		<span class="text-muted fs-6 me-2">Recently Searched:</span>
-		<!--end::Label-->
-	</div>
-	<!--end::Heading-->
-	<!--begin::Items-->
-	<div class="scroll-y mh-200px mh-lg-325px">
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('laptop', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">BoomApp by Keenthemes</a>
-				<span class="fs-7 text-muted fw-semibold">#45789</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('chart-simple', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">"Kept API Project Meeting</a>
-				<span class="fs-7 text-muted fw-semibold">#84050</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('chart', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">"KPI Monitoring App Launch</a>
-				<span class="fs-7 text-muted fw-semibold">#84250</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('chart-line-down', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">Project Reference FAQ</a>
-				<span class="fs-7 text-muted fw-semibold">#67945</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('sms', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">"FitPro App Development</a>
-				<span class="fs-7 text-muted fw-semibold">#84250</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('bank', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">Shopix Mobile App</a>
-				<span class="fs-7 text-muted fw-semibold">#45690</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-		<!--begin::Item-->
-		<div class="d-flex align-items-center mb-5">
-			<!--begin::Symbol-->
-			<div class="symbol symbol-40px me-4">
-				<span class="symbol-label bg-light">{!! getIcon('chart-line-down', 'fs-2 text-primary') !!}</span>
-			</div>
-			<!--end::Symbol-->
-			<!--begin::Title-->
-			<div class="d-flex flex-column">
-				<a href="#" class="fs-6 text-gray-800 text-hover-primary fw-semibold">"Landing UI Design" Launch</a>
-				<span class="fs-7 text-muted fw-semibold">#24005</span>
-			</div>
-			<!--end::Title-->
-		</div>
-		<!--end::Item-->
-	</div>
-	<!--end::Items-->
+<div class="mb-2" data-salon-search-main>
+    <div class="d-flex flex-stack fw-semibold mb-4">
+        <span class="text-muted fs-6 me-2">Quick Search</span>
+        <span class="badge badge-light-primary">Live</span>
+    </div>
+
+    <div class="d-grid gap-3">
+        @foreach ([
+            ['label' => 'Today bookings', 'icon' => 'calendar-tick', 'route' => route('appointment-management.appointments.calendar'), 'permission' => 'appointments.view'],
+            ['label' => 'Customers', 'icon' => 'profile-circle', 'route' => route('customer-management.customers.index'), 'permission' => 'customer.view'],
+            ['label' => 'Invoices', 'icon' => 'bill', 'route' => route('billing.invoices.index'), 'permission' => 'billing.view'],
+            ['label' => 'Products', 'icon' => 'parcel', 'route' => route('inventory.products.index'), 'permission' => 'product.view'],
+        ] as $item)
+            @can($item['permission'])
+                <a href="{{ $item['route'] }}"
+                    class="d-flex align-items-center rounded border border-gray-200 border-dashed p-3 text-gray-800 text-hover-primary">
+                    <span class="symbol symbol-35px me-3">
+                        <span class="symbol-label bg-light-primary">
+                            {!! getIcon($item['icon'], 'fs-3 text-primary') !!}
+                        </span>
+                    </span>
+                    <span class="fw-bold">{{ $item['label'] }}</span>
+                </a>
+            @endcan
+        @endforeach
+    </div>
+
+    <div class="text-muted fs-7 mt-5">
+        Type at least 2 letters, then press Enter to open the top result.
+    </div>
 </div>
-<!--end::Recently viewed-->
