@@ -3,6 +3,7 @@
 namespace App\Livewire\User;
 
 use App\Models\User;
+use App\Services\Audit\AuditLogService;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +80,14 @@ class AddUserModal extends Component
 
             // Update or Create a new user record in the database
             $data['email'] = $this->email;
-            $user = User::find($this->user_id) ?? User::create($data);
+            $existingUser = User::find($this->user_id);
+            $oldValues = $existingUser ? [
+                'name' => $existingUser->name,
+                'email' => $existingUser->email,
+                'role' => $existingUser->roles?->pluck('name')->all(),
+            ] : [];
+
+            $user = $existingUser ?? User::create($data);
 
             if ($this->edit_mode) {
                 foreach ($data as $k => $v) {
@@ -92,11 +100,48 @@ class AddUserModal extends Component
                 // Assign selected role for user
                 $user->syncRoles($this->role);
 
+                app(AuditLogService::class)->log([
+                    'tenant_id' => Auth::user()?->tenant_id ?? $user->tenant_id,
+                    'branch_id' => Auth::user()?->branch_id ?? $user->branch_id,
+                    'user_id' => Auth::id(),
+                    'action' => 'user.updated',
+                    'event' => 'user.updated',
+                    'module' => 'users',
+                    'description' => 'User profile or role updated.',
+                    'auditable_type' => User::class,
+                    'auditable_id' => $user->id,
+                    'old_values' => $oldValues,
+                    'new_values' => [
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->roles?->pluck('name')->all(),
+                    ],
+                    'metadata' => ['source' => 'user_management_modal'],
+                ], request());
+
                 // Emit a success event with a message
                 $this->dispatch('success', __('User updated'));
             } else {
                 // Assign selected role for user
                 $user->assignRole($this->role);
+
+                app(AuditLogService::class)->log([
+                    'tenant_id' => Auth::user()?->tenant_id ?? $user->tenant_id,
+                    'branch_id' => Auth::user()?->branch_id ?? $user->branch_id,
+                    'user_id' => Auth::id(),
+                    'action' => 'user.created',
+                    'event' => 'user.created',
+                    'module' => 'users',
+                    'description' => 'User account created.',
+                    'auditable_type' => User::class,
+                    'auditable_id' => $user->id,
+                    'new_values' => [
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'role' => $user->roles?->pluck('name')->all(),
+                    ],
+                    'metadata' => ['source' => 'user_management_modal'],
+                ], request());
 
                 // Send a password reset link to the user's email
                 Password::sendResetLink($user->only('email'));
@@ -118,8 +163,29 @@ class AddUserModal extends Component
             return;
         }
 
+        $user = User::findOrFail($id);
+        $oldValues = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->roles?->pluck('name')->all(),
+        ];
+
         // Delete the user record with the specified ID
-        User::destroy($id);
+        $user->delete();
+
+        app(AuditLogService::class)->log([
+            'tenant_id' => Auth::user()?->tenant_id ?? $user->tenant_id,
+            'branch_id' => Auth::user()?->branch_id ?? $user->branch_id,
+            'user_id' => Auth::id(),
+            'action' => 'user.deleted',
+            'event' => 'user.deleted',
+            'module' => 'users',
+            'description' => 'User account deleted.',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+            'old_values' => $oldValues,
+            'metadata' => ['source' => 'user_management_modal'],
+        ], request());
 
         // Emit a success event with a message
         $this->dispatch('success', 'User successfully deleted');

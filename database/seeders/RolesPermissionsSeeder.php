@@ -20,6 +20,18 @@ class RolesPermissionsSeeder extends Seeder
     ];
 
     public const PERMISSIONS = [
+        'dashboard.view',
+        'dashboard.view_platform',
+        'dashboard.view_financials',
+        'dashboard.view_all_branches',
+        'dashboard.view_own',
+        'audit-log.view',
+        'audit-log.view-own',
+        'audit-log.view-branch',
+        'audit-log.view-all',
+        'audit-log.export',
+        'audit-log.view-sensitive',
+        'audit-log.manage-retention',
         'branches.view',
         'branches.create',
         'branches.update',
@@ -180,6 +192,19 @@ class RolesPermissionsSeeder extends Seeder
         'promotion_reports.view',
         'discount.manual',
         'discount.override',
+        'settings.view',
+        'settings.general.manage',
+        'settings.booking.manage',
+        'settings.pos.manage',
+        'settings.payment.manage',
+        'settings.tax.manage',
+        'settings.invoice.manage',
+        'settings.inventory.manage',
+        'settings.customer.manage',
+        'settings.payroll.manage',
+        'settings.notification.manage',
+        'settings.security.manage',
+        'settings.integration.manage',
     ];
 
     /**
@@ -217,6 +242,11 @@ class RolesPermissionsSeeder extends Seeder
         Role::findByName('Salon Owner')->givePermissionTo(self::PERMISSIONS);
         Role::findByName('Salon Admin')->givePermissionTo(self::PERMISSIONS);
         Role::findByName('Branch Manager')->givePermissionTo([
+            'dashboard.view',
+            'dashboard.view_financials',
+            'dashboard.view_all_branches',
+            'audit-log.view',
+            'audit-log.view-branch',
             'branches.view',
             'branches.update',
             'branches.manage_hours',
@@ -347,8 +377,22 @@ class RolesPermissionsSeeder extends Seeder
             'promotion_reports.view',
             'discount.manual',
             'discount.override',
+            'settings.view',
+            'settings.general.manage',
+            'settings.booking.manage',
+            'settings.pos.manage',
+            'settings.payment.manage',
+            'settings.tax.manage',
+            'settings.invoice.manage',
+            'settings.inventory.manage',
+            'settings.customer.manage',
+            'settings.payroll.manage',
+            'settings.notification.manage',
         ]);
         Role::findByName('Receptionist')->givePermissionTo([
+            'dashboard.view',
+            'dashboard.view_own',
+            'audit-log.view-own',
             'branches.view',
             'reports.view_branch',
             'service_categories.view',
@@ -396,6 +440,10 @@ class RolesPermissionsSeeder extends Seeder
             'discount.manual',
         ]);
         Role::findByName('Cashier')->givePermissionTo([
+            'dashboard.view',
+            'dashboard.view_financials',
+            'dashboard.view_own',
+            'audit-log.view-own',
             'branches.view',
             'reports.view_branch',
             'service_categories.view',
@@ -431,6 +479,9 @@ class RolesPermissionsSeeder extends Seeder
             'discount.manual',
         ]);
         Role::findByName('Beautician')->givePermissionTo([
+            'dashboard.view',
+            'dashboard.view_own',
+            'audit-log.view-own',
             'branches.view',
             'service_categories.view',
             'services.view',

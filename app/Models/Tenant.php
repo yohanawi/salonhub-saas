@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tenant extends Model
 {
+    use Auditable;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -167,5 +170,10 @@ class Tenant extends Model
     public function subscription(): HasOne
     {
         return $this->hasOne(Subscription::class)->latestOfMany();
+    }
+
+    public function systemSettings(): HasMany
+    {
+        return $this->hasMany(Setting::class);
     }
 }

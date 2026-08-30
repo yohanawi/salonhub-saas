@@ -32,14 +32,6 @@
 	<!--begin::Input group-->
 	<div class="py-4 border-bottom">
 		<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
-			<span class="form-check-label text-gray-700 fs-6 fw-bold ms-0 me-2">Referrals</span>
-			<input class="form-check-input" type="checkbox" value="1" checked="checked" />
-		</label>
-	</div>
-	<!--end::Input group-->
-	<!--begin::Input group-->
-	<div class="py-4 border-bottom">
-		<label class="form-check form-switch form-switch-sm form-check-custom form-check-solid flex-stack">
 			<span class="form-check-label text-gray-700 fs-6 fw-bold ms-0 me-2">Users</span>
 			<input class="form-check-input" type="checkbox" value="1" />
 		</label>

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Appointment;
+use App\Models\AuditLog;
 use App\Models\CommissionPayout;
 use App\Models\CommissionRule;
 use App\Models\CommissionSetting;
@@ -12,6 +13,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Models\Setting;
 use App\Models\Staff;
 use App\Models\StaffCommission;
 use App\Models\StaffSalaryStructure;
@@ -37,6 +39,7 @@ use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\Vendor;
 use App\Policies\AppointmentPolicy;
+use App\Policies\AuditLogPolicy;
 use App\Policies\BranchPolicy;
 use App\Policies\CommissionPayoutPolicy;
 use App\Policies\CommissionRulePolicy;
@@ -63,6 +66,7 @@ use App\Policies\ProductCategoryPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ServiceCategoryPolicy;
 use App\Policies\ServicePolicy;
+use App\Policies\SettingPolicy;
 use App\Policies\StaffPolicy;
 use App\Policies\StaffCommissionPolicy;
 use App\Policies\StaffSalaryStructurePolicy;
@@ -82,6 +86,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Appointment::class => AppointmentPolicy::class,
+        AuditLog::class => AuditLogPolicy::class,
         Branch::class => BranchPolicy::class,
         CommissionPayout::class => CommissionPayoutPolicy::class,
         CommissionRule::class => CommissionRulePolicy::class,
@@ -108,6 +113,7 @@ class AuthServiceProvider extends ServiceProvider
         ProductCategory::class => ProductCategoryPolicy::class,
         Service::class => ServicePolicy::class,
         ServiceCategory::class => ServiceCategoryPolicy::class,
+        Setting::class => SettingPolicy::class,
         Staff::class => StaffPolicy::class,
         StaffCommission::class => StaffCommissionPolicy::class,
         StaffSalaryStructure::class => StaffSalaryStructurePolicy::class,

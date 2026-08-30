@@ -4,6 +4,7 @@ use App\Http\Controllers\Apps\PermissionManagementController;
 use App\Http\Controllers\Apps\PlanManagementController;
 use App\Http\Controllers\Apps\RoleManagementController;
 use App\Http\Controllers\Apps\UserManagementController;
+use App\Http\Controllers\AuditLog\AuditLogController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\Appointment\AppointmentAvailabilityController;
 use App\Http\Controllers\Appointment\AppointmentController;
@@ -63,9 +64,11 @@ use App\Http\Controllers\Promotions\PromotionCouponController;
 use App\Http\Controllers\Promotions\PromotionDashboardController;
 use App\Http\Controllers\Promotions\PromotionReportController;
 use App\Http\Controllers\Promotions\PromotionUsageController;
+use App\Http\Controllers\Search\GlobalSearchController;
 use App\Http\Controllers\Service\ServiceCategoryController;
 use App\Http\Controllers\Service\ServiceController;
 use App\Http\Controllers\Service\ServiceStatusController;
+use App\Http\Controllers\Settings\SystemSettingsController;
 use App\Http\Controllers\Staff\StaffController;
 use Illuminate\Support\Facades\Route;
 
@@ -85,6 +88,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/', [DashboardController::class, 'index']);
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/global-search', GlobalSearchController::class)->name('global-search');
+
+    Route::view('/my-profile', 'pages.apps.profile.my-profile')->name('profile.show');
+    Route::prefix('my-profile')->name('profile.')->group(function () {
+        Route::view('/settings', 'pages.apps.profile.settings')->name('settings');
+        Route::view('/security', 'pages.apps.profile.security')->name('security');
+        Route::view('/activity', 'pages.apps.profile.activity')->name('activity');
+        Route::view('/billing', 'pages.apps.profile.billing')->name('billing');
+        Route::view('/statements', 'pages.apps.profile.statements')->name('statements');
+        Route::view('/logs', 'pages.apps.profile.logs')->name('logs');
+    });
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
@@ -278,6 +293,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/promotions/{promotion}/deactivate', [PromotionController::class, 'deactivate'])->name('promotions.deactivate');
         Route::resource('/promotions', PromotionController::class);
         Route::resource('/coupons', PromotionCouponController::class)->except(['show', 'destroy']);
+    });
+
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [SystemSettingsController::class, 'index'])->name('index');
+        Route::get('/{section}', [SystemSettingsController::class, 'edit'])->name('edit');
+        Route::patch('/{section}', [SystemSettingsController::class, 'update'])->name('update');
+    });
+
+    Route::prefix('audit-logs')->name('audit-logs.')->group(function () {
+        Route::get('/', [AuditLogController::class, 'index'])->name('index');
+        Route::get('/export', [AuditLogController::class, 'export'])->name('export');
+        Route::get('/{auditLog}', [AuditLogController::class, 'show'])->name('show');
     });
 
 });

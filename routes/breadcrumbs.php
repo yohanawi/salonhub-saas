@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\AuditLog;
 use App\Models\Appointment;
 use App\Models\Branch;
 use App\Models\CommissionPayout;
@@ -759,4 +760,26 @@ Breadcrumbs::for('promotions.usages.index', function (BreadcrumbTrail $trail) {
 Breadcrumbs::for('promotions.reports.index', function (BreadcrumbTrail $trail) {
     $trail->parent('promotions.index');
     $trail->push('Reports', route('promotions.reports.index'));
+});
+
+// Home > Dashboard > Settings
+Breadcrumbs::for('settings.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Settings Center', route('settings.index'));
+});
+
+Breadcrumbs::for('settings.edit', function (BreadcrumbTrail $trail, string $section) {
+    $trail->parent('settings.index');
+    $trail->push(str($section)->replace('-', ' ')->headline()->toString(), route('settings.edit', $section));
+});
+
+// Home > Dashboard > Audit Logs
+Breadcrumbs::for('audit-logs.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Audit Logs', route('audit-logs.index'));
+});
+
+Breadcrumbs::for('audit-logs.show', function (BreadcrumbTrail $trail, AuditLog $auditLog) {
+    $trail->parent('audit-logs.index');
+    $trail->push('Activity #' . $auditLog->id, route('audit-logs.show', $auditLog));
 });

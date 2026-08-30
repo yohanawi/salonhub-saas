@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\AuditLog;
 use App\Providers\RouteServiceProvider;
+use App\Services\Audit\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -30,7 +32,7 @@ class AuthenticatedSessionController extends Controller
      *
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(LoginRequest $request)
+    public function store(LoginRequest $request, AuditLogService $auditLogService)
     {
         $request->authenticate();
 
@@ -40,6 +42,8 @@ class AuthenticatedSessionController extends Controller
             'last_login_at' => Carbon::now()->toDateTimeString(),
             'last_login_ip' => $request->getClientIp()
         ]);
+
+        $auditLogService->recordAuthentication(AuditLog::ACTION_LOGIN, $request->user(), $request);
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }
@@ -51,8 +55,10 @@ class AuthenticatedSessionController extends Controller
      *
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(Request $request)
+    public function destroy(Request $request, AuditLogService $auditLogService)
     {
+        $auditLogService->recordAuthentication(AuditLog::ACTION_LOGOUT, $request->user(), $request);
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

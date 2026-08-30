@@ -8,57 +8,667 @@
         {{ Breadcrumbs::render('dashboard') }}
     @endsection
 
-    <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
-        <div class="col-md-6 col-lg-6 col-xl-6 col-xxl-3 mb-md-5 mb-xl-10">
-            @include('partials/widgets/cards/_widget-20')
+    @php
+        $isPlatformDashboard = $dashboard['mode'] === 'platform';
+        $isPersonalDashboard = $dashboard['mode'] === 'staff';
+        $filters = $dashboard['filters'];
+        $range = $dashboard['range'];
+        $currency = $filters['selectedTenant']?->currency ?? 'LKR';
+        $toneClasses = [
+            'primary' => ['badge' => 'badge-light-primary', 'icon' => 'text-primary', 'bg' => 'bg-light-primary'],
+            'success' => ['badge' => 'badge-light-success', 'icon' => 'text-success', 'bg' => 'bg-light-success'],
+            'warning' => ['badge' => 'badge-light-warning', 'icon' => 'text-warning', 'bg' => 'bg-light-warning'],
+            'danger' => ['badge' => 'badge-light-danger', 'icon' => 'text-danger', 'bg' => 'bg-light-danger'],
+            'info' => ['badge' => 'badge-light-info', 'icon' => 'text-info', 'bg' => 'bg-light-info'],
+            'dark' => ['badge' => 'badge-light-dark', 'icon' => 'text-gray-800', 'bg' => 'bg-light'],
+        ];
+    @endphp
 
-            @include('partials/widgets/cards/_widget-7')
-        </div>
-        <div class="col-md-6 col-lg-6 col-xl-6 col-xxl-3 mb-md-5 mb-xl-10">
-            @include('partials/widgets/cards/_widget-17')
+    <div class="card mb-5 mb-xl-10">
+        <div class="card-body p-8 p-lg-10">
+            <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-8">
+                <div class="d-flex align-items-start gap-5">
+                    <div class="symbol symbol-60px symbol-lg-75px">
+                        <div class="symbol-label bg-light-primary">
+                            {!! getIcon(
+                                $isPlatformDashboard ? 'abstract-26' : ($isPersonalDashboard ? 'user-tick' : 'chart-line-up'),
+                                'fs-1 text-primary',
+                            ) !!}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
+                            <h1 class="fs-2hx fw-bold text-gray-900 mb-0">{{ $dashboard['title'] }}</h1>
+                            <span class="badge badge-light-primary">{{ $range['label'] }}</span>
+                            @if ($filters['selectedBranch'])
+                                <span class="badge badge-light-info">{{ $filters['selectedBranch']->name }}</span>
+                            @elseif (!$isPlatformDashboard)
+                                <span class="badge badge-light-success">All accessible branches</span>
+                            @endif
+                        </div>
+                        <div class="text-muted fw-semibold fs-6">{{ $dashboard['subtitle'] }}</div>
+                        <div class="text-gray-500 fs-8 mt-3">
+                            Last refreshed {{ $dashboard['generatedAt']->format('M d, Y h:i A') }}
+                        </div>
+                    </div>
+                </div>
 
-            @include('partials/widgets/lists/_widget-26')
-        </div>
-        <div class="col-xxl-6">
-            @include('partials/widgets/engage/_widget-10')
+                <form method="GET" action="{{ route('dashboard') }}"
+                    class="d-flex flex-column flex-md-row gap-3 align-items-md-end">
+                    @if ($filters['canSelectTenant'])
+                        <div>
+                            <label class="form-label fs-8 text-muted mb-1">Salon</label>
+                            <select name="tenant_id" class="form-select form-select-sm min-w-200px"
+                                onchange="this.form.submit()">
+                                <option value="">Platform overview</option>
+                                @foreach ($filters['tenants'] as $tenantOption)
+                                    <option value="{{ $tenantOption->id }}" @selected((string) request('tenant_id') === (string) $tenantOption->id)>
+                                        {{ $tenantOption->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+
+                    @if ($filters['canSelectBranch'] && !$isPlatformDashboard)
+                        <div>
+                            <label class="form-label fs-8 text-muted mb-1">Branch</label>
+                            <select name="branch_id" class="form-select form-select-sm min-w-175px">
+                                <option value="">All branches</option>
+                                @foreach ($filters['branches'] as $branchOption)
+                                    <option value="{{ $branchOption->id }}" @selected((string) request('branch_id') === (string) $branchOption->id)>
+                                        {{ $branchOption->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endif
+
+                    <div>
+                        <label class="form-label fs-8 text-muted mb-1">Period</label>
+                        <select name="period" class="form-select form-select-sm min-w-150px" data-dashboard-period>
+                            @foreach ($filters['periods'] as $periodKey => $periodLabel)
+                                <option value="{{ $periodKey }}" @selected($range['key'] === $periodKey)>{{ $periodLabel }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="{{ $range['key'] === 'custom' ? '' : 'd-none' }}" data-dashboard-custom-range>
+                        <label class="form-label fs-8 text-muted mb-1">From</label>
+                        <input type="date" name="start_date" value="{{ $range['startDate'] }}"
+                            class="form-control form-control-sm">
+                    </div>
+
+                    <div class="{{ $range['key'] === 'custom' ? '' : 'd-none' }}" data-dashboard-custom-range>
+                        <label class="form-label fs-8 text-muted mb-1">To</label>
+                        <input type="date" name="end_date" value="{{ $range['endDate'] }}"
+                            class="form-control form-control-sm">
+                    </div>
+
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        {!! getIcon('arrows-circle', 'fs-4 me-1') !!}
+                        Refresh
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div class="row gx-5 gx-xl-10">
-        <div class="col-xxl-6 mb-5 mb-xl-10">
-            @include('partials/widgets/charts/_widget-8')
-        </div>
-        <div class="col-xl-6 mb-5 mb-xl-10">
-            @include('partials/widgets/tables/_widget-16')
-        </div>
+    <div class="row g-5 g-xl-8 mb-5 mb-xl-10">
+        @foreach ($dashboard['cards'] as $card)
+            @php
+                $tone = $toneClasses[$card['tone']] ?? $toneClasses['primary'];
+                $cardContent =
+                    '
+                    <div class="card-body p-6">
+                        <div class="d-flex align-items-center justify-content-between mb-6">
+                            <div class="symbol symbol-45px">
+                                <div class="symbol-label ' .
+                    $tone['bg'] .
+                    '">' .
+                    getIcon($card['icon'], 'fs-2 ' . $tone['icon']) .
+                    '</div>
+                            </div>
+                            ' .
+                    ($card['growth']
+                        ? '<span class="badge ' .
+                            ($card['growth']['direction'] === 'up' ? 'badge-light-success' : 'badge-light-danger') .
+                            '">' .
+                            ($card['growth']['direction'] === 'up' ? 'Up' : 'Down') .
+                            ' ' .
+                            $card['growth']['value'] .
+                            '%</span>'
+                        : '') .
+                    '
+                        </div>
+                        <div class="text-gray-900 fw-bold fs-2 mb-1">' .
+                    e($card['value']) .
+                    '</div>
+                        <div class="text-muted fw-semibold fs-7">' .
+                    e($card['label']) .
+                    '</div>
+                    </div>';
+            @endphp
+
+            <div class="col-6 col-md-4 col-xl-2">
+                @if ($card['url'])
+                    <a href="{{ $card['url'] }}" class="card h-100 border border-gray-200 hover-elevate-up">
+                        {!! $cardContent !!}
+                    </a>
+                @else
+                    <div class="card h-100 border border-gray-200">
+                        {!! $cardContent !!}
+                    </div>
+                @endif
+            </div>
+        @endforeach
     </div>
 
     <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
-        <div class="col-xxl-6">
-            @include('partials/widgets/cards/_widget-18')
-        </div>
-        <div class="col-xl-6">
-            @include('partials/widgets/charts/_widget-36')
-        </div>
-    </div>
-
-    <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
-        <div class="col-xl-4">
-            @include('partials/widgets/charts/_widget-35')
-        </div>
         <div class="col-xl-8">
-            @include('partials/widgets/tables/_widget-14')
+            <div class="card h-100">
+                <div class="card-header border-0 pt-7">
+                    <div>
+                        <h3 class="card-title fw-bold text-gray-900 mb-1">
+                            {{ $isPlatformDashboard ? 'New Salon Registrations' : 'Revenue Trend' }}
+                        </h3>
+                        <div class="text-muted fs-7">Compared across the selected date range.</div>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div id="kt_dashboard_revenue_chart" class="min-h-auto h-300px"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card h-100">
+                <div class="card-header border-0 pt-7">
+                    <div>
+                        <h3 class="card-title fw-bold text-gray-900 mb-1">
+                            {{ $isPlatformDashboard ? 'Plan Mix' : 'Payment Breakdown' }}
+                        </h3>
+                        <div class="text-muted fs-7">{{ $range['label'] }}</div>
+                    </div>
+                </div>
+                <div class="card-body pt-0">
+                    <div id="kt_dashboard_payment_chart" class="min-h-auto h-260px"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="row gx-5 gx-xl-10">
-        <div class="col-xl-4">
-            @include('partials/widgets/charts/_widget-31')
+    @if (!$isPlatformDashboard)
+        <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+            <div class="col-xl-4">
+                <div class="card h-100">
+                    <div class="card-header border-0 pt-7">
+                        <h3 class="card-title fw-bold text-gray-900">Appointment Status</h3>
+                    </div>
+                    <div class="card-body pt-0">
+                        <div id="kt_dashboard_appointment_chart" class="min-h-auto h-260px"></div>
+                        <div class="d-flex justify-content-between text-center mt-4">
+                            <div>
+                                <div class="fw-bold fs-4 text-success">{{ $dashboard['summary']['completionRate'] }}%
+                                </div>
+                                <div class="text-muted fs-8">Completion</div>
+                            </div>
+                            <div>
+                                <div class="fw-bold fs-4 text-danger">{{ $dashboard['summary']['cancellationRate'] }}%
+                                </div>
+                                <div class="text-muted fs-8">Cancellation</div>
+                            </div>
+                            <div>
+                                <div class="fw-bold fs-4 text-primary">{{ $currency }}
+                                    {{ number_format($dashboard['summary']['averageSpend'], 2) }}</div>
+                                <div class="text-muted fs-8">Avg spend</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4">
+                <div class="card h-100">
+                    <div class="card-header border-0 pt-7">
+                        <h3 class="card-title fw-bold text-gray-900">Top Services</h3>
+                    </div>
+                    <div class="card-body pt-0">
+                        @forelse ($dashboard['panels']['topServices'] as $service)
+                            <div
+                                class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                <div>
+                                    <div class="fw-bold text-gray-900">{{ $service->name }}</div>
+                                    <div class="text-muted fs-8">{{ (int) $service->quantity }} bookings / items</div>
+                                </div>
+                                <div class="fw-bold text-success">{{ $currency }}
+                                    {{ number_format((float) $service->revenue, 2) }}</div>
+                            </div>
+                        @empty
+                            <div class="text-center text-muted py-10">No service sales in this range.</div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4">
+                <div class="card h-100">
+                    <div class="card-header border-0 pt-7">
+                        <h3 class="card-title fw-bold text-gray-900">
+                            {{ $isPersonalDashboard ? 'My Schedule' : 'Attention Required' }}</h3>
+                    </div>
+                    <div class="card-body pt-0">
+                        @if ($isPersonalDashboard)
+                            @forelse ($dashboard['panels']['recentAppointments'] as $appointment)
+                                <div class="d-flex align-items-center gap-3 border-bottom border-gray-200 py-4">
+                                    <span
+                                        class="badge badge-light-primary">{{ $appointment->starts_at?->format('h:i A') }}</span>
+                                    <div>
+                                        <div class="fw-bold text-gray-900">
+                                            {{ $appointment->customer?->full_name ?? 'Walk-in Customer' }}</div>
+                                        <div class="text-muted fs-8">{{ $appointment->status_label }}</div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-10">No upcoming appointments.</div>
+                            @endforelse
+                        @else
+                            @foreach ($dashboard['panels']['attention'] as $item)
+                                <a href="{{ $item['url'] ?? '#' }}"
+                                    class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                    <div class="fw-semibold text-gray-800">{{ $item['label'] }}</div>
+                                    <span
+                                        class="badge {{ $toneClasses[$item['tone']]['badge'] ?? 'badge-light-primary' }}">{{ $item['value'] }}</span>
+                                </a>
+                            @endforeach
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="col-xl-8">
-            @include('partials/widgets/charts/_widget-24')
+
+        @if (!$isPersonalDashboard)
+            <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header border-0 pt-7">
+                            <h3 class="card-title fw-bold text-gray-900">Staff Performance</h3>
+                        </div>
+                        <div class="card-body pt-0">
+                            @forelse ($dashboard['panels']['topStaff'] as $staff)
+                                <div
+                                    class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="symbol symbol-40px">
+                                            <div class="symbol-label bg-light-info text-info fw-bold">
+                                                {{ str($staff->name)->substr(0, 1)->upper() }}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-gray-900">{{ $staff->name }}</div>
+                                            <div class="text-muted fs-8">{{ (int) $staff->customers }} customers</div>
+                                        </div>
+                                    </div>
+                                    <div class="fw-bold text-gray-900">{{ $currency }}
+                                        {{ number_format((float) $staff->revenue, 2) }}</div>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-10">No staff performance data yet.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header border-0 pt-7">
+                            <h3 class="card-title fw-bold text-gray-900">Low Stock Alerts</h3>
+                            <a href="{{ route('inventory.stock.index') }}" class="btn btn-sm btn-light-primary">Open
+                                stock</a>
+                        </div>
+                        <div class="card-body pt-0">
+                            @forelse ($dashboard['panels']['lowStock'] as $stock)
+                                <div
+                                    class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                    <div>
+                                        <div class="fw-bold text-gray-900">{{ $stock->product?->name ?? 'Product' }}
+                                        </div>
+                                        <div class="text-muted fs-8">{{ $stock->branch?->name ?? 'Branch' }}</div>
+                                    </div>
+                                    <span
+                                        class="badge {{ (int) $stock->quantity_on_hand <= 0 ? 'badge-light-danger' : 'badge-light-warning' }}">
+                                        {{ (int) $stock->quantity_on_hand }} left
+                                    </span>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-10">Stock levels look healthy.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header border-0 pt-7">
+                            <h3 class="card-title fw-bold text-gray-900">Recent Appointments</h3>
+                            <a href="{{ route('appointment-management.appointments.index') }}"
+                                class="btn btn-sm btn-light">View all</a>
+                        </div>
+                        <div class="card-body pt-0">
+                            @forelse ($dashboard['panels']['recentAppointments'] as $appointment)
+                                <div
+                                    class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                    <div>
+                                        <div class="fw-bold text-gray-900">
+                                            {{ $appointment->customer?->full_name ?? 'Walk-in Customer' }}</div>
+                                        <div class="text-muted fs-8">{{ $appointment->branch?->name }} /
+                                            {{ $appointment->staff?->full_name ?? 'Unassigned' }}</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span
+                                            class="badge badge-light-primary">{{ $appointment->starts_at?->format('M d, h:i A') }}</span>
+                                        <div class="text-muted fs-8 mt-1">{{ $appointment->status_label }}</div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-10">No upcoming appointments.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-6">
+                    <div class="card h-100">
+                        <div class="card-header border-0 pt-7">
+                            <h3 class="card-title fw-bold text-gray-900">Recent Payments</h3>
+                            <a href="{{ route('billing.payments.index') }}" class="btn btn-sm btn-light">View all</a>
+                        </div>
+                        <div class="card-body pt-0">
+                            @forelse ($dashboard['panels']['recentPayments'] as $payment)
+                                <div
+                                    class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                    <div>
+                                        <div class="fw-bold text-gray-900">
+                                            {{ $payment->invoice?->customer?->full_name ?? ($payment->customer?->full_name ?? 'Customer') }}
+                                        </div>
+                                        <div class="text-muted fs-8">
+                                            {{ $payment->paymentMethod?->name ?? str($payment->method)->headline() }} /
+                                            {{ $payment->payment_number }}</div>
+                                    </div>
+                                    <div class="fw-bold text-success">{{ $currency }}
+                                        {{ number_format((float) $payment->amount, 2) }}</div>
+                                </div>
+                            @empty
+                                <div class="text-center text-muted py-10">No completed payments yet.</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body p-7">
+                            <div class="d-flex align-items-center justify-content-between mb-6">
+                                <h3 class="fw-bold text-gray-900 mb-0">Loyalty & Membership</h3>
+                                <span class="badge badge-light-success">Active
+                                    {{ $dashboard['panels']['memberships']['active'] }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="fs-2 fw-bold text-gray-900">
+                                        {{ $dashboard['panels']['memberships']['new'] }}</div>
+                                    <div class="text-muted fs-8">New memberships</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fs-2 fw-bold text-success">{{ $currency }}
+                                        {{ number_format($dashboard['panels']['memberships']['revenue'], 2) }}</div>
+                                    <div class="text-muted fs-8">Membership revenue</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body p-7">
+                            <div class="d-flex align-items-center justify-content-between mb-6">
+                                <h3 class="fw-bold text-gray-900 mb-0">Promotions</h3>
+                                <span
+                                    class="badge badge-light-primary">{{ $dashboard['panels']['promotions']['uses'] }}
+                                    redemptions</span>
+                            </div>
+                            <div class="fs-2 fw-bold text-danger">{{ $currency }}
+                                {{ number_format($dashboard['panels']['promotions']['discount'], 2) }}</div>
+                            <div class="text-muted fs-8">Discount value given in this range</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @else
+        <div class="row g-5 g-xl-10 mb-5 mb-xl-10">
+            <div class="col-xl-7">
+                <div class="card h-100">
+                    <div class="card-header border-0 pt-7">
+                        <h3 class="card-title fw-bold text-gray-900">Platform Signals</h3>
+                    </div>
+                    <div class="card-body pt-0">
+                        @foreach ($dashboard['panels']['attention'] as $item)
+                            <div
+                                class="d-flex align-items-center justify-content-between border-bottom border-gray-200 py-4">
+                                <div class="fw-semibold text-gray-800">{{ $item['label'] }}</div>
+                                <span
+                                    class="badge {{ $toneClasses[$item['tone']]['badge'] ?? 'badge-light-primary' }}">{{ $item['value'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-5">
+                <div class="card h-100">
+                    <div class="card-body p-8">
+                        <div class="d-flex align-items-center gap-4 mb-6">
+                            <div class="symbol symbol-55px">
+                                <div class="symbol-label bg-light-primary">{!! getIcon('abstract-39', 'fs-2 text-primary') !!}</div>
+                            </div>
+                            <div>
+                                <h3 class="fw-bold text-gray-900 mb-1">Open a Salon Lens</h3>
+                                <div class="text-muted fs-7">Choose a salon from the filter to inspect tenant-level
+                                    revenue, bookings, staff, stock, and customer KPIs.</div>
+                            </div>
+                        </div>
+                        <a href="{{ route('plan-management.subscriptions.index') }}" class="btn btn-primary">Manage
+                            subscriptions</a>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+    @endif
+
+    @push('scripts')
+        <script>
+            KTUtil.onDOMContentLoaded(function() {
+                const periodSelector = document.querySelector('[data-dashboard-period]');
+                const customRangeFields = document.querySelectorAll('[data-dashboard-custom-range]');
+
+                if (periodSelector) {
+                    periodSelector.addEventListener('change', function() {
+                        customRangeFields.forEach((field) => {
+                            field.classList.toggle('d-none', this.value !== 'custom');
+                        });
+                    });
+                }
+
+                if (typeof ApexCharts === 'undefined') {
+                    return;
+                }
+
+                const colors = {
+                    primary: KTUtil.getCssVariableValue('--bs-primary'),
+                    success: KTUtil.getCssVariableValue('--bs-success'),
+                    warning: KTUtil.getCssVariableValue('--bs-warning'),
+                    danger: KTUtil.getCssVariableValue('--bs-danger'),
+                    info: KTUtil.getCssVariableValue('--bs-info'),
+                    gray: KTUtil.getCssVariableValue('--bs-gray-500'),
+                    border: KTUtil.getCssVariableValue('--bs-border-dashed-color')
+                };
+
+                const revenueElement = document.getElementById('kt_dashboard_revenue_chart');
+                const paymentElement = document.getElementById('kt_dashboard_payment_chart');
+                const appointmentElement = document.getElementById('kt_dashboard_appointment_chart');
+                const revenueData = @json($dashboard['charts']['revenue']);
+                const paymentData = @json($dashboard['charts']['payments']);
+                const appointmentData = @json($dashboard['charts']['appointments']);
+
+                if (revenueElement) {
+                    new ApexCharts(revenueElement, {
+                        chart: {
+                            type: 'area',
+                            height: 300,
+                            toolbar: {
+                                show: false
+                            },
+                            fontFamily: 'inherit'
+                        },
+                        series: [{
+                            name: '{{ $isPlatformDashboard ? 'New Salons' : 'Revenue' }}',
+                            data: revenueData.series
+                        }],
+                        xaxis: {
+                            categories: revenueData.labels,
+                            labels: {
+                                style: {
+                                    colors: colors.gray
+                                }
+                            },
+                            axisBorder: {
+                                show: false
+                            },
+                            axisTicks: {
+                                show: false
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                style: {
+                                    colors: colors.gray
+                                }
+                            }
+                        },
+                        stroke: {
+                            curve: 'smooth',
+                            width: 3
+                        },
+                        fill: {
+                            type: 'gradient',
+                            gradient: {
+                                shadeIntensity: 1,
+                                opacityFrom: 0.35,
+                                opacityTo: 0.05,
+                                stops: [0, 90, 100]
+                            }
+                        },
+                        dataLabels: {
+                            enabled: false
+                        },
+                        grid: {
+                            borderColor: colors.border,
+                            strokeDashArray: 4
+                        },
+                        colors: [colors.primary],
+                        tooltip: {
+                            y: {
+                                formatter: function(value) {
+                                    return '{{ $isPlatformDashboard ? '' : $currency . ' ' }}' + Number(
+                                        value).toLocaleString();
+                                }
+                            }
+                        }
+                    }).render();
+                }
+
+                if (paymentElement) {
+                    new ApexCharts(paymentElement, {
+                        chart: {
+                            type: 'donut',
+                            height: 260,
+                            fontFamily: 'inherit'
+                        },
+                        labels: paymentData.labels.length ? paymentData.labels : ['No data'],
+                        series: paymentData.series.length ? paymentData.series : [1],
+                        colors: [colors.success, colors.primary, colors.warning, colors.info, colors.danger],
+                        dataLabels: {
+                            enabled: false
+                        },
+                        legend: {
+                            position: 'bottom'
+                        },
+                        plotOptions: {
+                            pie: {
+                                donut: {
+                                    size: '65%'
+                                }
+                            }
+                        }
+                    }).render();
+                }
+
+                if (appointmentElement) {
+                    new ApexCharts(appointmentElement, {
+                        chart: {
+                            type: 'bar',
+                            height: 260,
+                            toolbar: {
+                                show: false
+                            },
+                            fontFamily: 'inherit'
+                        },
+                        series: [{
+                            name: 'Appointments',
+                            data: appointmentData.series
+                        }],
+                        xaxis: {
+                            categories: appointmentData.labels,
+                            labels: {
+                                rotate: -35,
+                                style: {
+                                    colors: colors.gray
+                                }
+                            }
+                        },
+                        yaxis: {
+                            labels: {
+                                style: {
+                                    colors: colors.gray
+                                }
+                            }
+                        },
+                        plotOptions: {
+                            bar: {
+                                borderRadius: 5,
+                                columnWidth: '45%'
+                            }
+                        },
+                        dataLabels: {
+                            enabled: false
+                        },
+                        grid: {
+                            borderColor: colors.border,
+                            strokeDashArray: 4
+                        },
+                        colors: [colors.primary]
+                    }).render();
+                }
+            });
+        </script>
+    @endpush
 
     @if ($showOnboardingModal)
         <style>
@@ -94,8 +704,8 @@
             }
         </style>
 
-        <div class="modal fade" id="kt_onboarding_modal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static"
-            data-bs-keyboard="false">
+        <div class="modal fade" id="kt_onboarding_modal" tabindex="-1" aria-hidden="true"
+            data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable mw-900px">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -168,8 +778,8 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label required">Business type</label>
-                                        <select name="business_type" class="form-select" required data-control="select2"
-                                            data-hide-search="true">
+                                        <select name="business_type" class="form-select" required
+                                            data-control="select2" data-hide-search="true">
                                             @foreach (\App\Models\Tenant::BUSINESS_TYPES as $businessType)
                                                 <option value="{{ $businessType }}" @selected(old('business_type', auth()->user()->tenant?->business_type ?? 'Beauty Salon') === $businessType)>
                                                     {{ $businessType }}</option>
