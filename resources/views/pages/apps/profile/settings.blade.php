@@ -22,7 +22,8 @@
     <div class="card mb-5 mb-xl-10">
         <!--begin::Card header-->
         <div class="card-header border-0 cursor-pointer" role="button" data-bs-toggle="collapse"
-            data-bs-target="#kt_account_profile_details" aria-expanded="true" aria-controls="kt_account_profile_details">
+            data-bs-target="#kt_account_settings_profile_details" aria-expanded="true"
+            aria-controls="kt_account_settings_profile_details">
             <!--begin::Card title-->
             <div class="card-title m-0">
                 <h3 class="fw-bold m-0">Profile Details</h3>
@@ -608,7 +609,8 @@
     <div class="card mb-5 mb-xl-10">
         <!--begin::Card header-->
         <div class="card-header border-0 cursor-pointer" role="button" data-bs-toggle="collapse"
-            data-bs-target="#kt_account_signin_method">
+            data-bs-target="#kt_account_settings_signin_method" aria-expanded="true"
+            aria-controls="kt_account_settings_signin_method">
             <div class="card-title m-0">
                 <h3 class="fw-bold m-0">Sign-in Method</h3>
             </div>
@@ -756,8 +758,11 @@
                         </div>
                         <!--end::Content-->
                         <!--begin::Action-->
-                        <a href="#" class="btn btn-primary px-6 align-self-center text-nowrap"
-                            data-bs-toggle="modal" data-bs-target="#kt_modal_two_factor_authentication">Enable</a>
+                        <span class="d-inline-block align-self-center" tabindex="0" data-bs-toggle="tooltip"
+                            title="Two-factor authentication isn't available yet — coming soon.">
+                            <a href="#" class="btn btn-primary px-6 text-nowrap disabled" aria-disabled="true"
+                                style="pointer-events: none;">Enable</a>
+                        </span>
                         <!--end::Action-->
                     </div>
                     <!--end::Wrapper-->
@@ -773,7 +778,8 @@
     <div class="card">
         <!--begin::Card header-->
         <div class="card-header border-0 cursor-pointer" role="button" data-bs-toggle="collapse"
-            data-bs-target="#kt_account_deactivate" aria-expanded="true" aria-controls="kt_account_deactivate">
+            data-bs-target="#kt_account_settings_deactivate" aria-expanded="true"
+            aria-controls="kt_account_settings_deactivate">
             <div class="card-title m-0">
                 <h3 class="fw-bold m-0">Deactivate Account</h3>
             </div>

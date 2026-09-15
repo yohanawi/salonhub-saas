@@ -701,7 +701,8 @@
                 </div>
             @endcan
 
-            @if (auth()->user()?->can('viewAny', \App\Models\Setting::class) || auth()->user()?->can('viewAny', \App\Models\AuditLog::class))
+            @if (auth()->user()?->can('viewAny', \App\Models\Setting::class) ||
+                    auth()->user()?->can('viewAny', \App\Models\AuditLog::class))
                 <div class="menu-item pt-5">
                     <div class="menu-content">
                         <span class="menu-heading fw-bold text-uppercase fs-7">CONTROL CENTER</span>
@@ -720,31 +721,12 @@
             @endcan
 
             @can('viewAny', \App\Models\Setting::class)
-                <div data-kt-menu-trigger="click"
-                    class="menu-item menu-accordion {{ request()->routeIs('settings.*') ? 'here show' : '' }}">
-                    <span class="menu-link">
+                <div class="menu-item">
+                    <a class="menu-link {{ request()->routeIs('settings.*') ? 'active' : '' }}"
+                        href="{{ route('settings.index') }}">
                         <span class="menu-icon">{!! getIcon('setting-2', 'fs-2') !!}</span>
                         <span class="menu-title">Settings Center</span>
-                        <span class="menu-arrow"></span>
-                    </span>
-                    <div class="menu-sub menu-sub-accordion">
-                        <div class="menu-item">
-                            <a class="menu-link {{ request()->routeIs('settings.index') ? 'active' : '' }}"
-                                href="{{ route('settings.index') }}">
-                                <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
-                                <span class="menu-title">Overview</span>
-                            </a>
-                        </div>
-                        @foreach (['general' => 'General', 'appointments' => 'Appointments', 'sales' => 'Sales', 'team' => 'Team', 'inventory' => 'Inventory', 'customers' => 'Customers', 'communications' => 'Communications', 'security' => 'Security', 'integrations' => 'Integrations'] as $settingsSection => $settingsLabel)
-                            <div class="menu-item">
-                                <a class="menu-link {{ request()->routeIs('settings.edit') && request()->route('section') === $settingsSection ? 'active' : '' }}"
-                                    href="{{ route('settings.edit', $settingsSection) }}">
-                                    <span class="menu-bullet"><span class="bullet bullet-dot"></span></span>
-                                    <span class="menu-title">{{ $settingsLabel }}</span>
-                                </a>
-                            </div>
-                        @endforeach
-                    </div>
+                    </a>
                 </div>
             @endcan
 

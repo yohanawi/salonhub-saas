@@ -173,8 +173,11 @@
                                 </div>
                                 <!--end::Content-->
                                 <!--begin::Action-->
-                                <a href="#" class="btn btn-primary px-6 align-self-center text-nowrap"
-                                    data-bs-toggle="modal" data-bs-target="#kt_modal_new_card">Add Card</a>
+                                <span class="d-inline-block align-self-center" tabindex="0" data-bs-toggle="tooltip"
+                                    title="Card payments aren't available yet — coming soon.">
+                                    <a href="#" class="btn btn-primary px-6 text-nowrap disabled" aria-disabled="true"
+                                        style="pointer-events: none;">Add Card</a>
+                                </span>
                                 <!--end::Action-->
                             </div>
                             <!--end::Wrapper-->
@@ -284,14 +287,17 @@
                         <div class="d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap">
                             <!--begin::Content-->
                             <div class="mb-3 mb-md-0 fw-semibold">
-                                <h4 class="text-gray-900 fw-bold">This is a very important note!</h4>
-                                <div class="fs-6 text-gray-700 pe-7">Writing headlines for blog posts is much science
-                                    and probably cool audience</div>
+                                <h4 class="text-gray-900 fw-bold">Billing address</h4>
+                                <div class="fs-6 text-gray-700 pe-7">Add a billing address so it can appear on your
+                                    invoices and statements.</div>
                             </div>
                             <!--end::Content-->
                             <!--begin::Action-->
-                            <a href="#" class="btn btn-primary px-6 align-self-center text-nowrap"
-                                data-bs-toggle="modal" data-bs-target="#kt_modal_new_address">New Address</a>
+                            <span class="d-inline-block align-self-center" tabindex="0" data-bs-toggle="tooltip"
+                                title="Address management isn't available yet — coming soon.">
+                                <a href="#" class="btn btn-primary px-6 text-nowrap disabled" aria-disabled="true"
+                                    style="pointer-events: none;">New Address</a>
+                            </span>
                             <!--end::Action-->
                         </div>
                         <!--end::Wrapper-->

@@ -121,42 +121,6 @@
                     <!--end::Col-->
                 </div>
                 <!--end::Input group-->
-                <!--begin::Input group-->
-                <div class="row mb-10">
-                    <!--begin::Label-->
-                    <label class="col-lg-4 fw-semibold text-muted">Allow Changes</label>
-                    <!--begin::Label-->
-                    <!--begin::Label-->
-                    <div class="col-lg-8">
-                        <span class="fw-semibold fs-6 text-gray-800">Yes</span>
-                    </div>
-                    <!--begin::Label-->
-                </div>
-                <!--end::Input group-->
-                <!--begin::Notice-->
-                <div class="notice d-flex bg-light-warning rounded border-warning border border-dashed p-6">
-                    <!--begin::Icon-->
-                    <i class="ki-duotone ki-information fs-2tx text-warning me-4">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                        <span class="path3"></span>
-                    </i>
-                    <!--end::Icon-->
-                    <!--begin::Wrapper-->
-                    <div class="d-flex flex-stack flex-grow-1">
-                        <!--begin::Content-->
-                        <div class="fw-semibold">
-                            <h4 class="text-gray-900 fw-bold">We need your attention!</h4>
-                            <div class="fs-6 text-gray-700">Your payment was declined. To start using
-                                tools, please
-                                <a class="fw-bold" href="{{ route('profile.billing') }}">Add Payment Method</a>.
-                            </div>
-                        </div>
-                        <!--end::Content-->
-                    </div>
-                    <!--end::Wrapper-->
-                </div>
-                <!--end::Notice-->
             </div>
             <!--end::Card body-->
         </div>
@@ -211,44 +175,58 @@
             <!--end::Col-->
             <!--begin::Col-->
             <div class="col-xl-4 mb-5 mb-xl-10">
-                <!--begin::Engage widget 1-->
-                <div class="card h-md-100" dir="ltr">
+                <!--begin::Quick links widget-->
+                <div class="card h-md-100">
+                    <!--begin::Header-->
+                    <div class="card-header border-0 pt-5">
+                        <h3 class="card-title align-items-start flex-column">
+                            <span class="card-label fw-bold text-gray-900">Quick Links</span>
+                            <span class="text-gray-500 pt-2 fw-semibold fs-6">Manage your account</span>
+                        </h3>
+                    </div>
+                    <!--end::Header-->
                     <!--begin::Body-->
-                    <div class="card-body d-flex flex-column flex-center">
-                        <!--begin::Heading-->
-                        <div class="mb-2">
-                            <!--begin::Title-->
-                            <h1 class="fw-semibold text-gray-800 text-center lh-lg">Have you tried
-                                <br />new
-                                <span class="fw-bolder">Mobile Application ?</span>
-                            </h1>
-                            <!--end::Title-->
-                            <!--begin::Illustration-->
-                            <div class="py-10 text-center">
-                                <img src="{{ asset('assets/media/svg/illustrations/easy/1.svg') }}"
-                                    class="theme-light-show w-200px" alt="" />
-                                <img src="{{ asset('assets/media/svg/illustrations/easy/1-dark.svg') }}"
-                                    class="theme-dark-show w-200px" alt="" />
+                    <div class="card-body pt-0">
+                        <a href="{{ route('profile.settings') }}"
+                            class="d-flex align-items-center rounded p-3 mb-2 bg-hover-light">
+                            <div class="symbol symbol-35px me-3">
+                                <div class="symbol-label bg-light-primary">
+                                    {!! getIcon('setting-2', 'fs-4 text-primary') !!}
+                                </div>
                             </div>
-                            <!--end::Illustration-->
-                        </div>
-                        <!--end::Heading-->
-                        <!--begin::Links-->
-                        <div class="text-center mb-1">
-                            <!--begin::Link-->
-                            <a class="btn btn-sm btn-primary me-2" data-bs-target="#kt_modal_create_app"
-                                data-bs-toggle="modal">Try now</a>
-                            <!--end::Link-->
-                            <!--begin::Link-->
-                            <a class="btn btn-sm btn-light" href="#">Learn
-                                more</a>
-                            <!--end::Link-->
-                        </div>
-                        <!--end::Links-->
+                            <span class="fw-semibold text-gray-700">Edit Profile Settings</span>
+                        </a>
+                        <a href="{{ route('profile.security') }}"
+                            class="d-flex align-items-center rounded p-3 mb-2 bg-hover-light">
+                            <div class="symbol symbol-35px me-3">
+                                <div class="symbol-label bg-light-info">
+                                    {!! getIcon('shield-tick', 'fs-4 text-info') !!}
+                                </div>
+                            </div>
+                            <span class="fw-semibold text-gray-700">Review Security Activity</span>
+                        </a>
+                        <a href="{{ route('profile.billing') }}"
+                            class="d-flex align-items-center rounded p-3 mb-2 bg-hover-light">
+                            <div class="symbol symbol-35px me-3">
+                                <div class="symbol-label bg-light-success">
+                                    {!! getIcon('dollar', 'fs-4 text-success') !!}
+                                </div>
+                            </div>
+                            <span class="fw-semibold text-gray-700">View Billing &amp; Plan</span>
+                        </a>
+                        <a href="{{ route('profile.statements') }}"
+                            class="d-flex align-items-center rounded p-3 bg-hover-light">
+                            <div class="symbol symbol-35px me-3">
+                                <div class="symbol-label bg-light-warning">
+                                    {!! getIcon('document', 'fs-4 text-warning') !!}
+                                </div>
+                            </div>
+                            <span class="fw-semibold text-gray-700">View Statements</span>
+                        </a>
                     </div>
                     <!--end::Body-->
                 </div>
-                <!--end::Engage widget 1-->
+                <!--end::Quick links widget-->
             </div>
             <!--end::Col-->
         </div>

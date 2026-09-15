@@ -27,13 +27,13 @@
                         <div class="position-relative">
                             <i class="bi bi-search position-absolute top-50 translate-middle-y ms-4 text-muted"></i>
                             <input type="text" name="search" id="plan-search-input" value="{{ request('search') }}"
-                                class="form-control ps-10 w-250px" placeholder="Search plans..." autocomplete="off">
+                                class="form-control ps-10 w-250px py-2" placeholder="Search plans..." autocomplete="off">
                             <span id="plan-search-spinner"
                                 class="spinner-border spinner-border-sm text-primary position-absolute top-50 translate-middle-y end-0 me-4 d-none"
                                 role="status" aria-hidden="true"></span>
                         </div>
                         {{-- Status --}}
-                        <select name="status" class="form-select" data-control="select2" data-hide-search="true">
+                        <select name="status" class="form-select py-2" data-control="select2" data-hide-search="true">
                             <option value="">
                                 All Status
                             </option>
@@ -45,13 +45,13 @@
                             </option>
                         </select>
 
-                        <button type="submit" class="btn btn-light-primary d-flex align-items-center">
+                        <button type="submit" class="btn btn-light-primary d-flex align-items-center btn-sm">
                             <i class="bi bi-funnel me-1"></i>
                             Filter
                         </button>
 
                         @if (request()->filled('search') || request()->filled('status'))
-                            <a href="{{ route('plan-management.plans.index') }}" class="btn btn-light">
+                            <a href="{{ route('plan-management.plans.index') }}" class="btn btn-light btn-sm d-flex align-items-center">
                                 <i class="bi bi-x-lg me-1"></i>
                                 Clear
                             </a>
@@ -59,8 +59,8 @@
                     </form>
                 </div>
 
-                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-end gap-5 mb-8">
-                    <a href="{{ route('plan-management.plans.create') }}" class="btn btn-primary">
+                <div class="d-flex flex-column flex-md-row align-items-center justify-content-end gap-5">
+                    <a href="{{ route('plan-management.plans.create') }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-plus-circle me-2"></i>
                         Add New Plan
                     </a>
@@ -300,12 +300,12 @@
 
                                         @if (request()->filled('search') || request()->filled('status'))
                                             <a href="{{ route('plan-management.plans.index') }}"
-                                                class="btn btn-light-primary">
+                                                class="btn btn-light-primary btn-sm">
                                                 Clear Filters
                                             </a>
                                         @else
                                             <a href="{{ route('plan-management.plans.create') }}"
-                                                class="btn btn-primary">
+                                                class="btn btn-primary btn-sm">
                                                 <i class="bi bi-plus-circle me-2"></i>
                                                 Create First Plan
                                             </a>
@@ -330,7 +330,7 @@
                                             Try a different name or clear the search.
                                         </div>
 
-                                        <button type="button" id="plan-search-clear" class="btn btn-light-primary">
+                                        <button type="button" id="plan-search-clear" class="btn btn-light-primary btn-sm">
                                             <i class="bi bi-x-lg me-1"></i>
                                             Clear Search
                                         </button>

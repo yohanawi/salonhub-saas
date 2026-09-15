@@ -24,11 +24,11 @@
         ];
     @endphp
 
-    <div class="card mb-5 mb-xl-10">
-        <div class="card-body p-8 p-lg-10">
+    <div class="card mb-5">
+        <div class="card-body p-4 p-lg-6">
             <div class="d-flex flex-column flex-xl-row align-items-xl-center justify-content-between gap-8">
-                <div class="d-flex align-items-start gap-5">
-                    <div class="symbol symbol-60px symbol-lg-75px">
+                <div class="d-flex align-items-center gap-5">
+                    <div class="symbol symbol-50px">
                         <div class="symbol-label bg-light-primary">
                             {!! getIcon(
                                 $isPlatformDashboard ? 'abstract-26' : ($isPersonalDashboard ? 'user-tick' : 'chart-line-up'),
@@ -38,7 +38,7 @@
                     </div>
                     <div>
                         <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
-                            <h1 class="fs-2hx fw-bold text-gray-900 mb-0">{{ $dashboard['title'] }}</h1>
+                            <h3 class="fs-4 fw-bold text-gray-900 mb-0">{{ $dashboard['title'] }}</h3>
                             <span class="badge badge-light-primary">{{ $range['label'] }}</span>
                             @if ($filters['selectedBranch'])
                                 <span class="badge badge-light-info">{{ $filters['selectedBranch']->name }}</span>
@@ -59,7 +59,7 @@
                         <div>
                             <label class="form-label fs-8 text-muted mb-1">Salon</label>
                             <select name="tenant_id" class="form-select form-select-sm min-w-200px"
-                                onchange="this.form.submit()">
+                                data-control="select2" data-hide-search="true" onchange="this.form.submit()">
                                 <option value="">Platform overview</option>
                                 @foreach ($filters['tenants'] as $tenantOption)
                                     <option value="{{ $tenantOption->id }}" @selected((string) request('tenant_id') === (string) $tenantOption->id)>
@@ -73,7 +73,8 @@
                     @if ($filters['canSelectBranch'] && !$isPlatformDashboard)
                         <div>
                             <label class="form-label fs-8 text-muted mb-1">Branch</label>
-                            <select name="branch_id" class="form-select form-select-sm min-w-175px">
+                            <select name="branch_id" class="form-select form-select-sm min-w-175px"
+                                data-control="select2" data-hide-search="true">
                                 <option value="">All branches</option>
                                 @foreach ($filters['branches'] as $branchOption)
                                     <option value="{{ $branchOption->id }}" @selected((string) request('branch_id') === (string) $branchOption->id)>
@@ -86,7 +87,8 @@
 
                     <div>
                         <label class="form-label fs-8 text-muted mb-1">Period</label>
-                        <select name="period" class="form-select form-select-sm min-w-150px" data-dashboard-period>
+                        <select name="period" class="form-select form-select-sm min-w-150px" data-dashboard-period
+                            data-control="select2" data-hide-search="true">
                             @foreach ($filters['periods'] as $periodKey => $periodLabel)
                                 <option value="{{ $periodKey }}" @selected($range['key'] === $periodKey)>{{ $periodLabel }}
                                 </option>
@@ -324,7 +326,8 @@
                     <div class="card h-100">
                         <div class="card-header border-0 pt-7">
                             <h3 class="card-title fw-bold text-gray-900">Low Stock Alerts</h3>
-                            <a href="{{ route('inventory.stock.index') }}" class="btn btn-sm btn-light-primary">Open
+                            <a href="{{ route('inventory.stock.index') }}"
+                                class="btn btn-sm btn-light-primary h-35px">Open
                                 stock</a>
                         </div>
                         <div class="card-body pt-0">
@@ -355,7 +358,7 @@
                         <div class="card-header border-0 pt-7">
                             <h3 class="card-title fw-bold text-gray-900">Recent Appointments</h3>
                             <a href="{{ route('appointment-management.appointments.index') }}"
-                                class="btn btn-sm btn-light">View all</a>
+                                class="btn btn-sm btn-light h-35px">View all</a>
                         </div>
                         <div class="card-body pt-0">
                             @forelse ($dashboard['panels']['recentAppointments'] as $appointment)
@@ -384,7 +387,8 @@
                     <div class="card h-100">
                         <div class="card-header border-0 pt-7">
                             <h3 class="card-title fw-bold text-gray-900">Recent Payments</h3>
-                            <a href="{{ route('billing.payments.index') }}" class="btn btn-sm btn-light">View all</a>
+                            <a href="{{ route('billing.payments.index') }}" class="btn btn-sm btn-light h-35px">View
+                                all</a>
                         </div>
                         <div class="card-body pt-0">
                             @forelse ($dashboard['panels']['recentPayments'] as $payment)
