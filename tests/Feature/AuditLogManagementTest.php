@@ -56,8 +56,8 @@ class AuditLogManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Activity Details')
             ->assertSee('Hair Cut service price changed.')
-            ->assertSee('Old value')
-            ->assertSee('New value');
+            ->assertSee('Previous')
+            ->assertSee('Current');
     }
 
     public function test_tenant_users_cannot_view_other_tenant_audit_logs(): void
