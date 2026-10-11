@@ -25,14 +25,18 @@
             <span class="w-125px text-gray-500 fw-semibold fs-7">Or with email</span>
         </div>
 
+        @if ($errors->any())
+            <div class="alert alert-danger mb-8">{{ $errors->first() }}</div>
+        @endif
+
         <div class="fv-row mb-8">
             <input type="text" placeholder="Email" name="email" autocomplete="off"
-                class="form-control bg-transparent" value="superadmin@saloonhub.test" />
+                class="form-control bg-transparent" value="{{ old('email') }}" />
         </div>
 
         <div class="fv-row mb-3">
             <input type="password" placeholder="Password" name="password" autocomplete="off"
-                class="form-control bg-transparent" value="password" />
+                class="form-control bg-transparent" />
         </div>
 
         <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">

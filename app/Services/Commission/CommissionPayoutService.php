@@ -22,8 +22,7 @@ class CommissionPayoutService
             $commissions = StaffCommission::withoutTenantScope()
                 ->where('tenant_id', $tenant->id)
                 ->where('staff_id', $staff->id)
-                ->where('status', StaffCommission::STATUS_APPROVED)
-                ->whereNull('paid_at')
+                ->availableForSettlement()
                 ->whereBetween('earned_at', [$data['period_start'], $data['period_end'] . ' 23:59:59'])
                 ->when(! empty($data['branch_id']), fn ($query) => $query->where('branch_id', $data['branch_id']))
                 ->lockForUpdate()
@@ -69,26 +68,65 @@ class CommissionPayoutService
 
     public function approve(CommissionPayout $payout, User $user): CommissionPayout
     {
-        if ($payout->status !== CommissionPayout::STATUS_PENDING) {
-            throw ValidationException::withMessages(['payout' => 'Only pending payouts can be approved.']);
-        }
+        return DB::transaction(function () use ($payout, $user) {
+            $payout = $this->lock($payout);
 
-        $payout->update([
-            'status' => CommissionPayout::STATUS_APPROVED,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
-        ]);
+            if ($payout->status !== CommissionPayout::STATUS_PENDING) {
+                throw ValidationException::withMessages(['payout' => 'Only pending payouts can be approved.']);
+            }
 
-        return $payout->fresh(['approvedBy']);
+            $payout->update([
+                'status' => CommissionPayout::STATUS_APPROVED,
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+            ]);
+
+            return $payout->fresh(['approvedBy']);
+        });
+    }
+
+    public function cancel(CommissionPayout $payout, User $user, ?string $reason = null): CommissionPayout
+    {
+        return DB::transaction(function () use ($payout, $user, $reason) {
+            $payout = $this->lock($payout);
+
+            if (! in_array($payout->status, [CommissionPayout::STATUS_PENDING, CommissionPayout::STATUS_APPROVED], true)) {
+                throw ValidationException::withMessages(['payout' => 'Only pending or approved payouts can be cancelled.']);
+            }
+
+            // Cancelling releases the payout's commissions so they can be paid through another payout or payroll.
+            $payout->update([
+                'status' => CommissionPayout::STATUS_CANCELLED,
+                'notes' => trim(($payout->notes ? $payout->notes . "\n" : '') . 'Cancelled by ' . $user->name . ($reason ? ": {$reason}" : '.')),
+            ]);
+
+            return $payout->fresh();
+        });
     }
 
     public function pay(CommissionPayout $payout, array $data, User $user): CommissionPayout
     {
-        if ($payout->status !== CommissionPayout::STATUS_APPROVED) {
-            throw ValidationException::withMessages(['payout' => 'Only approved payouts can be marked as paid.']);
-        }
-
         return DB::transaction(function () use ($payout, $data, $user) {
+            $payout = $this->lock($payout);
+
+            if ($payout->status !== CommissionPayout::STATUS_APPROVED) {
+                throw ValidationException::withMessages(['payout' => 'Only approved payouts can be marked as paid.']);
+            }
+
+            $commissionIds = $payout->items()->pluck('staff_commission_id');
+
+            $stale = StaffCommission::withoutTenantScope()
+                ->whereIn('id', $commissionIds)
+                ->where(fn ($query) => $query->where('status', '!=', StaffCommission::STATUS_APPROVED)->orWhereNotNull('paid_at'))
+                ->exists();
+
+            // A commission reversed (invoice voided) or paid elsewhere after this payout was created would make its total wrong.
+            if ($stale) {
+                throw ValidationException::withMessages([
+                    'payout' => 'Some commissions in this payout were reversed or paid elsewhere. Cancel this payout and create a new one.',
+                ]);
+            }
+
             $payout->update([
                 'payment_method' => $data['payment_method'] ?? $payout->payment_method,
                 'payment_reference' => $data['payment_reference'] ?? $payout->payment_reference,
@@ -98,7 +136,7 @@ class CommissionPayoutService
             ]);
 
             StaffCommission::withoutTenantScope()
-                ->whereIn('id', $payout->items()->pluck('staff_commission_id'))
+                ->whereIn('id', $commissionIds)
                 ->update([
                     'status' => StaffCommission::STATUS_PAID,
                     'paid_by' => $user->id,
@@ -107,6 +145,11 @@ class CommissionPayoutService
 
             return $payout->fresh(['items.commission', 'paidBy']);
         });
+    }
+
+    private function lock(CommissionPayout $payout): CommissionPayout
+    {
+        return CommissionPayout::withoutTenantScope()->whereKey($payout->getKey())->lockForUpdate()->firstOrFail();
     }
 
     private function payoutNumber(CommissionPayout $payout): string

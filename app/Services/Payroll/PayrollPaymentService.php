@@ -3,6 +3,7 @@
 namespace App\Services\Payroll;
 
 use App\Models\PayrollItem;
+use App\Models\PayrollItemLine;
 use App\Models\PayrollPayment;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
@@ -16,11 +17,30 @@ class PayrollPaymentService
 {
     public function payRun(PayrollRun $run, array $data, User $user): PayrollRun
     {
-        if ($run->status !== PayrollRun::STATUS_APPROVED) {
-            throw ValidationException::withMessages(['run' => 'Only approved payroll can be paid.']);
-        }
-
         return DB::transaction(function () use ($run, $data, $user) {
+            // Lock the run so a double submit cannot record every salary payment twice.
+            $run = PayrollRun::withoutTenantScope()->whereKey($run->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($run->status !== PayrollRun::STATUS_APPROVED) {
+                throw ValidationException::withMessages(['run' => 'Only approved payroll can be paid.']);
+            }
+
+            $commissionIds = PayrollItemLine::withoutTenantScope()
+                ->whereIn('payroll_item_id', $run->items()->pluck('id'))
+                ->where('source_type', StaffCommission::class)
+                ->pluck('source_id');
+
+            $staleCommissions = StaffCommission::withoutTenantScope()
+                ->whereIn('id', $commissionIds)
+                ->where(fn ($query) => $query->where('status', '!=', StaffCommission::STATUS_APPROVED)->orWhereNotNull('paid_at'))
+                ->exists();
+
+            if ($staleCommissions) {
+                throw ValidationException::withMessages([
+                    'run' => 'Some commissions in this payroll were reversed or paid elsewhere after it was generated. Regenerate the payroll before paying it.',
+                ]);
+            }
+
             $run->items()->where('payment_status', '!=', PayrollRun::PAYMENT_PAID)->get()->each(function (PayrollItem $item) use ($run, $data, $user) {
                 if ((float) $item->balance_amount <= 0) {
                     return;

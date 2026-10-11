@@ -172,6 +172,116 @@ class LoyaltyMembershipManagementTest extends TestCase
         $this->actingAs($owner)->get(route('loyalty-management.reports.index'))->assertOk()->assertSee('Loyalty Reports');
     }
 
+    public function test_membership_benefit_usage_limit_is_enforced_and_released_on_void(): void
+    {
+        [$tenant, $owner, $appointment, $service] = $this->completedAppointmentSetup();
+        $membership = $this->activeMembership($tenant, $owner, $appointment->customer, $service);
+        $membership->plan->benefits()
+            ->where('benefit_type', MembershipBenefit::TYPE_SERVICE_DISCOUNT)
+            ->update(['usage_limit' => 1, 'usage_limit_period' => MembershipBenefit::PERIOD_MEMBERSHIP]);
+
+        $first = $this->checkout($tenant, $owner, $appointment, ['amount' => 2520]);
+        $this->assertEquals('280.00', $first->membership_discount_amount);
+
+        $second = $this->checkout($tenant, $owner, $this->anotherCompletedAppointment($appointment), ['amount' => 2800]);
+        $this->assertEquals('0.00', $second->membership_discount_amount);
+        $this->assertEquals('2800.00', $second->total);
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.void', $first), ['void_reason' => 'Entered by mistake'])
+            ->assertRedirect();
+
+        $this->assertSame(0, MembershipBenefitUsage::withoutTenantScope()->where('invoice_id', $first->id)->count());
+
+        $third = $this->checkout($tenant, $owner, $this->anotherCompletedAppointment($appointment), ['amount' => 2520]);
+        $this->assertEquals('280.00', $third->membership_discount_amount);
+    }
+
+    public function test_editing_membership_plan_keeps_benefit_usage_history(): void
+    {
+        [$tenant, $owner, $appointment, $service] = $this->completedAppointmentSetup();
+        $membership = $this->activeMembership($tenant, $owner, $appointment->customer, $service);
+        $this->checkout($tenant, $owner, $appointment, ['amount' => 2520]);
+
+        $plan = $membership->plan;
+        $discountBenefit = $plan->benefits()->where('benefit_type', MembershipBenefit::TYPE_SERVICE_DISCOUNT)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->put(route('loyalty-management.membership-plans.update', $plan), [
+                'name' => $plan->name,
+                'code' => $plan->code,
+                'price' => $plan->price,
+                'duration_type' => $plan->duration_type,
+                'duration_value' => $plan->duration_value,
+                'billing_type' => $plan->billing_type,
+                'status' => $plan->status,
+                'benefits' => [[
+                    'id' => $discountBenefit->id,
+                    'benefit_type' => MembershipBenefit::TYPE_SERVICE_DISCOUNT,
+                    'discount_type' => MembershipBenefit::DISCOUNT_PERCENTAGE,
+                    'discount_value' => 15,
+                    'service_id' => $service->id,
+                    'usage_limit' => 5,
+                    'usage_limit_period' => MembershipBenefit::PERIOD_MONTHLY,
+                    'priority' => 10,
+                    'status' => MembershipBenefit::STATUS_ACTIVE,
+                ]],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $discountBenefit->refresh();
+        $this->assertEquals('15.00', $discountBenefit->discount_value);
+        $this->assertSame(5, $discountBenefit->usage_limit);
+        $this->assertSame(1, MembershipBenefitUsage::withoutTenantScope()->where('membership_benefit_id', $discountBenefit->id)->count());
+
+        // The unused points-multiplier benefit was removed from the form, so it is deleted.
+        $this->assertSame(1, $plan->benefits()->count());
+    }
+
+    public function test_membership_plan_form_with_blank_benefit_rows_can_be_saved(): void
+    {
+        [$tenant, $owner, , $service] = $this->completedAppointmentSetup();
+
+        // The form always posts three rows; unused rows stay on "No benefit".
+        $this->actingAs($owner)
+            ->post(route('loyalty-management.membership-plans.store'), [
+                'name' => 'Silver Membership',
+                'code' => 'silver',
+                'price' => 10000,
+                'duration_type' => 'months',
+                'duration_value' => 6,
+                'billing_type' => 'one_time',
+                'status' => MembershipPlan::STATUS_ACTIVE,
+                'benefits' => [
+                    ['benefit_type' => MembershipBenefit::TYPE_FREE_SERVICE, 'service_id' => $service->id, 'usage_limit' => 2, 'usage_limit_period' => MembershipBenefit::PERIOD_MONTHLY, 'priority' => 10, 'status' => 'active'],
+                    ['benefit_type' => '', 'discount_type' => 'percentage', 'discount_value' => 0, 'priority' => 100, 'status' => 'active'],
+                    ['benefit_type' => '', 'discount_type' => 'percentage', 'discount_value' => 0, 'priority' => 100, 'status' => 'active'],
+                ],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $plan = MembershipPlan::withoutTenantScope()->where('tenant_id', $tenant->id)->where('code', 'silver')->firstOrFail();
+        $this->assertSame(1, $plan->benefits()->count());
+        $this->assertSame(2, $plan->benefits()->first()->usage_limit);
+    }
+
+    private function anotherCompletedAppointment(Appointment $template): Appointment
+    {
+        $appointment = $template->replicate(['appointment_number']);
+        $appointment->appointment_number = 'APT-' . fake()->unique()->numberBetween(100000, 999999);
+        $appointment->save();
+
+        foreach ($template->appointmentServices as $line) {
+            $copy = $line->replicate();
+            $copy->appointment_id = $appointment->id;
+            $copy->save();
+        }
+
+        return $appointment->fresh(['customer', 'appointmentServices.service']);
+    }
+
     private function checkout(Tenant $tenant, User $owner, Appointment $appointment, array $overrides = []): Invoice
     {
         $cash = $this->cashMethod($tenant);

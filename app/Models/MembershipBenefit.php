@@ -29,6 +29,17 @@ class MembershipBenefit extends Model
     public const DISCOUNT_FIXED = 'fixed';
 
     public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
+
+    public const PERIOD_MEMBERSHIP = 'membership';
+    public const PERIOD_MONTHLY = 'monthly';
+    public const PERIOD_YEARLY = 'yearly';
+
+    public const USAGE_LIMIT_PERIODS = [
+        self::PERIOD_MEMBERSHIP => 'Per membership term',
+        self::PERIOD_MONTHLY => 'Per calendar month',
+        self::PERIOD_YEARLY => 'Per calendar year',
+    ];
 
     public function plan(): BelongsTo
     {

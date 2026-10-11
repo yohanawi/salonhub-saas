@@ -2,6 +2,9 @@
 
 namespace App\Livewire\Permission;
 
+use Database\Seeders\RolesPermissionsSeeder;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Spatie\Permission\Models\Permission;
 
@@ -11,15 +14,24 @@ class PermissionModal extends Component
 
     public Permission $permission;
 
-    protected $rules = [
-        'name' => 'required|string',
-    ];
-
     // This is the list of listeners that this component listens to.
     protected $listeners = [
         'modal.show.permission_name' => 'mountPermission',
         'delete_permission' => 'delete'
     ];
+
+    // Runs on every Livewire request, so direct calls to component actions are authorized too.
+    public function boot()
+    {
+        abort_unless(Gate::allows('manage-user-management'), 403);
+    }
+
+    protected function rules()
+    {
+        return [
+            'name' => ['required', 'string', 'max:255', Rule::unique('permissions', 'name')->where('guard_name', 'web')->ignore(isset($this->permission) && $this->permission->exists ? $this->permission->id : null)],
+        ];
+    }
 
     public function render()
     {
@@ -52,6 +64,12 @@ class PermissionModal extends Component
     {
         $this->validate();
 
+        // Built-in permissions are checked by name in policies and controllers, so they cannot be renamed.
+        if ($this->permission->exists && $this->isBuiltIn($this->permission->name) && strtolower($this->name) !== $this->permission->name) {
+            $this->addError('name', 'Built-in permissions cannot be renamed.');
+            return;
+        }
+
         $this->permission->name = strtolower($this->name);
         if ($this->permission->isDirty()) {
             $this->permission->save();
@@ -63,6 +81,11 @@ class PermissionModal extends Component
 
     public function delete($name)
     {
+        if ($this->isBuiltIn($name)) {
+            $this->dispatch('error', 'Built-in permissions cannot be deleted.');
+            return;
+        }
+
         $permission = Permission::where('name', $name)->first();
 
         if (!is_null($permission)) {
@@ -76,5 +99,10 @@ class PermissionModal extends Component
     {
         $this->resetErrorBag();
         $this->resetValidation();
+    }
+
+    private function isBuiltIn(string $name): bool
+    {
+        return in_array($name, RolesPermissionsSeeder::PERMISSIONS, true);
     }
 }

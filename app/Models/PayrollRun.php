@@ -46,6 +46,21 @@ class PayrollRun extends Model
         self::STATUS_CANCELLED,
     ];
 
+    // Runs that have not been paid or cancelled yet; their commission and advance lines are still pending settlement.
+    public const OPEN_STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_CALCULATED,
+        self::STATUS_UNDER_REVIEW,
+        self::STATUS_APPROVED,
+    ];
+
+    // Runs that may be replaced by regenerating the period.
+    public const REGENERABLE_STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_CALCULATED,
+        self::STATUS_UNDER_REVIEW,
+    ];
+
     public const PAYMENT_UNPAID = 'unpaid';
     public const PAYMENT_PARTIAL = 'partially_paid';
     public const PAYMENT_PAID = 'paid';

@@ -35,6 +35,18 @@
                     </form>
                 @endcan
             @endif
+            @can('cancel', $payout)
+                <form method="POST" action="{{ route('commission-management.payouts.cancel', $payout) }}"
+                    data-swal-confirm
+                    data-swal-title="Cancel this payout?"
+                    data-swal-text="Its commissions will be released so they can be paid through another payout or payroll."
+                    data-swal-icon="warning"
+                    data-swal-confirm-button="Yes, cancel payout"
+                    data-swal-cancel-button="Keep payout">
+                    @csrf
+                    <button class="btn btn-light-danger">Cancel Payout</button>
+                </form>
+            @endcan
         </div>
         <div class="card border-0 shadow-sm">
             <div class="card-header border-0 py-6"><h3 class="fw-bold mb-0">Included Commissions</h3></div>
@@ -57,4 +69,36 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('form[data-swal-confirm]').forEach((form) => {
+                    form.addEventListener('submit', (event) => {
+                        if (typeof Swal === 'undefined' || form.dataset.swalSubmitting === 'true') {
+                            return;
+                        }
+
+                        event.preventDefault();
+
+                        Swal.fire({
+                            title: form.dataset.swalTitle || 'Are you sure?',
+                            text: form.dataset.swalText || 'This action cannot be undone.',
+                            icon: form.dataset.swalIcon || 'warning',
+                            showCancelButton: true,
+                            buttonsStyling: false,
+                            confirmButtonText: form.dataset.swalConfirmButton || 'Yes, continue',
+                            cancelButtonText: form.dataset.swalCancelButton || 'Cancel',
+                            customClass: { confirmButton: 'btn btn-danger', cancelButton: 'btn btn-light' },
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.dataset.swalSubmitting = 'true';
+                                form.submit();
+                            }
+                        });
+                    });
+                });
+            });
+        </script>
+    @endpush
 </x-default-layout>

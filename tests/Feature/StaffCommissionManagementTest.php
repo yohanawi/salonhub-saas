@@ -186,6 +186,8 @@ class StaffCommissionManagementTest extends TestCase
 
         $this->actingAs($owner)->get(route('commission-management.dashboard'))->assertOk()->assertSee('Recent Commissions');
         $this->actingAs($owner)->get(route('commission-management.rules.index'))->assertOk()->assertSee('Commission Rules');
+        $this->actingAs($owner)->get(route('commission-management.rules.create'))->assertOk();
+        $this->actingAs($owner)->get(route('commission-management.payouts.create'))->assertOk();
         $this->actingAs($owner)->get(route('commission-management.payouts.index'))->assertOk()->assertSee('Commission Payouts');
         $this->actingAs($owner)->get(route('commission-management.reports.index'))->assertOk()->assertSee('Commission Reports');
         $this->actingAs($owner)->get(route('commission-management.settings.edit'))->assertOk()->assertSee('Commission Settings');

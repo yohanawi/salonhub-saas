@@ -118,14 +118,16 @@ class MembershipPlanController extends Controller
 
     private function syncBenefits(MembershipPlan $plan, array $benefits): void
     {
-        $plan->benefits()->delete();
+        // Benefits are updated in place: recreating them would cascade-delete their usage history and reset usage limits.
+        $existing = $plan->benefits()->withCount('usages')->get()->keyBy('id');
+        $keptIds = [];
 
         foreach ($benefits as $benefit) {
             if (blank($benefit['benefit_type'] ?? null)) {
                 continue;
             }
 
-            $plan->benefits()->create([
+            $attributes = [
                 'tenant_id' => $plan->tenant_id,
                 'benefit_type' => $benefit['benefit_type'],
                 'discount_type' => $benefit['discount_type'] ?? MembershipBenefit::DISCOUNT_PERCENTAGE,
@@ -133,10 +135,30 @@ class MembershipPlanController extends Controller
                 'service_id' => $benefit['service_id'] ?? null,
                 'product_id' => $benefit['product_id'] ?? null,
                 'loyalty_multiplier' => $benefit['loyalty_multiplier'] ?? null,
+                'usage_limit' => $benefit['usage_limit'] ?? null,
+                'usage_limit_period' => filled($benefit['usage_limit'] ?? null)
+                    ? ($benefit['usage_limit_period'] ?? MembershipBenefit::PERIOD_MEMBERSHIP)
+                    : null,
                 'priority' => $benefit['priority'] ?? 100,
                 'status' => $benefit['status'] ?? MembershipBenefit::STATUS_ACTIVE,
-            ]);
+            ];
+
+            $current = $existing->get((int) ($benefit['id'] ?? 0));
+
+            if ($current) {
+                $current->update($attributes);
+                $keptIds[] = $current->id;
+            } else {
+                $keptIds[] = $plan->benefits()->create($attributes)->id;
+            }
         }
+
+        $existing->except($keptIds)->each(function (MembershipBenefit $removed) {
+            // Keep benefits that were already used so past invoices and limits stay traceable.
+            $removed->usages_count > 0
+                ? $removed->update(['status' => MembershipBenefit::STATUS_INACTIVE])
+                : $removed->delete();
+        });
     }
 
     private function formData(?Tenant $tenant, bool $isSuperAdmin): array

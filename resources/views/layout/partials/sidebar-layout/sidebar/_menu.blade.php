@@ -61,6 +61,7 @@
                 </div>
             @endif
 
+            @can('manage-user-management')
             <div data-kt-menu-trigger="click"
                 class="menu-item menu-accordion {{ request()->routeIs('user-management.*') ? 'here show' : '' }}">
                 <span class="menu-link">
@@ -98,6 +99,7 @@
                     </div>
                 </div>
             </div>
+            @endcan
 
             <div class="menu-item pt-5">
                 <div class="menu-content">

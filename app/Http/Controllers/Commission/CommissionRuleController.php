@@ -134,6 +134,7 @@ class CommissionRuleController extends Controller
             'products' => $tenant ? Product::withoutTenantScope()->where('tenant_id', $tenant->id)->orderBy('name')->get() : collect(),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'selectedTenant' => $tenant,
+            'isSuperAdmin' => $isSuperAdmin,
         ];
     }
 

@@ -74,8 +74,9 @@ use App\Policies\StockAdjustmentPolicy;
 use App\Policies\StockMovementPolicy;
 use App\Policies\UnitPolicy;
 use App\Policies\VendorPolicy;
-// use Illuminate\Support\Facades\Gate;
+use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -130,6 +131,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Roles and permissions are global (not tenant scoped), so only platform admins may manage them and user accounts.
+        Gate::define('manage-user-management', fn (User $user) => $user->hasRole('Super Admin'));
     }
 }

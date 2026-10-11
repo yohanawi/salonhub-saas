@@ -6,16 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Tenant;
 use App\Services\BranchContext;
 use App\Services\Commission\CommissionGenerator;
 use App\Services\Inventory\InventoryService;
 use App\Services\Loyalty\LoyaltyService;
+use App\Services\Membership\MembershipBenefitService;
 use App\Services\PlanEntitlementService;
 use App\Services\Promotions\PromotionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class InvoiceController extends Controller
@@ -82,10 +86,18 @@ class InvoiceController extends Controller
 
         return view('pages/apps.billing.invoices.show', [
             'invoice' => $invoice,
+            'paymentMethods' => $request->user()->can('collectPayment', $invoice)
+                ? PaymentMethod::withoutTenantScope()
+                    ->where('tenant_id', $invoice->tenant_id)
+                    ->active()
+                    ->orderBy('sort_order')
+                    ->orderBy('name')
+                    ->get()
+                : collect(),
         ]);
     }
 
-    public function void(Request $request, Invoice $invoice, InventoryService $inventory, CommissionGenerator $commissions, LoyaltyService $loyalty, PromotionService $promotions): RedirectResponse
+    public function void(Request $request, Invoice $invoice, InventoryService $inventory, CommissionGenerator $commissions, LoyaltyService $loyalty, PromotionService $promotions, MembershipBenefitService $membershipBenefits): RedirectResponse
     {
         $this->authorize('void', $invoice);
 
@@ -93,20 +105,30 @@ class InvoiceController extends Controller
             'void_reason' => ['required', 'string', 'max:3000'],
         ]);
 
-        $invoice->update([
-            'status' => Invoice::STATUS_VOID,
-            'void_reason' => $data['void_reason'],
-            'voided_by' => $request->user()->id,
-            'voided_at' => now(),
-            'updated_by' => $request->user()->id,
-        ]);
+        // All reversals succeed or none do, so a failure cannot leave a void invoice with live stock/commission/loyalty records.
+        DB::transaction(function () use ($request, $invoice, $data, $inventory, $commissions, $loyalty, $promotions, $membershipBenefits) {
+            $locked = Invoice::withoutTenantScope()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
 
-        $invoice->payments()->where('status', Payment::STATUS_COMPLETED)->update(['status' => Payment::STATUS_VOID]);
+            if ($locked->status === Invoice::STATUS_VOID) {
+                throw ValidationException::withMessages(['invoice' => 'This invoice has already been voided.']);
+            }
 
-        $inventory->returnInvoiceProducts($invoice, $request->user(), $data['void_reason']);
-        $commissions->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
-        $loyalty->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
-        $promotions->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
+            $invoice->update([
+                'status' => Invoice::STATUS_VOID,
+                'void_reason' => $data['void_reason'],
+                'voided_by' => $request->user()->id,
+                'voided_at' => now(),
+                'updated_by' => $request->user()->id,
+            ]);
+
+            $invoice->payments()->where('status', Payment::STATUS_COMPLETED)->update(['status' => Payment::STATUS_VOID]);
+
+            $inventory->returnInvoiceProducts($invoice, $request->user(), $data['void_reason']);
+            $commissions->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
+            $loyalty->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
+            $promotions->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
+            $membershipBenefits->reverseInvoiceUsage($invoice);
+        });
 
         return back()->with('status', 'Invoice voided successfully.');
     }

@@ -109,7 +109,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
-    Route::name('user-management.')->group(function () {
+    Route::name('user-management.')->middleware('can:manage-user-management')->group(function () {
         Route::resource('/user-management/users', UserManagementController::class);
         Route::resource('/user-management/roles', RoleManagementController::class);
         Route::resource('/user-management/permissions', PermissionManagementController::class);
@@ -179,6 +179,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/checkout/appointments/{appointment}', [CheckoutController::class, 'create'])->name('checkout.appointments.create');
         Route::post('/checkout/appointments/{appointment}', [CheckoutController::class, 'store'])->name('checkout.appointments.store');
         Route::post('/invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
+        Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('invoices.payments.store');
         Route::resource('/invoices', InvoiceController::class)->only(['index', 'show']);
         Route::resource('/payment-methods', PaymentMethodController::class)->except(['show', 'destroy']);
         Route::resource('/payments', PaymentController::class)->only(['index']);
@@ -245,6 +246,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/ledger/{commission}', [StaffCommissionController::class, 'show'])->name('ledger.show');
         Route::post('/payouts/{payout}/approve', [CommissionPayoutController::class, 'approve'])->name('payouts.approve');
         Route::post('/payouts/{payout}/pay', [CommissionPayoutController::class, 'pay'])->name('payouts.pay');
+        Route::post('/payouts/{payout}/cancel', [CommissionPayoutController::class, 'cancel'])->name('payouts.cancel');
         Route::resource('/payouts', CommissionPayoutController::class)->only(['index', 'create', 'store', 'show']);
         Route::resource('/rules', CommissionRuleController::class)
             ->parameters(['rules' => 'rule'])
@@ -315,12 +317,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 });
 
-Route::get('/error', function () {
-    abort(500);
-});
-
 Route::view('/terms-and-conditions', 'pages.auth.terms')->name('terms');
 
-Route::get('/auth/redirect/{provider}', [SocialiteController::class, 'redirect']);
+Route::get('/auth/redirect/{provider}', [SocialiteController::class, 'redirect'])
+    ->middleware(['guest', 'throttle:20,1'])
+    ->name('social.redirect');
 
 require __DIR__ . '/auth.php';

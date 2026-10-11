@@ -99,6 +99,15 @@ class CommissionPayoutController extends Controller
         return back()->with('status', 'Payout approved successfully.');
     }
 
+    public function cancel(Request $request, CommissionPayout $payout, CommissionPayoutService $payouts): RedirectResponse
+    {
+        $this->authorize('cancel', $payout);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
+        $payouts->cancel($payout, $request->user(), $data['reason'] ?? null);
+
+        return back()->with('status', 'Payout cancelled. Its commissions are available for settlement again.');
+    }
+
     public function pay(PayCommissionPayoutRequest $request, CommissionPayout $payout, CommissionPayoutService $payouts): RedirectResponse
     {
         $payouts->pay($payout, $request->validated(), $request->user());

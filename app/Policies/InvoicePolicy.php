@@ -48,6 +48,19 @@ class InvoicePolicy
         return $this->checkout($user);
     }
 
+    public function collectPayment(User $user, Invoice $invoice): bool
+    {
+        if ($invoice->status !== Invoice::STATUS_ISSUED || (float) $invoice->balance_amount <= 0) {
+            return false;
+        }
+
+        if ($user->hasRole('Super Admin')) {
+            return true;
+        }
+
+        return $this->view($user, $invoice) && $user->can('payments.create');
+    }
+
     public function void(User $user, Invoice $invoice): bool
     {
         if ($invoice->status === Invoice::STATUS_VOID) {

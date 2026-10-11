@@ -16,12 +16,6 @@ class PaymentService
 {
     public function record(Invoice $invoice, PaymentMethod $method, array $data, User $user): Payment
     {
-        if ($invoice->status === Invoice::STATUS_VOID) {
-            throw ValidationException::withMessages([
-                'invoice' => 'Payments cannot be recorded against a void invoice.',
-            ]);
-        }
-
         if ((int) $method->tenant_id !== (int) $invoice->tenant_id || ! $method->is_active) {
             throw ValidationException::withMessages([
                 'payment_method_id' => 'The selected payment method is not available for this salon.',
@@ -34,15 +28,26 @@ class PaymentService
             ]);
         }
 
-        $amount = min((float) $data['amount'], (float) $invoice->balance_amount);
+        return DB::transaction(function () use ($invoice, $method, $data, $user) {
+            // Lock the invoice so concurrent payments cannot both pass the balance check and overpay it.
+            $invoice = Invoice::withoutTenantScope()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
 
-        if ($amount <= 0) {
-            throw ValidationException::withMessages([
-                'amount' => 'Enter a payment amount greater than zero.',
-            ]);
-        }
+            if ($invoice->status === Invoice::STATUS_VOID) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Payments cannot be recorded against a void invoice.',
+                ]);
+            }
 
-        return DB::transaction(function () use ($invoice, $method, $data, $user, $amount) {
+            $amount = min((float) $data['amount'], (float) $invoice->balance_amount);
+
+            if ($amount <= 0) {
+                throw ValidationException::withMessages([
+                    'amount' => (float) $invoice->balance_amount <= 0
+                        ? 'This invoice is already fully paid.'
+                        : 'Enter a payment amount greater than zero.',
+                ]);
+            }
+
             $payment = Payment::create([
                 'tenant_id' => $invoice->tenant_id,
                 'branch_id' => $invoice->branch_id,

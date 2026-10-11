@@ -149,6 +149,51 @@ class PromotionsDiscountManagementTest extends TestCase
         $this->actingAs($owner)->get(route('promotions.reports.index'))->assertOk()->assertSee('Promotion Performance');
     }
 
+    public function test_coupon_limit_counts_unpaid_invoices_that_already_use_it(): void
+    {
+        [$tenant, $owner, $appointment, $service] = $this->completedAppointmentSetup();
+        [$promotion, $coupon] = $this->serviceCouponPromotion($tenant, $owner, $service);
+        $coupon->update(['usage_limit' => 1]);
+        $cash = $this->cashMethod($tenant);
+
+        // Partial payment: usage_count only moves when the invoice is fully paid.
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $cash->id,
+                'amount' => 100,
+                'coupon_code' => 'WELCOME10',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(0, $coupon->fresh()->usage_count);
+
+        $otherCustomer = $appointment->customer->replicate(['customer_code']);
+        $otherCustomer->customer_code = 'CUS-' . fake()->unique()->numberBetween(10000, 99999);
+        $otherCustomer->save();
+
+        $second = $appointment->replicate(['appointment_number']);
+        $second->appointment_number = 'APT-' . fake()->unique()->numberBetween(100000, 999999);
+        $second->customer_id = $otherCustomer->id;
+        $second->save();
+
+        foreach ($appointment->appointmentServices as $line) {
+            $copy = $line->replicate();
+            $copy->appointment_id = $second->id;
+            $copy->save();
+        }
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $second), [
+                'payment_method_id' => $cash->id,
+                'amount' => 2800,
+                'coupon_code' => 'WELCOME10',
+            ])
+            ->assertSessionHasErrors('coupon_code');
+
+        $this->assertSame(1, Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->count());
+    }
+
     private function serviceCouponPromotion(Tenant $tenant, User $owner, Service $service): array
     {
         $promotion = Promotion::create([

@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StaffCommission extends Model
@@ -122,5 +124,34 @@ class StaffCommission extends Model
     public function getStatusLabelAttribute(): string
     {
         return str($this->status)->replace('_', ' ')->headline()->toString();
+    }
+
+    /**
+     * Approved, unpaid commissions that are not already claimed by an open commission payout or an open payroll run.
+     * Commissions can be settled through either flow, so both must honour the other's claims to avoid paying twice.
+     */
+    public function scopeAvailableForSettlement(Builder $query): Builder
+    {
+        $table = $this->getTable();
+
+        return $query
+            ->where("{$table}.status", self::STATUS_APPROVED)
+            ->whereNull("{$table}.paid_at")
+            ->whereNotExists(function (QueryBuilder $sub) use ($table) {
+                $sub->selectRaw('1')
+                    ->from('commission_payout_items')
+                    ->join('commission_payouts', 'commission_payouts.id', '=', 'commission_payout_items.commission_payout_id')
+                    ->whereColumn('commission_payout_items.staff_commission_id', "{$table}.id")
+                    ->whereIn('commission_payouts.status', [CommissionPayout::STATUS_PENDING, CommissionPayout::STATUS_APPROVED]);
+            })
+            ->whereNotExists(function (QueryBuilder $sub) use ($table) {
+                $sub->selectRaw('1')
+                    ->from('payroll_item_lines')
+                    ->join('payroll_items', 'payroll_items.id', '=', 'payroll_item_lines.payroll_item_id')
+                    ->join('payroll_runs', 'payroll_runs.id', '=', 'payroll_items.payroll_run_id')
+                    ->where('payroll_item_lines.source_type', self::class)
+                    ->whereColumn('payroll_item_lines.source_id', "{$table}.id")
+                    ->whereIn('payroll_runs.status', PayrollRun::OPEN_STATUSES);
+            });
     }
 }

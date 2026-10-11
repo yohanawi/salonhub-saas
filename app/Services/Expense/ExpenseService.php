@@ -76,7 +76,15 @@ class ExpenseService
                 ]);
             }
 
-            $expense->update([
+            // An approval covers the amounts that were approved; changing them needs a fresh approval.
+            $amountsChanged = round((float) $expense->total_amount, 2) !== round($totals['total'], 2)
+                || (int) $expense->branch_id !== (int) $data['branch_id']
+                || (int) $expense->category_id !== (int) $data['category_id'];
+            $approvalReset = $amountsChanged && $expense->approval_status === Expense::APPROVAL_APPROVED
+                ? ['approval_status' => Expense::APPROVAL_PENDING, 'approved_by' => null, 'approved_at' => null]
+                : [];
+
+            $expense->update($approvalReset + [
                 'branch_id' => $data['branch_id'],
                 'category_id' => $data['category_id'],
                 'vendor_id' => $data['vendor_id'] ?? null,

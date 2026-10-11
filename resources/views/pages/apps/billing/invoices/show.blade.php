@@ -566,6 +566,86 @@
                     </div>
                 </div>
 
+                @can('collectPayment', $invoice)
+                    <div class="card border-0 shadow-sm mb-8">
+                        <div class="card-header border-0 pt-8">
+                            <div class="card-title">
+                                <div>
+                                    <h3 class="fw-bold text-gray-900 mb-1">
+                                        Collect Payment
+                                    </h3>
+                                    <div class="text-muted fs-8">
+                                        Record a payment against the remaining balance.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body pt-4">
+                            <form method="POST" action="{{ route('billing.invoices.payments.store', $invoice) }}">
+                                @csrf
+                                <div class="mb-5">
+                                    <label class="form-label required fw-semibold">Payment Method</label>
+                                    <select name="payment_method_id" class="form-select form-select-solid @error('payment_method_id') is-invalid @enderror" required>
+                                        <option value="">Select method</option>
+                                        @foreach ($paymentMethods as $method)
+                                            <option value="{{ $method->id }}" @selected((string) old('payment_method_id') === (string) $method->id)>
+                                                {{ $method->name }}{{ $method->requires_reference ? ' (reference required)' : '' }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('payment_method_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-5">
+                                    <label class="form-label required fw-semibold">Amount</label>
+                                    <div class="input-group input-group-solid">
+                                        <span class="input-group-text">LKR</span>
+                                        <input type="number" name="amount" min="0.01" max="{{ number_format((float) $invoice->balance_amount, 2, '.', '') }}" step="0.01"
+                                            value="{{ old('amount', number_format((float) $invoice->balance_amount, 2, '.', '')) }}"
+                                            class="form-control @error('amount') is-invalid @enderror" required>
+                                    </div>
+                                    @error('amount')
+                                        <div class="text-danger fs-8 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-5">
+                                    <label class="form-label fw-semibold">Cash Received</label>
+                                    <div class="input-group input-group-solid">
+                                        <span class="input-group-text">LKR</span>
+                                        <input type="number" name="cash_received" min="0" step="0.01" value="{{ old('cash_received') }}"
+                                            class="form-control @error('cash_received') is-invalid @enderror">
+                                    </div>
+                                    @error('cash_received')
+                                        <div class="text-danger fs-8 mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-5">
+                                    <label class="form-label fw-semibold">Transaction Reference</label>
+                                    <input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"
+                                        class="form-control form-control-solid @error('transaction_reference') is-invalid @enderror">
+                                    @error('transaction_reference')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-5">
+                                    <label class="form-label fw-semibold">Notes</label>
+                                    <textarea name="notes" class="form-control form-control-solid" rows="2">{{ old('notes') }}</textarea>
+                                </div>
+
+                                <button class="btn btn-primary w-100" type="submit">
+                                    <i class="bi bi-cash-coin me-2"></i>
+                                    Record Payment
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @endcan
+
                 @can('void', $invoice)
                     <div class="card border-0 shadow-sm">
                         <div class="card-header border-0 pt-8">

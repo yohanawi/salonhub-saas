@@ -3,9 +3,12 @@
 namespace App\Livewire\Permission;
 
 use App\Services\Audit\AuditLogService;
+use Database\Seeders\RolesPermissionsSeeder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -19,12 +22,21 @@ class RoleModal extends Component
     public Role $role;
     public Collection $permissions;
 
-    protected $rules = [
-        'name' => 'required|string',
-    ];
-
     // This is the list of listeners that this component listens to.
     protected $listeners = ['modal.show.role_name' => 'mountRole'];
+
+    // Runs on every Livewire request, so direct calls to component actions are authorized too.
+    public function boot()
+    {
+        abort_unless(Gate::allows('manage-user-management'), 403);
+    }
+
+    protected function rules()
+    {
+        return [
+            'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')->where('guard_name', 'web')->ignore(isset($this->role) && $this->role->exists ? $this->role->id : null)],
+        ];
+    }
 
     // This function is called when the component receives the `modal.show.role_name` event.
     public function mountRole($role_name = '')
@@ -84,6 +96,12 @@ class RoleModal extends Component
             'name' => $this->role->exists ? $this->role->name : null,
             'permissions' => $this->role->exists ? $this->role->permissions->pluck('name')->values()->all() : [],
         ];
+
+        // Built-in roles are referenced by name throughout the app, so they cannot be renamed.
+        if ($this->role->exists && in_array($this->role->name, RolesPermissionsSeeder::ROLES, true) && $this->name !== $this->role->name) {
+            $this->addError('name', 'Built-in roles cannot be renamed.');
+            return;
+        }
 
         $this->role->name = $this->name;
         if ($this->role->isDirty()) {

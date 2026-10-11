@@ -3,11 +3,17 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Billing\RecordInvoicePaymentRequest;
 use App\Models\Branch;
+use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use App\Models\Tenant;
+use App\Services\Billing\PaymentService;
 use App\Services\BranchContext;
+use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -46,5 +52,27 @@ class PaymentController extends Controller
             'isSuperAdmin' => $isSuperAdmin,
             'statuses' => Payment::STATUSES,
         ]);
+    }
+
+    public function store(RecordInvoicePaymentRequest $request, Invoice $invoice, PaymentService $payments, PlanEntitlementService $entitlements): RedirectResponse
+    {
+        if (! $request->user()->hasRole('Super Admin')) {
+            $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
+        }
+
+        $method = PaymentMethod::withoutTenantScope()
+            ->where('tenant_id', $invoice->tenant_id)
+            ->findOrFail($request->integer('payment_method_id'));
+
+        $payments->record($invoice, $method, [
+            'amount' => $request->validated('amount'),
+            'transaction_reference' => $request->validated('transaction_reference'),
+            'cash_received' => $request->validated('cash_received'),
+            'notes' => $request->validated('notes'),
+        ], $request->user());
+
+        return redirect()
+            ->route('billing.invoices.show', $invoice)
+            ->with('status', 'Payment recorded successfully.');
     }
 }

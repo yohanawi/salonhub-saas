@@ -9,8 +9,11 @@ use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AddUserModal extends Component
 {
@@ -25,18 +28,27 @@ class AddUserModal extends Component
 
     public $edit_mode = false;
 
-    protected $rules = [
-        'name' => 'required|string',
-        'email' => 'required|email',
-        'role' => 'required|string',
-        'avatar' => 'nullable|sometimes|image|max:1024',
-    ];
-
     protected $listeners = [
         'delete_user' => 'deleteUser',
         'update_user' => 'updateUser',
         'new_user' => 'hydrate',
     ];
+
+    // Runs on every Livewire request, so direct calls to component actions are authorized too.
+    public function boot()
+    {
+        abort_unless(Gate::allows('manage-user-management'), 403);
+    }
+
+    protected function rules()
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->edit_mode ? $this->user_id : null)],
+            'role' => ['required', 'string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'avatar' => 'nullable|sometimes|image|max:1024',
+        ];
+    }
 
     public function render()
     {
@@ -75,12 +87,13 @@ class AddUserModal extends Component
             }
 
             if (!$this->edit_mode) {
-                $data['password'] = Hash::make($this->email);
+                // Unguessable placeholder; the user sets their own password via the reset link sent below.
+                $data['password'] = Hash::make(Str::random(64));
             }
 
             // Update or Create a new user record in the database
             $data['email'] = $this->email;
-            $existingUser = User::find($this->user_id);
+            $existingUser = $this->edit_mode ? User::findOrFail($this->user_id) : null;
             $oldValues = $existingUser ? [
                 'name' => $existingUser->name,
                 'email' => $existingUser->email,
@@ -195,7 +208,7 @@ class AddUserModal extends Component
     {
         $this->edit_mode = true;
 
-        $user = User::find($id);
+        $user = User::findOrFail($id);
 
         $this->user_id = $user->id;
         $this->saved_avatar = $user->profile_photo_url;

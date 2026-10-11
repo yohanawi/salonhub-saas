@@ -264,8 +264,31 @@
                 <input type="number" name="benefits[{{ $i }}][priority]"
                     value="{{ $benefit['priority'] ?? 100 }}" class="form-control form-control-solid">
             </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold fs-8">
+                    Usage Limit
+                </label>
+                <input type="number" min="1" name="benefits[{{ $i }}][usage_limit]"
+                    value="{{ $benefit['usage_limit'] ?? '' }}" class="form-control form-control-solid"
+                    placeholder="Unlimited">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold fs-8">
+                    Limit Period
+                </label>
+                <select name="benefits[{{ $i }}][usage_limit_period]" class="form-select form-select-solid">
+                    @foreach(\App\Models\MembershipBenefit::USAGE_LIMIT_PERIODS as $value => $label)
+                        <option value="{{ $value }}" @selected(($benefit['usage_limit_period'] ?? 'membership') === $value)>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
         </div>
 
+        <input type="hidden" name="benefits[{{ $i }}][id]" value="{{ $benefit['id'] ?? '' }}">
         <input type="hidden" name="benefits[{{ $i }}][status]" value="{{ $benefit['status'] ?? 'active' }}">
     </div>
 @endfor

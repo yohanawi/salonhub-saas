@@ -205,6 +205,122 @@ class BillingPosManagementTest extends TestCase
             ->assertSee('Swal.fire', false);
     }
 
+    public function test_remaining_balance_of_partially_paid_invoice_can_be_collected(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        $cash = $this->cashMethod($tenant);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $cash->id,
+                'amount' => 1000,
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->assertSame(Invoice::PAYMENT_PARTIAL, $invoice->payment_status);
+        $this->assertEquals('1800.00', $invoice->balance_amount);
+
+        $this->actingAs($owner)
+            ->get(route('billing.invoices.show', $invoice))
+            ->assertOk()
+            ->assertSee('Collect Payment');
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.payments.store', $invoice), [
+                'payment_method_id' => $cash->id,
+                'amount' => 2000,
+            ])
+            ->assertSessionHasErrors('amount');
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.payments.store', $invoice), [
+                'payment_method_id' => $cash->id,
+                'amount' => 800,
+            ])
+            ->assertRedirect(route('billing.invoices.show', $invoice));
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.payments.store', $invoice), [
+                'payment_method_id' => $cash->id,
+                'amount' => 1000,
+            ])
+            ->assertRedirect();
+
+        $invoice->refresh();
+        $this->assertSame(Invoice::PAYMENT_PAID, $invoice->payment_status);
+        $this->assertEquals('2800.00', $invoice->paid_amount);
+        $this->assertEquals('0.00', $invoice->balance_amount);
+        $this->assertSame(3, $invoice->payments()->count());
+
+        // Fully paid invoices no longer accept payments.
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.payments.store', $invoice), [
+                'payment_method_id' => $cash->id,
+                'amount' => 1,
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_payment_collection_requires_permission_and_same_tenant(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        [$otherTenant, $otherOwner] = $this->completedAppointmentSetup();
+        $cash = $this->cashMethod($tenant);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $cash->id,
+                'amount' => 1000,
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+
+        $beautician = User::factory()->create(['tenant_id' => $tenant->id, 'email_verified_at' => now()]);
+        $beautician->assignRole('Beautician');
+
+        $this->actingAs($beautician)
+            ->post(route('billing.invoices.payments.store', $invoice), ['payment_method_id' => $cash->id, 'amount' => 100])
+            ->assertForbidden();
+
+        $this->actingAs($otherOwner)
+            ->post(route('billing.invoices.payments.store', $invoice), ['payment_method_id' => $cash->id, 'amount' => 100])
+            ->assertNotFound();
+
+        $this->assertSame(1, Payment::withoutTenantScope()->where('sale_id', $invoice->id)->count());
+    }
+
+    public function test_voided_invoice_cannot_be_voided_again_or_collect_payment(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        $cash = $this->cashMethod($tenant);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $cash->id,
+                'amount' => 1000,
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.void', $invoice), ['void_reason' => 'Duplicate'])
+            ->assertRedirect();
+
+        $this->assertSame(Invoice::STATUS_VOID, $invoice->fresh()->status);
+        $this->assertSame(0, $invoice->payments()->where('status', Payment::STATUS_COMPLETED)->count());
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.void', $invoice), ['void_reason' => 'Again'])
+            ->assertForbidden();
+
+        $this->actingAs($owner)
+            ->post(route('billing.invoices.payments.store', $invoice), ['payment_method_id' => $cash->id, 'amount' => 100])
+            ->assertForbidden();
+    }
+
     public function test_staff_without_billing_permission_cannot_checkout(): void
     {
         [$tenant, , $appointment] = $this->completedAppointmentSetup();
@@ -256,6 +372,19 @@ class BillingPosManagementTest extends TestCase
             ->assertSee($invoice->invoice_number)
             ->assertSee('invoiceShowReceiptModal')
             ->assertSee('Thank you for visiting');
+    }
+
+    private function cashMethod(Tenant $tenant): PaymentMethod
+    {
+        return PaymentMethod::withoutTenantScope()->firstOrCreate([
+            'tenant_id' => $tenant->id,
+            'code' => 'cash',
+        ], [
+            'name' => 'Cash',
+            'type' => PaymentMethod::TYPE_CASH,
+            'is_active' => true,
+            'requires_reference' => false,
+        ]);
     }
 
     private function completedAppointmentSetup(): array

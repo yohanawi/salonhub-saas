@@ -5,6 +5,7 @@ namespace App\Services\Payroll;
 use App\Models\PayrollItem;
 use App\Models\PayrollItemLine;
 use App\Models\PayrollPeriod;
+use App\Models\PayrollRun;
 use App\Models\SalaryAdvance;
 use App\Models\Staff;
 use App\Models\StaffCommission;
@@ -36,9 +37,9 @@ class PayrollCalculationService
         $basicPay = $this->basicPay($structure, $period);
         $commissionRows = $structure->commission_enabled ? $this->commissions->approvedUnpaidForPeriod($staff, $period) : collect();
         $commissionAmount = (float) $commissionRows->sum('commission_amount');
-        $advanceRows = $this->recoverableAdvances($staff, $period);
-        $advanceDeduction = (float) $advanceRows->sum('deduction_amount');
         $grossPay = $basicPay + $commissionAmount;
+        $advanceRows = $this->recoverableAdvances($staff, $period, $grossPay);
+        $advanceDeduction = (float) $advanceRows->sum('deduction_amount');
         $totalDeductions = $advanceDeduction;
         $netPay = max(0, $grossPay - $totalDeductions);
 
@@ -79,8 +80,22 @@ class PayrollCalculationService
         };
     }
 
-    private function recoverableAdvances(Staff $staff, PayrollPeriod $period): Collection
+    private function recoverableAdvances(Staff $staff, PayrollPeriod $period, float $grossPay): Collection
     {
+        // Recoveries already scheduled in other unpaid runs are not yet reflected in outstanding_amount.
+        $pendingRecoveries = PayrollItemLine::withoutTenantScope()
+            ->where('payroll_item_lines.tenant_id', $period->tenant_id)
+            ->where('payroll_item_lines.source_type', SalaryAdvance::class)
+            ->join('payroll_items', 'payroll_items.id', '=', 'payroll_item_lines.payroll_item_id')
+            ->join('payroll_runs', 'payroll_runs.id', '=', 'payroll_items.payroll_run_id')
+            ->whereIn('payroll_runs.status', PayrollRun::OPEN_STATUSES)
+            ->groupBy('payroll_item_lines.source_id')
+            ->selectRaw('payroll_item_lines.source_id, sum(payroll_item_lines.amount) as pending')
+            ->pluck('pending', 'source_id');
+
+        // Deductions can never exceed what is earned in this run; the remainder stays outstanding for later runs.
+        $remainingPay = $grossPay;
+
         return SalaryAdvance::withoutTenantScope()
             ->where('tenant_id', $period->tenant_id)
             ->where('staff_id', $staff->id)
@@ -91,13 +106,19 @@ class PayrollCalculationService
             })
             ->orderBy('paid_date')
             ->get()
-            ->map(function (SalaryAdvance $advance) {
-                $outstanding = (float) $advance->outstanding_amount;
+            ->map(function (SalaryAdvance $advance) use ($pendingRecoveries, &$remainingPay) {
+                $outstanding = max(0, (float) $advance->outstanding_amount - (float) ($pendingRecoveries[$advance->id] ?? 0));
                 $installment = (float) $advance->installment_amount;
-                $advance->deduction_amount = $installment > 0 ? min($installment, $outstanding) : $outstanding;
+                $deduction = $installment > 0 ? min($installment, $outstanding) : $outstanding;
+                $deduction = round(min($deduction, max(0, $remainingPay)), 2);
+
+                $remainingPay -= $deduction;
+                $advance->deduction_amount = $deduction;
 
                 return $advance;
-            });
+            })
+            ->filter(fn (SalaryAdvance $advance) => $advance->deduction_amount > 0)
+            ->values();
     }
 
     private function lines(StaffSalaryStructure $structure, float $basicPay, Collection $commissionRows, Collection $advanceRows): array

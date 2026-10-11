@@ -36,11 +36,22 @@ class PayrollRunService
 
     public function generate(PayrollPeriod $period, User $user): PayrollRun
     {
-        if (in_array($period->status, [PayrollPeriod::STATUS_APPROVED, PayrollPeriod::STATUS_PAID, PayrollPeriod::STATUS_CLOSED, PayrollPeriod::STATUS_CANCELLED], true)) {
-            throw ValidationException::withMessages(['period' => 'This payroll period is locked.']);
-        }
-
         return DB::transaction(function () use ($period, $user) {
+            // Lock the period so two concurrent "generate" clicks cannot create parallel runs.
+            $period = PayrollPeriod::withoutTenantScope()->whereKey($period->getKey())->lockForUpdate()->firstOrFail();
+
+            if (in_array($period->status, [PayrollPeriod::STATUS_APPROVED, PayrollPeriod::STATUS_PAID, PayrollPeriod::STATUS_CLOSED, PayrollPeriod::STATUS_CANCELLED], true)
+                || $period->runs()->whereIn('status', [PayrollRun::STATUS_APPROVED, PayrollRun::STATUS_PAID, PayrollRun::STATUS_CLOSED])->exists()) {
+                throw ValidationException::withMessages(['period' => 'This payroll period is locked.']);
+            }
+
+            // Regenerating replaces earlier unapproved runs; cancelling them first releases their commission lines,
+            // otherwise the same commissions and advance recoveries would be counted in two runs.
+            $period->runs()->whereIn('status', PayrollRun::REGENERABLE_STATUSES)->get()->each(function (PayrollRun $previous) {
+                $previous->items()->update(['status' => PayrollItem::STATUS_CANCELLED]);
+                $previous->update(['status' => PayrollRun::STATUS_CANCELLED]);
+            });
+
             $period->update(['status' => PayrollPeriod::STATUS_PROCESSING]);
 
             $run = PayrollRun::create([

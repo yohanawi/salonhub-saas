@@ -45,8 +45,23 @@ class MembershipBenefitService
             ->sortBy('priority')
             ->values();
 
-        $items = $items->map(function (array $item) use ($benefits, $membership, &$discountTotal) {
-            $benefit = $this->bestBenefitForItem($benefits, $item);
+        if ($benefits->contains(fn (MembershipBenefit $benefit) => $benefit->usage_limit !== null)) {
+            // Serialize checkouts for this membership so two concurrent invoices cannot both consume the last allowed use.
+            CustomerMembership::withoutTenantScope()->whereKey($membership->id)->lockForUpdate()->first();
+        }
+
+        // Remaining uses per limited benefit, decremented as items in this checkout consume them.
+        $remaining = $benefits
+            ->filter(fn (MembershipBenefit $benefit) => $benefit->usage_limit !== null)
+            ->mapWithKeys(fn (MembershipBenefit $benefit) => [
+                $benefit->id => max(0, $benefit->usage_limit - $this->usedQuantity($membership, $benefit)),
+            ])
+            ->all();
+
+        $items = $items->map(function (array $item) use ($benefits, $membership, &$discountTotal, &$remaining) {
+            $quantity = max(1, (int) ($item['quantity'] ?? 1));
+            $available = $benefits->filter(fn (MembershipBenefit $benefit) => ! array_key_exists($benefit->id, $remaining) || $remaining[$benefit->id] >= $quantity);
+            $benefit = $this->bestBenefitForItem($available, $item);
 
             if (! $benefit) {
                 return $item + [
@@ -65,6 +80,10 @@ class MembershipBenefitService
                     'membership_benefit_id' => null,
                     'membership_discount_amount' => 0,
                 ];
+            }
+
+            if (array_key_exists($benefit->id, $remaining)) {
+                $remaining[$benefit->id] -= $quantity;
             }
 
             $discountTotal += $discount;
@@ -109,6 +128,31 @@ class MembershipBenefitService
                     'created_by' => $user->id,
                 ]);
             });
+    }
+
+    public function reverseInvoiceUsage(Invoice $invoice): void
+    {
+        // Voided invoices must give the consumed benefit uses back to the membership.
+        MembershipBenefitUsage::withoutTenantScope()
+            ->where('tenant_id', $invoice->tenant_id)
+            ->where('invoice_id', $invoice->id)
+            ->delete();
+    }
+
+    private function usedQuantity(CustomerMembership $membership, MembershipBenefit $benefit): int
+    {
+        $since = match ($benefit->usage_limit_period) {
+            MembershipBenefit::PERIOD_MONTHLY => now()->startOfMonth(),
+            MembershipBenefit::PERIOD_YEARLY => now()->startOfYear(),
+            default => null,
+        };
+
+        return (int) MembershipBenefitUsage::withoutTenantScope()
+            ->where('tenant_id', $membership->tenant_id)
+            ->where('customer_membership_id', $membership->id)
+            ->where('membership_benefit_id', $benefit->id)
+            ->when($since, fn ($query) => $query->where('used_at', '>=', $since))
+            ->sum('quantity');
     }
 
     private function bestBenefitForItem(Collection $benefits, array $item): ?MembershipBenefit

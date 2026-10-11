@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Loyalty;
 
+use App\Models\MembershipBenefit;
 use App\Models\MembershipPlan;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -28,13 +29,22 @@ class StoreMembershipPlanRequest extends FormRequest
             'status' => ['required', Rule::in([MembershipPlan::STATUS_ACTIVE, MembershipPlan::STATUS_INACTIVE])],
             'is_featured' => ['nullable', 'boolean'],
             'benefits' => ['nullable', 'array'],
-            'benefits.*.benefit_type' => ['required_with:benefits', 'string', 'max:80'],
+            // The form always posts three benefit rows; rows left on "No benefit" are blank and skipped when saving.
+            'benefits.*.benefit_type' => ['nullable', Rule::in([
+                MembershipBenefit::TYPE_SERVICE_DISCOUNT,
+                MembershipBenefit::TYPE_PRODUCT_DISCOUNT,
+                MembershipBenefit::TYPE_FREE_SERVICE,
+                MembershipBenefit::TYPE_BONUS_POINTS_MULTIPLIER,
+            ])],
             'benefits.*.discount_type' => ['nullable', Rule::in(['percentage', 'fixed'])],
             'benefits.*.discount_value' => ['nullable', 'numeric', 'min:0'],
             'benefits.*.service_id' => ['nullable', 'integer', 'exists:services,id'],
             'benefits.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
             'benefits.*.loyalty_multiplier' => ['nullable', 'numeric', 'min:1', 'max:10'],
             'benefits.*.priority' => ['nullable', 'integer', 'min:0'],
+            'benefits.*.id' => ['nullable', 'integer'],
+            'benefits.*.usage_limit' => ['nullable', 'integer', 'min:1'],
+            'benefits.*.usage_limit_period' => ['nullable', Rule::in(array_keys(MembershipBenefit::USAGE_LIMIT_PERIODS))],
             'benefits.*.status' => ['nullable', 'string', 'max:50'],
         ];
     }

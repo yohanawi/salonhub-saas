@@ -13,24 +13,10 @@ class ExpensePaymentService
 {
     public function record(Expense $expense, array $data, User $user): ExpensePayment
     {
-        if ($expense->expense_status === Expense::STATUS_CANCELLED) {
-            throw ValidationException::withMessages([
-                'expense' => 'Payments cannot be added to a cancelled expense.',
-            ]);
-        }
-
         $method = PaymentMethod::withoutTenantScope()
             ->where('tenant_id', $expense->tenant_id)
             ->where('is_active', true)
             ->findOrFail($data['payment_method_id']);
-
-        $amount = min((float) $data['amount'], (float) $expense->balance_amount);
-
-        if ($amount <= 0) {
-            throw ValidationException::withMessages([
-                'amount' => 'Enter a payment amount greater than zero.',
-            ]);
-        }
 
         if ($method->requires_reference && blank($data['reference_number'] ?? null)) {
             throw ValidationException::withMessages([
@@ -38,7 +24,30 @@ class ExpensePaymentService
             ]);
         }
 
-        return DB::transaction(function () use ($expense, $method, $data, $user, $amount) {
+        return DB::transaction(function () use ($expense, $method, $data, $user) {
+            // Lock the expense so concurrent payments cannot both pass the balance check and overpay it.
+            $expense = Expense::withoutTenantScope()->whereKey($expense->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($expense->expense_status === Expense::STATUS_CANCELLED) {
+                throw ValidationException::withMessages([
+                    'expense' => 'Payments cannot be added to a cancelled expense.',
+                ]);
+            }
+
+            if ($expense->approval_status === Expense::APPROVAL_REJECTED) {
+                throw ValidationException::withMessages([
+                    'expense' => 'Payments cannot be added to a rejected expense.',
+                ]);
+            }
+
+            $amount = min((float) $data['amount'], (float) $expense->balance_amount);
+
+            if ($amount <= 0) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Enter a payment amount greater than zero.',
+                ]);
+            }
+
             $payment = ExpensePayment::create([
                 'tenant_id' => $expense->tenant_id,
                 'branch_id' => $expense->branch_id,

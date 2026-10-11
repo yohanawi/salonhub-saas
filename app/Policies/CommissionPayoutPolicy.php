@@ -44,4 +44,10 @@ class CommissionPayoutPolicy
         return $this->view($user, $payout)
             && ($user->hasRole('Super Admin') || $user->can('commission_payouts.pay'));
     }
+
+    public function cancel(User $user, CommissionPayout $payout): bool
+    {
+        return in_array($payout->status, [CommissionPayout::STATUS_PENDING, CommissionPayout::STATUS_APPROVED], true)
+            && $this->approve($user, $payout);
+    }
 }

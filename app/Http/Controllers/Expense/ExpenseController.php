@@ -94,9 +94,14 @@ class ExpenseController extends Controller
         $branch = Branch::withoutTenantScope()->where('tenant_id', $tenant->id)->findOrFail($request->integer('branch_id'));
         abort_unless($request->user()->hasRole('Super Admin') || $branchContext->canAccess($request->user(), $branch), 403);
 
+        $recordsPayment = (float) ($request->input('paid_amount') ?? 0) > 0 && $request->filled('payment_method_id');
+
+        // Recording a payment needs the pay permission, not just permission to create expenses.
+        abort_if($recordsPayment && ! $request->user()->hasRole('Super Admin') && ! $request->user()->can('expenses.pay'), 403);
+
         $expense = $expenses->create($tenant, $request->validated(), $request->user());
 
-        if ((float) ($request->input('paid_amount') ?? 0) > 0 && $request->filled('payment_method_id')) {
+        if ($recordsPayment) {
             $payments->record($expense, [
                 'payment_method_id' => $request->integer('payment_method_id'),
                 'amount' => $request->input('paid_amount'),

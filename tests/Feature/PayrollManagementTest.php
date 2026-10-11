@@ -245,6 +245,156 @@ class PayrollManagementTest extends TestCase
         $this->actingAs($owner)->get(route('payroll.reports.index'))->assertOk()->assertSee('Payroll Reports');
     }
 
+    public function test_regenerating_payroll_replaces_previous_run_without_double_counting(): void
+    {
+        [$tenant, $owner, $branch, $staff] = $this->tenantSetup();
+        $this->salaryStructure($tenant, $owner, $branch, $staff, 80000);
+        $this->approvedCommission($tenant, $owner, $branch, $staff, 12500);
+        $period = $this->period($tenant, $branch, $owner);
+
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+
+        $runs = PayrollRun::withoutTenantScope()->where('payroll_period_id', $period->id)->orderBy('id')->get();
+
+        $this->assertCount(2, $runs);
+        $this->assertSame(PayrollRun::STATUS_CANCELLED, $runs[0]->status);
+        $this->assertSame(PayrollRun::STATUS_CALCULATED, $runs[1]->status);
+        $this->assertEquals('12500.00', $runs[1]->commission_total);
+    }
+
+    public function test_approved_payroll_period_cannot_be_regenerated(): void
+    {
+        [$tenant, $owner, $branch, $staff] = $this->tenantSetup();
+        $this->salaryStructure($tenant, $owner, $branch, $staff, 80000);
+        $period = $this->period($tenant, $branch, $owner);
+
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+        $run = PayrollRun::withoutTenantScope()->where('payroll_period_id', $period->id)->firstOrFail();
+        $this->actingAs($owner)->post(route('payroll.runs.approve', $run))->assertRedirect();
+
+        $this->actingAs($owner)
+            ->post(route('payroll.periods.generate', $period))
+            ->assertSessionHasErrors('period');
+
+        $this->assertSame(1, PayrollRun::withoutTenantScope()->where('payroll_period_id', $period->id)->count());
+    }
+
+    public function test_approved_payroll_cannot_be_paid_twice(): void
+    {
+        [$tenant, $owner, $branch, $staff] = $this->tenantSetup();
+        $this->salaryStructure($tenant, $owner, $branch, $staff, 80000);
+        $period = $this->period($tenant, $branch, $owner);
+
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+        $run = PayrollRun::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+        $this->actingAs($owner)->post(route('payroll.runs.approve', $run))->assertRedirect();
+
+        $payload = ['payment_method' => 'cash', 'payment_date' => '2026-08-31'];
+        $this->actingAs($owner)->post(route('payroll.runs.payments.store', $run), $payload)->assertRedirect();
+        $this->actingAs($owner)->post(route('payroll.runs.payments.store', $run), $payload);
+
+        $this->assertSame(1, PayrollPayment::withoutTenantScope()->where('payroll_run_id', $run->id)->count());
+    }
+
+    public function test_commission_in_open_payout_is_not_imported_into_payroll_and_vice_versa(): void
+    {
+        [$tenant, $owner, $branch, $staff] = $this->tenantSetup();
+        $this->salaryStructure($tenant, $owner, $branch, $staff, 80000);
+        $commission = $this->approvedCommission($tenant, $owner, $branch, $staff, 12500);
+        $period = $this->period($tenant, $branch, $owner);
+
+        $payout = app(\App\Services\Commission\CommissionPayoutService::class)->create($tenant, $staff, [
+            'branch_id' => $branch->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-08-31',
+        ], $owner);
+
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+        $run = PayrollRun::withoutTenantScope()->where('payroll_period_id', $period->id)->firstOrFail();
+        $this->assertEquals('0.00', $run->commission_total);
+
+        // Cancelling the payout releases the commission to the next payroll generation.
+        app(\App\Services\Commission\CommissionPayoutService::class)->cancel($payout, $owner);
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+        $run = PayrollRun::withoutTenantScope()->where('payroll_period_id', $period->id)->latest('id')->firstOrFail();
+        $this->assertEquals('12500.00', $run->commission_total);
+
+        // Now that payroll holds it, a new payout cannot claim the same commission.
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Services\Commission\CommissionPayoutService::class)->create($tenant, $staff, [
+            'branch_id' => $branch->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-08-31',
+        ], $owner);
+    }
+
+    public function test_payout_with_reversed_commission_cannot_be_paid_and_can_be_cancelled(): void
+    {
+        [$tenant, $owner, $branch, $staff] = $this->tenantSetup();
+        $commission = $this->approvedCommission($tenant, $owner, $branch, $staff, 12500);
+
+        $payout = app(\App\Services\Commission\CommissionPayoutService::class)->create($tenant, $staff, [
+            'branch_id' => $branch->id,
+            'period_start' => '2026-08-01',
+            'period_end' => '2026-08-31',
+        ], $owner);
+
+        $this->actingAs($owner)->post(route('commission-management.payouts.approve', $payout))->assertRedirect();
+
+        // The invoice behind the commission is voided after the payout was prepared.
+        $commission->update(['status' => StaffCommission::STATUS_REVERSED]);
+
+        $this->actingAs($owner)
+            ->post(route('commission-management.payouts.pay', $payout), ['payment_method' => 'cash'])
+            ->assertSessionHasErrors('payout');
+
+        $this->assertSame(\App\Models\CommissionPayout::STATUS_APPROVED, $payout->fresh()->status);
+        $this->assertSame(StaffCommission::STATUS_REVERSED, $commission->fresh()->status);
+
+        $this->actingAs($owner)
+            ->post(route('commission-management.payouts.cancel', $payout), ['reason' => 'Invoice voided'])
+            ->assertRedirect();
+
+        $this->assertSame(\App\Models\CommissionPayout::STATUS_CANCELLED, $payout->fresh()->status);
+    }
+
+    public function test_advance_recovery_never_exceeds_earnings_or_repeats_across_open_runs(): void
+    {
+        [$tenant, $owner, $branch, $staff] = $this->tenantSetup();
+        $structure = $this->salaryStructure($tenant, $owner, $branch, $staff, 5000);
+        $advance = $this->paidAdvance($tenant, $owner, $branch, $staff, 30000, 10000);
+        $period = $this->period($tenant, $branch, $owner);
+
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $period))->assertRedirect();
+        $item = PayrollItem::withoutTenantScope()->where('payroll_period_id', $period->id)->firstOrFail();
+
+        // Only 5,000 was earned, so only 5,000 of the 10,000 installment can be withheld.
+        $this->assertEquals('5000.00', $item->advance_deduction);
+        $this->assertEquals('0.00', $item->net_pay);
+
+        $run = PayrollRun::withoutTenantScope()->where('payroll_period_id', $period->id)->firstOrFail();
+        $this->actingAs($owner)->post(route('payroll.runs.approve', $run))->assertRedirect();
+
+        $september = PayrollPeriod::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'name' => 'September 2026 Payroll',
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'status' => PayrollPeriod::STATUS_OPEN,
+            'created_by' => $owner->id,
+        ]);
+        $structure->update(['basic_salary' => 80000]);
+        $advance->update(['outstanding_amount' => 8000, 'installment_amount' => 10000]);
+
+        $this->actingAs($owner)->post(route('payroll.periods.generate', $september))->assertRedirect();
+        $septemberItem = PayrollItem::withoutTenantScope()->where('payroll_period_id', $september->id)->firstOrFail();
+
+        // 5,000 is already scheduled in the unpaid August run, so only the remaining 3,000 is deducted.
+        $this->assertEquals('3000.00', $septemberItem->advance_deduction);
+    }
+
     private function tenantSetup(): array
     {
         $tenant = Tenant::create([

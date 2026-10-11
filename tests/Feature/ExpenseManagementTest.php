@@ -127,6 +127,81 @@ class ExpenseManagementTest extends TestCase
         $this->assertSame($owner->id, $expense->cancelled_by);
     }
 
+    public function test_changing_amount_of_approved_expense_requires_reapproval(): void
+    {
+        [$tenant, $owner, $branch] = $this->tenantSetup();
+        [$category, $vendor] = $this->expenseSetup($tenant);
+        $expense = $this->expense($tenant, $branch, $category, $vendor, 50000);
+
+        $this->actingAs($owner)->post(route('expense-management.expenses.approve', $expense))->assertRedirect();
+
+        $payload = [
+            'branch_id' => $branch->id,
+            'category_id' => $category->id,
+            'vendor_id' => $vendor->id,
+            'expense_date' => '2026-08-17',
+            'description' => 'Utility bill',
+            'subtotal' => 50000,
+            'tax_amount' => 0,
+            'discount_amount' => 0,
+        ];
+
+        // Editing only the description keeps the approval.
+        $this->actingAs($owner)->put(route('expense-management.expenses.update', $expense), ['description' => 'Utility bill - August'] + $payload)->assertRedirect();
+        $this->assertSame(Expense::APPROVAL_APPROVED, $expense->fresh()->approval_status);
+
+        $this->actingAs($owner)->put(route('expense-management.expenses.update', $expense), ['subtotal' => 90000] + $payload)->assertRedirect();
+
+        $expense->refresh();
+        $this->assertSame(Expense::APPROVAL_PENDING, $expense->approval_status);
+        $this->assertNull($expense->approved_by);
+    }
+
+    public function test_rejected_expense_cannot_be_paid(): void
+    {
+        [$tenant, $owner, $branch] = $this->tenantSetup();
+        [$category, $vendor, $method] = $this->expenseSetup($tenant);
+        $expense = $this->expense($tenant, $branch, $category, $vendor, 50000);
+
+        $this->actingAs($owner)->post(route('expense-management.expenses.reject', $expense))->assertRedirect();
+
+        $this->actingAs($owner)
+            ->post(route('expense-management.expenses.payments.store', $expense), [
+                'payment_method_id' => $method->id,
+                'amount' => 1000,
+                'payment_date' => '2026-08-17',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, $expense->payments()->count());
+    }
+
+    public function test_user_without_pay_permission_cannot_record_payment_while_creating_expense(): void
+    {
+        [$tenant, , $branch] = $this->tenantSetup();
+        [$category, $vendor, $method] = $this->expenseSetup($tenant);
+
+        $role = \App\Models\Role::firstOrCreate(['name' => 'Expense Clerk', 'guard_name' => 'web']);
+        $role->syncPermissions(['expenses.view', 'expenses.create']);
+        $clerk = \App\Models\User::factory()->create(['tenant_id' => $tenant->id, 'email_verified_at' => now()]);
+        $clerk->assignRole($role);
+        $clerk->branches()->attach($branch->id, ['tenant_id' => $tenant->id]);
+
+        $this->actingAs($clerk)
+            ->post(route('expense-management.expenses.store'), [
+                'branch_id' => $branch->id,
+                'category_id' => $category->id,
+                'expense_date' => '2026-08-17',
+                'description' => 'Supplies',
+                'subtotal' => 1000,
+                'payment_method_id' => $method->id,
+                'paid_amount' => 1000,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame(0, Expense::withoutTenantScope()->where('tenant_id', $tenant->id)->count());
+    }
+
     public function test_expense_pages_are_tenant_isolated(): void
     {
         [$tenant, $owner, $branch] = $this->tenantSetup();

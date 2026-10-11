@@ -63,7 +63,9 @@ class ExpensePolicy
 
     public function pay(User $user, Expense $expense): bool
     {
-        if ($expense->expense_status === Expense::STATUS_CANCELLED || $expense->balance_amount <= 0) {
+        if ($expense->expense_status === Expense::STATUS_CANCELLED
+            || $expense->approval_status === Expense::APPROVAL_REJECTED
+            || $expense->balance_amount <= 0) {
             return false;
         }
 

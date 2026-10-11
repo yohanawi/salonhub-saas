@@ -56,6 +56,22 @@
 @foreach(getGlobalAssets() as $path)
     {!! sprintf('<script src="%s"></script>', asset($path)) !!}
 @endforeach
+<script>
+    // Metronic registers each init callback for both DOMContentLoaded and livewire:navigated, and Livewire 3 fires
+    // livewire:navigated on the initial page load too, so every init ran twice (double-bound submit handlers sent
+    // two login/register requests per click). The app does not use wire:navigate, so run each callback once.
+    if (window.KTUtil && typeof KTUtil.onDOMContentLoaded === 'function') {
+        const registerInit = KTUtil.onDOMContentLoaded;
+        KTUtil.onDOMContentLoaded = function (callback) {
+            let done = false;
+            registerInit(function () {
+                if (done) return;
+                done = true;
+                callback.apply(this, arguments);
+            });
+        };
+    }
+</script>
 <!--end::Global Javascript Bundle-->
 
 <!--begin::Vendors Javascript(used by this page)-->

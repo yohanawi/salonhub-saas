@@ -20,7 +20,7 @@ class StoreStockAdjustmentRequest extends FormRequest
             'reason' => ['required', Rule::in(StockAdjustment::REASONS)],
             'notes' => ['nullable', 'string', 'max:3000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.actual_quantity' => ['required', 'integer', 'min:0'],
             'items.*.reason' => ['nullable', 'string', 'max:255'],
         ];

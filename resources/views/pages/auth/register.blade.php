@@ -25,25 +25,29 @@
             <span class="w-125px text-gray-500 fw-semibold fs-7">Or with email</span>
         </div>
 
+        @if ($errors->any())
+            <div class="alert alert-warning mb-8">{{ $errors->first() }}</div>
+        @endif
+
         <div class="fv-row mb-8">
             <input type="text" placeholder="Business Name" name="business_name" autocomplete="off"
-                class="form-control bg-transparent" />
+                class="form-control bg-transparent" value="{{ old('business_name') }}" />
         </div>
 
         <div class="row g-3 mb-8">
             <div class="fv-row col-12 col-sm-6">
                 <input type="text" placeholder="First Name" name="first_name" autocomplete="off"
-                    class="form-control bg-transparent" />
+                    class="form-control bg-transparent" value="{{ old('first_name') }}" />
             </div>
             <div class="fv-row col-12 col-sm-6">
                 <input type="text" placeholder="Last Name" name="last_name" autocomplete="off"
-                    class="form-control bg-transparent" />
+                    class="form-control bg-transparent" value="{{ old('last_name') }}" />
             </div>
         </div>
 
         <div class="fv-row mb-8">
             <input type="text" placeholder="Email" name="email" autocomplete="off"
-                class="form-control bg-transparent" />
+                class="form-control bg-transparent" value="{{ old('email') }}" />
         </div>
 
         <div class="fv-row mb-8" data-kt-password-meter="true">

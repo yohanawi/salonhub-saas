@@ -189,25 +189,32 @@ class InventoryService
         }
 
         DB::transaction(function () use ($invoice, $user, $reason) {
-            foreach ($invoice->items->where('item_type', 'product') as $item) {
-                $product = $item->product;
+            // Return exactly what the sale deducted (quantity, branch and cost), not what the invoice items say today:
+            // a product whose tracking was off at sale time was never deducted and must not be added back.
+            StockMovement::withoutTenantScope()
+                ->with('product')
+                ->where('tenant_id', $invoice->tenant_id)
+                ->where('type', StockMovement::TYPE_POS_SALE)
+                ->where('reference_type', $invoice->getMorphClass())
+                ->where('reference_id', $invoice->id)
+                ->get()
+                ->each(function (StockMovement $sale) use ($invoice, $user, $reason) {
+                    if (! $sale->product) {
+                        return;
+                    }
 
-                if (! $product || ! $product->track_inventory) {
-                    continue;
-                }
-
-                $this->increase(
-                    $product,
-                    $invoice->branch,
-                    (int) $item->quantity,
-                    StockMovement::TYPE_SALE_RETURN,
-                    (float) $product->cost_price,
-                    $user,
-                    $invoice,
-                    $reason ?: 'Invoice void',
-                    $invoice->invoice_number
-                );
-            }
+                    $this->increase(
+                        $sale->product,
+                        $invoice->branch,
+                        abs((int) $sale->quantity),
+                        StockMovement::TYPE_SALE_RETURN,
+                        (float) $sale->unit_cost,
+                        $user,
+                        $invoice,
+                        $reason ?: 'Invoice void',
+                        $invoice->invoice_number
+                    );
+                });
         });
     }
 

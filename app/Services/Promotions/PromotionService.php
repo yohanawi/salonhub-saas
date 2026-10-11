@@ -43,14 +43,26 @@ class PromotionService
                 ->first();
         }
 
+        $noPromotion = [
+            'items' => $items,
+            'promotion' => null,
+            'coupon' => null,
+            'discount' => 0.0,
+            'message' => null,
+        ];
+
         if (! $promotion) {
-            return [
-                'items' => $items,
-                'promotion' => null,
-                'coupon' => null,
-                'discount' => 0.0,
-                'message' => null,
-            ];
+            return $noPromotion;
+        }
+
+        if ($this->usageLimitReached($promotion, $coupon)) {
+            if (! filled($data['coupon_code'] ?? null) && ! filled($data['promotion_id'] ?? null)) {
+                return $noPromotion;
+            }
+
+            throw ValidationException::withMessages([
+                $coupon ? 'coupon_code' : 'promotion_id' => $coupon ? 'Coupon usage limit has been reached.' : 'Promotion usage limit has been reached.',
+            ]);
         }
 
         $result = $this->checkEligibility($promotion, $customer, $branch, $items, $coupon);
@@ -402,6 +414,47 @@ class PromotionService
         }
 
         return $query->exists();
+    }
+
+    /**
+     * Locks the promotion/coupon rows (callers run inside the checkout transaction) so concurrent checkouts
+     * are serialized, and counts issued-but-not-yet-paid invoices because usage_count only moves once paid.
+     */
+    private function usageLimitReached(Promotion $promotion, ?PromotionCoupon $coupon): bool
+    {
+        if ($promotion->usage_limit !== null) {
+            $locked = Promotion::withoutTenantScope()->whereKey($promotion->id)->lockForUpdate()->first();
+            $promotion->usage_count = $locked->usage_count;
+
+            $pending = Invoice::withoutTenantScope()
+                ->where('tenant_id', $promotion->tenant_id)
+                ->where('promotion_id', $promotion->id)
+                ->where('status', Invoice::STATUS_ISSUED)
+                ->where('payment_status', '!=', Invoice::PAYMENT_PAID)
+                ->count();
+
+            if ($locked->usage_count + $pending >= $promotion->usage_limit) {
+                return true;
+            }
+        }
+
+        if ($coupon && $coupon->usage_limit !== null) {
+            $locked = PromotionCoupon::withoutTenantScope()->whereKey($coupon->id)->lockForUpdate()->first();
+            $coupon->usage_count = $locked->usage_count;
+
+            $pending = Invoice::withoutTenantScope()
+                ->where('tenant_id', $coupon->tenant_id)
+                ->where('promotion_coupon_id', $coupon->id)
+                ->where('status', Invoice::STATUS_ISSUED)
+                ->where('payment_status', '!=', Invoice::PAYMENT_PAID)
+                ->count();
+
+            if ($locked->usage_count + $pending >= $coupon->usage_limit) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function ineligible(string $message, Promotion $promotion, ?PromotionCoupon $coupon): PromotionApplicationResult
