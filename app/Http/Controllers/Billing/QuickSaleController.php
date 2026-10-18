@@ -13,20 +13,19 @@ use App\Models\Promotion;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Services\Billing\CashRegisterService;
-use App\Services\Billing\CheckoutService;
 use App\Services\Billing\PackageService;
 use App\Services\Billing\PaymentMethodService;
 use App\Services\Billing\PosPinService;
+use App\Services\Billing\QuickSaleService;
 use App\Services\Billing\TaxService;
 use App\Services\BranchContext;
-use App\Services\CustomerManagementService;
 use App\Services\Loyalty\LoyaltyService;
+use App\Services\Messaging\CustomerNotifier;
 use App\Services\PlanEntitlementService;
 use App\Services\Settings\SettingService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class QuickSaleController extends Controller
@@ -124,53 +123,54 @@ class QuickSaleController extends Controller
         ]);
     }
 
-    public function store(
-        QuickSaleRequest $request,
-        BranchContext $branchContext,
-        CheckoutService $checkout,
-        CustomerManagementService $customers,
-        PlanEntitlementService $entitlements
-    ): RedirectResponse {
+    public function store(QuickSaleRequest $request, BranchContext $branchContext, QuickSaleService $quickSales, PlanEntitlementService $entitlements): RedirectResponse|JsonResponse
+    {
         $user = $request->user();
-        $tenant = $user->tenant;
-        $entitlements->ensureFeature($tenant, 'pos_billing');
+        $entitlements->ensureFeature($user->tenant, 'pos_billing');
         $branch = $branchContext->currentForOperation($user);
         $data = $request->validated();
         $data['cashier_staff_id'] = $request->cashierStaffId();
 
-        if ($data['customer_mode'] === QuickSaleRequest::CUSTOMER_NEW) {
-            if (! $entitlements->featureEnabled($tenant, 'customer_management')) {
-                throw ValidationException::withMessages([
-                    'customer_mode' => 'Your subscription plan does not include customer management.',
-                ]);
-            }
+        $alreadySaved = $quickSales->existing($user->tenant_id, $data['client_uuid'] ?? null) !== null;
+        $invoice = $quickSales->create($branch, $data, $user);
 
-            $entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+        if (! $alreadySaved) {
+            app(CustomerNotifier::class)->invoiceReceipt($invoice, $user);
         }
 
-        // The new customer and the sale commit together, so a failed payment leaves no orphan customer.
-        $invoice = DB::transaction(function () use ($data, $tenant, $branch, $user, $checkout, $customers) {
-            $customer = match ($data['customer_mode']) {
-                QuickSaleRequest::CUSTOMER_EXISTING => Customer::withoutTenantScope()->where('tenant_id', $tenant->id)->findOrFail($data['customer_id']),
-                QuickSaleRequest::CUSTOMER_NEW => $customers->create($tenant, [
-                    'branch_id' => $branch->id,
-                    'first_name' => $data['new_customer']['first_name'],
-                    'last_name' => $data['new_customer']['last_name'] ?? null,
-                    'phone' => $data['new_customer']['phone'],
-                    'email' => $data['new_customer']['email'] ?? null,
-                    'status' => Customer::STATUS_ACTIVE,
-                ], $user),
-                default => null,
-            };
+        return self::saleResponse($request, $invoice, $alreadySaved);
+    }
 
-            return $checkout->quickSale($branch, $customer, $data, $user);
-        });
+    /**
+     * A fresh CSRF token for the offline sync, which may run long after the page was loaded.
+     */
+    public function csrfToken(): JsonResponse
+    {
+        return response()->json(['token' => csrf_token()]);
+    }
 
-        app(\App\Services\Messaging\CustomerNotifier::class)->invoiceReceipt($invoice, $user);
+    /**
+     * The offline sync posts with Accept: application/json and gets the invoice back; the normal form
+     * is redirected to the invoice.
+     */
+    public static function saleResponse(Request $request, Invoice $invoice, bool $alreadySaved = false): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'total' => (float) $invoice->total,
+                'balance' => (float) $invoice->balance_amount,
+                'url' => route('billing.invoices.show', $invoice),
+                'duplicate' => $alreadySaved,
+            ], $alreadySaved ? 200 : 201);
+        }
 
         return redirect()
             ->route('billing.invoices.show', $invoice)
-            ->with('status', 'Sale completed and invoice ' . $invoice->invoice_number . ' created.')
-            ->with('print_receipt', true);
+            ->with('status', $alreadySaved
+                ? 'This sale was already saved as invoice ' . $invoice->invoice_number . '.'
+                : 'Sale completed and invoice ' . $invoice->invoice_number . ' created.')
+            ->with('print_receipt', ! $alreadySaved);
     }
 }

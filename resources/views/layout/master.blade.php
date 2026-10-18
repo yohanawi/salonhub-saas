@@ -85,6 +85,13 @@
     {!! sprintf('<script src="%s"></script>', asset($path)) !!}
 @endforeach
 <!--end::Custom Javascript-->
+@auth
+    @if (auth()->user()->tenant_id && auth()->user()->can('create', \App\Models\Invoice::class))
+        {{-- Offline Quick Sale: service worker registration and sync of sales saved on this device. --}}
+        <script src="{{ asset('js/pos-offline.js') }}" data-user="{{ auth()->id() }}"
+            data-store-url="{{ route('billing.quick-sale.store') }}" data-token-url="{{ route('billing.quick-sale.token') }}"></script>
+    @endif
+@endauth
 @stack('scripts')
 <!--end::Javascript-->
 

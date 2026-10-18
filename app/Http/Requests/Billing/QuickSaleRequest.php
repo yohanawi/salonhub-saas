@@ -4,11 +4,15 @@ namespace App\Http\Requests\Billing;
 
 use App\Http\Requests\Billing\Concerns\ResolvesPosCashier;
 use App\Http\Requests\Billing\Concerns\ValidatesSalePayment;
+use App\Http\Controllers\Billing\QuickSaleController;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Services\Billing\QuickSaleService;
 use App\Services\BranchContext;
 use App\Services\Settings\SettingService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -43,6 +47,10 @@ class QuickSaleRequest extends FormRequest
             'service_items.*.staff_id' => ['nullable', 'integer'],
             'service_items.*.quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
             'product_items.*.staff_id' => ['nullable', 'integer'],
+            'client_uuid' => ['nullable', 'uuid'],
+            'offline' => ['nullable', 'boolean'],
+            'offline_reference' => ['nullable', 'string', 'max:40'],
+            'offline_created_at' => ['nullable', 'date', 'before_or_equal:' . now()->addMinutes(5)->toDateTimeString()],
         ];
     }
 
@@ -77,9 +85,30 @@ class QuickSaleRequest extends FormRequest
 
                 $this->validateCustomer($validator, $tenantId, $branch->id);
                 $this->validateSalePayment($validator, $tenantId, $branch->id);
-                $this->validatePosCashier($validator, $branch);
+
+                // A sale taken while offline could not check a PIN at the counter; it is recorded without
+                // a cashier and audited as an offline sale instead.
+                if (! $this->boolean('offline')) {
+                    $this->validatePosCashier($validator, $branch);
+                }
             },
         ];
+    }
+
+    /**
+     * A sale that was already saved (the response was lost, or an offline sale synced twice) can fail
+     * validation the second time, e.g. when its stock is now sold. Answer with the saved invoice instead.
+     */
+    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
+    {
+        $uuid = (string) $this->input('client_uuid');
+        $existing = Str::isUuid($uuid) ? app(QuickSaleService::class)->existing((int) $this->user()->tenant_id, $uuid) : null;
+
+        if ($existing) {
+            throw new HttpResponseException(QuickSaleController::saleResponse($this, $existing, true));
+        }
+
+        parent::failedValidation($validator);
     }
 
     private function validateCustomer(Validator $validator, int $tenantId, int $branchId): void

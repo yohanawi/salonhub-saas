@@ -103,6 +103,11 @@
                                         Cashier: {{ $invoice->cashier->full_name }}
                                     </span>
                                 @endif
+                                @if ($invoice->offline_reference)
+                                    <span class="badge badge-light-warning" title="Taken {{ $invoice->offline_created_at?->format('M d, Y h:i A') }} without internet, synced later">
+                                        <i class="bi bi-wifi-off me-1"></i>Offline sale {{ $invoice->offline_reference }}
+                                    </span>
+                                @endif
                                 @if ($invoice->issued_at)
                                     <span>
                                         <i class="bi bi-clock me-1"></i>

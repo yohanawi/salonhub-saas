@@ -50,8 +50,14 @@
             </div>
         </div>
 
+        @include('pages.apps.billing.quick-sale._offline-panel')
+
         <form method="POST" action="{{ route('billing.quick-sale.store') }}" id="quick-sale-form" data-tax-rate="{{ $taxConfig['rate'] }}" data-tax-inclusive="{{ $taxConfig['inclusive'] ? '1' : '0' }}">
             @csrf
+            {{-- One id per sale, so a retried or offline-synced submit cannot create a second invoice. --}}
+            <input type="hidden" name="client_uuid" id="client_uuid" value="{{ old('client_uuid') }}">
+            <input type="hidden" name="_pos_user" value="{{ auth()->id() }}">
+            <input type="hidden" name="offline_estimated_total" id="offline_estimated_total" value="0">
             <div class="row g-8">
                 <div class="col-xl-8">
                     {{-- Customer --}}
@@ -427,6 +433,7 @@
                     document.getElementById('package_discount_row').style.setProperty('display', packageDiscount > 0 ? 'flex' : 'none', 'important');
                     document.getElementById('estimated_tax').textContent = money(tax);
                     document.getElementById('estimated_total').textContent = money(total + tips);
+                    document.getElementById('offline_estimated_total').value = (total + tips).toFixed(2);
 
                     window.posPayments?.setTotal(total + tips);
                 }
@@ -608,6 +615,28 @@
                 servicesBody?.querySelectorAll('tr').forEach(filterStaff);
                 refreshCustomer();
                 recalculate();
+
+                const clientUuid = document.getElementById('client_uuid');
+
+                if (! clientUuid.value) {
+                    clientUuid.value = window.crypto?.randomUUID ? crypto.randomUUID()
+                        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => ((c === 'x' ? Math.random() * 16 : (Math.random() * 4 + 8)) | 0).toString(16));
+                }
+
+                // Offline, only cash and card can be taken: gift card balances and PINs need the server.
+                form.addEventListener('submit', function(event) {
+                    if (navigator.onLine) {
+                        return;
+                    }
+
+                    const giftCard = Array.from(form.querySelectorAll('.payment-line-method')).some((select) => select.selectedOptions[0]?.dataset.type === 'gift_card');
+                    const packageCredits = document.getElementById('use_package_credits')?.checked && document.getElementById('package_credit_wrap')?.style.display !== 'none';
+
+                    if (giftCard || packageCredits) {
+                        event.preventDefault();
+                        alert('You are offline. Gift cards and package credits need the internet; take cash or card, or wait until you are back online.');
+                    }
+                });
             });
         </script>
     @endpush

@@ -63,6 +63,7 @@ class Invoice extends Model
         'issued_at' => 'datetime',
         'paid_at' => 'datetime',
         'voided_at' => 'datetime',
+        'offline_created_at' => 'datetime',
     ];
 
     public function cashier(): BelongsTo

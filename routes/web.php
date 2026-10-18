@@ -213,6 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/deposits/{deposit}/forfeit', [AppointmentDepositController::class, 'forfeit'])->name('deposits.forfeit');
         Route::get('/quick-sale', [QuickSaleController::class, 'create'])->name('quick-sale.create');
         Route::post('/quick-sale', [QuickSaleController::class, 'store'])->name('quick-sale.store');
+        Route::get('/quick-sale/token', [QuickSaleController::class, 'csrfToken'])->name('quick-sale.token');
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt'])->name('invoices.receipt');
         Route::post('/invoices/{invoice}/send-receipt', [InvoiceController::class, 'sendReceipt'])->name('invoices.send-receipt');
         Route::post('/invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
