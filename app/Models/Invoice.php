@@ -55,6 +55,8 @@ class Invoice extends Model
         'tax' => 'decimal:2',
         'tax_inclusive' => 'boolean',
         'total' => 'decimal:2',
+        'tip_amount' => 'decimal:2',
+        'package_discount_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'balance_amount' => 'decimal:2',
         'refunded_amount' => 'decimal:2',
@@ -126,6 +128,19 @@ class Invoice extends Model
     public function commissions(): HasMany
     {
         return $this->hasMany(StaffCommission::class, 'invoice_id');
+    }
+
+    public function tips(): HasMany
+    {
+        return $this->hasMany(StaffTip::class);
+    }
+
+    /**
+     * What the customer owes in total: the sale plus any tips, which are collected but are not revenue.
+     */
+    public function amountDue(): float
+    {
+        return round((float) $this->total + (float) $this->tip_amount, 2);
     }
 
     public function payments(): HasMany

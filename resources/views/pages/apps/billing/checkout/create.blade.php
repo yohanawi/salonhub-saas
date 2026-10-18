@@ -48,7 +48,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('billing.checkout.appointments.store', $appointment) }}" data-service-subtotal="{{ $subtotal }}" data-service-discount="{{ $lineDiscount }}" data-tax-rate="{{ $taxConfig['rate'] }}" data-tax-inclusive="{{ $taxConfig['inclusive'] ? '1' : '0' }}">
+        <form method="POST" action="{{ route('billing.checkout.appointments.store', $appointment) }}" data-service-subtotal="{{ $subtotal }}" data-service-discount="{{ $lineDiscount }}" data-package-covered="{{ $packageCovered }}" data-deposit="{{ $heldDeposit }}" data-tax-rate="{{ $taxConfig['rate'] }}" data-tax-inclusive="{{ $taxConfig['inclusive'] ? '1' : '0' }}">
             @csrf
             <div class="row g-8">
                 <div class="col-xl-8">
@@ -161,6 +161,19 @@
                                 <span class="text-muted">Service Discounts</span>
                                 <span class="fw-semibold">LKR {{ number_format($lineDiscount, 2) }}</span>
                             </div>
+                            @if ($packageCovered > 0)
+                                <div class="rounded bg-light-success p-4 mb-5">
+                                    <input type="hidden" name="use_package_credits" value="0">
+                                    <label class="form-check form-check-custom form-check-solid form-check-sm">
+                                        <input class="form-check-input" type="checkbox" name="use_package_credits" value="1" id="use_package_credits" @checked(old('use_package_credits', '1') === '1')>
+                                        <span class="form-check-label fw-semibold text-gray-800">Use package credits</span>
+                                    </label>
+                                    <div class="d-flex justify-content-between text-muted fs-8 mt-2">
+                                        <span>Covers up to</span>
+                                        <span class="fw-bold text-success">- LKR {{ number_format($packageCovered, 2) }}</span>
+                                    </div>
+                                </div>
+                            @endif
                             @if ($promotions->isNotEmpty())
                                 <div class="mb-5">
                                     <label class="form-label fw-semibold">Available Promotion</label>
@@ -207,11 +220,24 @@
                                     @endif
                                 </div>
                             @endif
+                            @include('pages.apps.billing._tips')
                             <div class="separator separator-dashed my-5"></div>
-                            <div class="d-flex justify-content-between fs-4 mb-7">
+                            <div class="d-flex justify-content-between fs-4 mb-3">
                                 <span class="fw-bold text-gray-900">Estimated Total</span>
                                 <span class="fw-bolder text-primary" id="estimated_total">LKR {{ number_format($total, 2) }}</span>
                             </div>
+                            @if ($heldDeposit > 0)
+                                <div class="d-flex justify-content-between mb-3">
+                                    <span class="text-muted">Deposit Paid</span>
+                                    <span class="fw-semibold text-success">- LKR {{ number_format($heldDeposit, 2) }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between fs-5 mb-7">
+                                    <span class="fw-bold text-gray-900">To Pay Now</span>
+                                    <span class="fw-bolder text-gray-900" id="estimated_due">LKR {{ number_format(max(0, $total - $heldDeposit), 2) }}</span>
+                                </div>
+                            @else
+                                <div class="mb-4"></div>
+                            @endif
 
                             @include('pages.apps.billing._payment-fields')
                         </div>
@@ -251,7 +277,8 @@
                 function recalculate() {
                     const serviceSubtotal = Number(form?.dataset.serviceSubtotal || 0);
                     const serviceDiscount = Number(form?.dataset.serviceDiscount || 0);
-                    const lines = [{base: Math.max(0, serviceSubtotal - serviceDiscount), rate: defaultTaxRate}];
+                    const packageCovered = document.getElementById('use_package_credits')?.checked ? Number(form?.dataset.packageCovered || 0) : 0;
+                    const lines = [{base: Math.max(0, serviceSubtotal - serviceDiscount - packageCovered), rate: defaultTaxRate}];
 
                     productsTable?.querySelectorAll('tbody tr').forEach(function(row) {
                         const selected = row.querySelector('.checkout-product')?.selectedOptions[0];
@@ -277,11 +304,20 @@
                         estimatedTax.textContent = money(tax);
                     }
 
+                    const tips = window.posTips?.total() || 0;
+                    const due = Math.max(0, total + tips - Number(form?.dataset.deposit || 0));
+
                     if (estimatedTotal) {
-                        estimatedTotal.textContent = money(total);
+                        estimatedTotal.textContent = money(total + tips);
                     }
 
-                    window.posPayments?.setTotal(total);
+                    const estimatedDue = document.getElementById('estimated_due');
+
+                    if (estimatedDue) {
+                        estimatedDue.textContent = money(due);
+                    }
+
+                    window.posPayments?.setTotal(due);
                 }
 
                 addProductRow?.addEventListener('click', function() {
@@ -314,6 +350,8 @@
                 });
 
                 discountInput?.addEventListener('input', recalculate);
+                document.getElementById('use_package_credits')?.addEventListener('change', recalculate);
+                document.addEventListener('pos:tips-changed', recalculate);
                 recalculate();
             });
         </script>

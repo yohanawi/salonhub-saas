@@ -9,6 +9,7 @@ use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
 use App\Models\SalaryAdvance;
 use App\Models\StaffCommission;
+use App\Models\StaffTip;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -35,9 +36,19 @@ class PayrollPaymentService
                 ->where(fn ($query) => $query->where('status', '!=', StaffCommission::STATUS_APPROVED)->orWhereNotNull('paid_at'))
                 ->exists();
 
+            $tipIds = PayrollItemLine::withoutTenantScope()
+                ->whereIn('payroll_item_id', $run->items()->pluck('id'))
+                ->where('source_type', StaffTip::class)
+                ->pluck('source_id');
+
+            $staleCommissions = $staleCommissions || StaffTip::withoutTenantScope()
+                ->whereIn('id', $tipIds)
+                ->where(fn ($query) => $query->where('status', '!=', StaffTip::STATUS_EARNED)->orWhereNotNull('paid_at'))
+                ->exists();
+
             if ($staleCommissions) {
                 throw ValidationException::withMessages([
-                    'run' => 'Some commissions in this payroll were reversed or paid elsewhere after it was generated. Regenerate the payroll before paying it.',
+                    'run' => 'Some commissions or tips in this payroll were reversed or paid elsewhere after it was generated. Regenerate the payroll before paying it.',
                 ]);
             }
 
@@ -82,6 +93,15 @@ class PayrollPaymentService
                     ->whereIn('id', $commissionIds)
                     ->update([
                         'status' => StaffCommission::STATUS_PAID,
+                        'paid_by' => $user->id,
+                        'paid_at' => now(),
+                    ]);
+
+                StaffTip::withoutTenantScope()
+                    ->where('tenant_id', $run->tenant_id)
+                    ->whereIn('id', $item->lines()->where('source_type', StaffTip::class)->pluck('source_id'))
+                    ->update([
+                        'status' => StaffTip::STATUS_PAID,
                         'paid_by' => $user->id,
                         'paid_at' => now(),
                     ]);

@@ -10,13 +10,17 @@ use App\Models\SalaryAdvance;
 use App\Models\Staff;
 use App\Models\StaffCommission;
 use App\Models\StaffSalaryStructure;
+use App\Models\StaffTip;
+use App\Services\Billing\TipService;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class PayrollCalculationService
 {
-    public function __construct(private readonly CommissionImportService $commissions)
-    {
+    public function __construct(
+        private readonly CommissionImportService $commissions,
+        private readonly TipService $tips
+    ) {
     }
 
     public function calculate(Staff $staff, PayrollPeriod $period): array
@@ -37,7 +41,10 @@ class PayrollCalculationService
         $basicPay = $this->basicPay($structure, $period);
         $commissionRows = $structure->commission_enabled ? $this->commissions->approvedUnpaidForPeriod($staff, $period) : collect();
         $commissionAmount = (float) $commissionRows->sum('commission_amount');
-        $grossPay = $basicPay + $commissionAmount;
+        // Tips belong to the staff member whatever their salary type, so they are always paid out.
+        $tipRows = $this->tips->earnedUnpaidForPeriod($staff, $period);
+        $tipAmount = round((float) $tipRows->sum('amount'), 2);
+        $grossPay = $basicPay + $commissionAmount + $tipAmount;
         $advanceRows = $this->recoverableAdvances($staff, $period, $grossPay);
         $advanceDeduction = (float) $advanceRows->sum('deduction_amount');
         $totalDeductions = $advanceDeduction;
@@ -53,6 +60,7 @@ class PayrollCalculationService
                 'commission_enabled_snapshot' => $structure->commission_enabled,
                 'basic_pay' => $basicPay,
                 'commission_amount' => $commissionAmount,
+                'tip_amount' => $tipAmount,
                 'overtime_amount' => 0,
                 'allowance_amount' => 0,
                 'bonus_amount' => 0,
@@ -66,7 +74,7 @@ class PayrollCalculationService
                 'paid_amount' => 0,
                 'balance_amount' => $netPay,
             ],
-            'lines' => $this->lines($structure, $basicPay, $commissionRows, $advanceRows),
+            'lines' => $this->lines($structure, $basicPay, $commissionRows, $advanceRows, $tipRows),
         ];
     }
 
@@ -121,7 +129,7 @@ class PayrollCalculationService
             ->values();
     }
 
-    private function lines(StaffSalaryStructure $structure, float $basicPay, Collection $commissionRows, Collection $advanceRows): array
+    private function lines(StaffSalaryStructure $structure, float $basicPay, Collection $commissionRows, Collection $advanceRows, Collection $tipRows): array
     {
         $lines = [];
 
@@ -156,6 +164,22 @@ class PayrollCalculationService
                     'commission_base' => (float) $commission->commission_base,
                     'commission_rate' => (float) $commission->commission_rate,
                     'earned_at' => $commission->earned_at?->toDateTimeString(),
+                ],
+            ];
+        });
+
+        $tipRows->each(function (StaffTip $tip) use (&$lines) {
+            $lines[] = [
+                'line_type' => PayrollItemLine::TYPE_EARNING,
+                'category' => 'staff_tip',
+                'description' => 'Customer tip',
+                'amount' => (float) $tip->amount,
+                'source_type' => StaffTip::class,
+                'source_id' => $tip->id,
+                'snapshot' => [
+                    'tip_id' => $tip->id,
+                    'invoice_id' => $tip->invoice_id,
+                    'earned_at' => $tip->earned_at?->toDateTimeString(),
                 ],
             ];
         });

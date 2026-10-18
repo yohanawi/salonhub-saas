@@ -7,7 +7,9 @@ use App\Models\Branch;
 use App\Models\CommissionPayout;
 use App\Models\CommissionRule;
 use App\Models\Customer;
+use App\Models\CustomerPackage;
 use App\Models\Expense;
+use App\Models\GiftCard;
 use App\Models\ExpenseCategory;
 use App\Models\Invoice;
 use App\Models\CustomerMembership;
@@ -26,6 +28,7 @@ use App\Models\ProductBrand;
 use App\Models\ProductCategory;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Models\ServicePackage;
 use App\Models\Staff;
 use App\Models\StaffCommission;
 use App\Models\StaffSalaryStructure;
@@ -358,6 +361,60 @@ Breadcrumbs::for('billing.payment-methods.create', function (BreadcrumbTrail $tr
 Breadcrumbs::for('billing.payment-methods.edit', function (BreadcrumbTrail $trail, PaymentMethod $paymentMethod) {
     $trail->parent('billing.payment-methods.index');
     $trail->push($paymentMethod->name, route('billing.payment-methods.edit', $paymentMethod));
+});
+
+// Home > Dashboard > Billing > Gift Cards
+Breadcrumbs::for('billing.gift-cards.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Gift Cards', route('billing.gift-cards.index'));
+});
+
+// Home > Dashboard > Billing > Gift Cards > Sell
+Breadcrumbs::for('billing.gift-cards.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.gift-cards.index');
+    $trail->push('Sell Gift Card', route('billing.gift-cards.create'));
+});
+
+// Home > Dashboard > Billing > Gift Cards > [Card]
+Breadcrumbs::for('billing.gift-cards.show', function (BreadcrumbTrail $trail, GiftCard $giftCard) {
+    $trail->parent('billing.gift-cards.index');
+    $trail->push($giftCard->code, route('billing.gift-cards.show', $giftCard));
+});
+
+// Home > Dashboard > Billing > Service Packages
+Breadcrumbs::for('billing.service-packages.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Service Packages', route('billing.service-packages.index'));
+});
+
+// Home > Dashboard > Billing > Service Packages > Create
+Breadcrumbs::for('billing.service-packages.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.service-packages.index');
+    $trail->push('New Package', route('billing.service-packages.create'));
+});
+
+// Home > Dashboard > Billing > Service Packages > [Package]
+Breadcrumbs::for('billing.service-packages.edit', function (BreadcrumbTrail $trail, ServicePackage $servicePackage) {
+    $trail->parent('billing.service-packages.index');
+    $trail->push($servicePackage->name, route('billing.service-packages.edit', $servicePackage));
+});
+
+// Home > Dashboard > Billing > Customer Packages
+Breadcrumbs::for('billing.customer-packages.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Customer Packages', route('billing.customer-packages.index'));
+});
+
+// Home > Dashboard > Billing > Customer Packages > Sell
+Breadcrumbs::for('billing.customer-packages.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.customer-packages.index');
+    $trail->push('Sell Package', route('billing.customer-packages.create'));
+});
+
+// Home > Dashboard > Billing > Customer Packages > [Package]
+Breadcrumbs::for('billing.customer-packages.show', function (BreadcrumbTrail $trail, CustomerPackage $customerPackage) {
+    $trail->parent('billing.customer-packages.index');
+    $trail->push($customerPackage->package_number ?? 'Package', route('billing.customer-packages.show', $customerPackage));
 });
 
 // Home > Dashboard > Inventory

@@ -16,6 +16,8 @@ use Illuminate\Validation\Validator;
  */
 trait ValidatesSalePayment
 {
+    use ValidatesSystemTender;
+
     protected function prepareForValidation(): void
     {
         if (! $this->has('payments') && $this->has('payment_method_id')) {
@@ -29,18 +31,34 @@ trait ValidatesSalePayment
                 ]],
             ]);
         }
+
+        // A line with neither a method nor an amount is an untouched blank, e.g. when package credits
+        // or a deposit cover the whole bill. CheckoutService decides whether a payment was needed.
+        if (is_array($this->input('payments'))) {
+            $this->merge([
+                'payments' => collect($this->input('payments'))
+                    ->reject(fn ($line) => is_array($line) && blank($line['payment_method_id'] ?? null) && blank($line['amount'] ?? null))
+                    ->all(),
+            ]);
+        }
     }
 
     protected function salePaymentRules(): array
     {
         return [
-            'payments' => ['required', 'array', 'min:1', 'max:10'],
+            'payments' => ['nullable', 'array', 'max:10'],
             'payments.*' => ['array'],
             'payments.*.payment_method_id' => ['required', 'integer'],
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.cash_received' => ['nullable', 'numeric', 'min:0'],
             'payments.*.transaction_reference' => ['nullable', 'string', 'max:255'],
             'payments.*.gateway_reference' => ['nullable', 'string', 'max:255'],
+            'payments.*.gift_card_code' => ['nullable', 'string', 'max:40'],
+            'tips' => ['nullable', 'array', 'max:10'],
+            'tips.*' => ['array'],
+            'tips.*.staff_id' => ['nullable', 'integer'],
+            'tips.*.amount' => ['nullable', 'numeric', 'min:0', 'max:1000000'],
+            'use_package_credits' => ['nullable', 'boolean'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'loyalty_points_to_redeem' => ['nullable', 'integer', 'min:0'],
             'promotion_id' => ['nullable', 'integer'],
@@ -60,6 +78,8 @@ trait ValidatesSalePayment
             'payments.*.payment_method_id' => 'payment method',
             'payments.*.amount' => 'payment amount',
             'payments.*.cash_received' => 'cash received',
+            'payments.*.gift_card_code' => 'gift card code',
+            'tips.*.amount' => 'tip amount',
         ] + $this->extraAttributes();
     }
 
@@ -86,6 +106,8 @@ trait ValidatesSalePayment
             $validator->errors()->add('payments', 'Split payments are disabled for this salon. Use a single payment method.');
         }
 
+        $giftCardTotals = [];
+
         foreach ($lines as $index => $line) {
             $method = PaymentMethod::withoutTenantScope()
                 ->where('tenant_id', $tenantId)
@@ -95,6 +117,8 @@ trait ValidatesSalePayment
                 $validator->errors()->add("payments.{$index}.payment_method_id", 'Select an active payment method for this salon.');
                 continue;
             }
+
+            $this->validateSystemTender($validator, $method, $line, "payments.{$index}.payment_method_id", "payments.{$index}.gift_card_code", $tenantId, $giftCardTotals);
 
             if ($method->requires_reference && blank($line['transaction_reference'] ?? null)) {
                 $validator->errors()->add("payments.{$index}.transaction_reference", "A reference is required for {$method->name}.");

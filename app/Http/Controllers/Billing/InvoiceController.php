@@ -10,6 +10,10 @@ use App\Models\PaymentMethod;
 use App\Models\Refund;
 use App\Models\Tenant;
 use App\Services\Billing\CashRegisterService;
+use App\Services\Billing\DepositService;
+use App\Services\Billing\GiftCardService;
+use App\Services\Billing\PackageService;
+use App\Services\Billing\TipService;
 use App\Services\Billing\PosPinService;
 use App\Services\Billing\RefundService;
 use App\Services\BranchContext;
@@ -47,7 +51,7 @@ class InvoiceController extends Controller
             : $branchContext->availableBranches($request->user());
 
         $invoices = ($isSuperAdmin ? Invoice::withoutTenantScope() : Invoice::query()->where('tenant_id', $tenant->id))
-            ->with(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'items.staff', 'payments.paymentMethod'])
+            ->with(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'items.staff', 'payments.paymentMethod', 'payments.giftCard'])
             ->when(! $isSuperAdmin && ! ($branchContext->hasTenantWideBranchAccess($request->user()) || $request->user()->can('billing.view_all_branches')), function (Builder $query) use ($visibleBranches) {
                 $query->whereIn('branch_id', $visibleBranches->pluck('id'));
             })
@@ -87,7 +91,7 @@ class InvoiceController extends Controller
             $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
         }
 
-        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'payments.cashier', 'items.staff', 'promotion', 'promotionCoupon', 'promotionUsages', 'payments.paymentMethod', 'payments.receiver', 'createdBy', 'voidedBy', 'refunds.items.invoiceItem', 'refunds.paymentMethod', 'refunds.requestedBy', 'refunds.processedBy']);
+        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'payments.cashier', 'payments.giftCard', 'tips.staff', 'items.staff', 'promotion', 'promotionCoupon', 'promotionUsages', 'payments.paymentMethod', 'payments.receiver', 'createdBy', 'voidedBy', 'refunds.items.invoiceItem', 'refunds.paymentMethod', 'refunds.requestedBy', 'refunds.processedBy']);
 
         $refundableAmount = $refunds->refundableAmount($invoice);
         $canRequestRefund = $request->user()->can('refund', $invoice)
@@ -95,19 +99,19 @@ class InvoiceController extends Controller
             && in_array($invoice->payment_status, [Invoice::PAYMENT_PAID, Invoice::PAYMENT_PARTIALLY_REFUNDED], true)
             && $refundableAmount > 0
             && $settings->get('pos.allow_refunds', $invoice->tenant_id, $invoice->branch_id);
-        $activeMethods = fn () => PaymentMethod::withoutTenantScope()
+        $methods = fn (string $scope) => PaymentMethod::withoutTenantScope()
             ->where('tenant_id', $invoice->tenant_id)
-            ->active()
+            ->{$scope}()
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();
 
         return view('pages/apps.billing.invoices.show', [
             'invoice' => $invoice,
-            'paymentMethods' => $request->user()->can('collectPayment', $invoice) ? $activeMethods() : collect(),
+            'paymentMethods' => $request->user()->can('collectPayment', $invoice) ? $methods('tenderable') : collect(),
             'canRequestRefund' => $canRequestRefund,
             'canApproveRefund' => $request->user()->can('approveRefund', $invoice),
-            'refundMethods' => $canRequestRefund ? $activeMethods() : collect(),
+            'refundMethods' => $canRequestRefund ? $methods('manual') : collect(),
             'returnableItems' => $canRequestRefund ? $refunds->returnableItems($invoice) : collect(),
             'refundableAmount' => $refundableAmount,
             'allowSplitPayment' => (bool) $settings->get('pos.allow_split_payment', $invoice->tenant_id, $invoice->branch_id),
@@ -134,7 +138,7 @@ class InvoiceController extends Controller
             $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
         }
 
-        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'items.staff', 'payments.paymentMethod']);
+        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'items.staff', 'payments.paymentMethod', 'payments.giftCard']);
         $setting = fn (string $key) => $settings->get($key, $invoice->tenant_id, $invoice->branch_id);
 
         return view('pages/apps.billing.invoices.receipt-thermal', [
@@ -147,7 +151,7 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function void(Request $request, Invoice $invoice, InventoryService $inventory, CommissionGenerator $commissions, LoyaltyService $loyalty, PromotionService $promotions, MembershipBenefitService $membershipBenefits): RedirectResponse
+    public function void(Request $request, Invoice $invoice, InventoryService $inventory, CommissionGenerator $commissions, LoyaltyService $loyalty, PromotionService $promotions, MembershipBenefitService $membershipBenefits, GiftCardService $giftCards, PackageService $packages, DepositService $deposits, TipService $tips): RedirectResponse
     {
         $this->authorize('void', $invoice);
 
@@ -156,7 +160,7 @@ class InvoiceController extends Controller
         ]);
 
         // All reversals succeed or none do, so a failure cannot leave a void invoice with live stock/commission/loyalty records.
-        DB::transaction(function () use ($request, $invoice, $data, $inventory, $commissions, $loyalty, $promotions, $membershipBenefits) {
+        DB::transaction(function () use ($request, $invoice, $data, $inventory, $commissions, $loyalty, $promotions, $membershipBenefits, $giftCards, $packages, $deposits, $tips) {
             $locked = Invoice::withoutTenantScope()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
 
             if ($locked->status === Invoice::STATUS_VOID) {
@@ -167,6 +171,10 @@ class InvoiceController extends Controller
             if ($locked->refunds()->whereIn('status', [Refund::STATUS_PENDING, Refund::STATUS_COMPLETED])->exists()) {
                 throw ValidationException::withMessages(['invoice' => 'This invoice has refunds. Use a refund instead of voiding it.']);
             }
+
+            // A gift card or package sold on this invoice can only be cancelled while it is unused.
+            $giftCards->voidSoldOnInvoice($invoice, $request->user(), $data['void_reason']);
+            $packages->cancelSoldOnInvoice($invoice);
 
             $invoice->update([
                 'status' => Invoice::STATUS_VOID,
@@ -183,6 +191,10 @@ class InvoiceController extends Controller
             $loyalty->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
             $promotions->reverseForInvoice($invoice, $request->user(), $data['void_reason']);
             $membershipBenefits->reverseInvoiceUsage($invoice);
+            $giftCards->reverseForInvoice($invoice, $request->user());
+            $deposits->reverseForInvoice($invoice);
+            $packages->reverseUsageForInvoice($invoice);
+            $tips->voidForInvoice($invoice);
         });
 
         return back()->with('status', 'Invoice voided successfully.');

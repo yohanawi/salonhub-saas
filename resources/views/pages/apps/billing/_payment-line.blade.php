@@ -27,6 +27,18 @@
         <div class="text-danger fs-8 mb-3">{{ $message }}</div>
     @enderror
 
+    <div class="payment-line-gift mb-3" style="display: none;">
+        <div class="input-group input-group-solid">
+            <span class="input-group-text"><i class="bi bi-gift"></i></span>
+            <input type="text" name="payments[{{ $index }}][gift_card_code]" value="{{ $row['gift_card_code'] ?? '' }}" placeholder="Gift card code" autocomplete="off"
+                class="form-control text-uppercase payment-line-gift-code @error("payments.{$index}.gift_card_code") is-invalid @enderror">
+        </div>
+        <div class="fs-8 mt-1 payment-line-gift-status"></div>
+        @error("payments.{$index}.gift_card_code")
+            <div class="text-danger fs-8 mt-1">{{ $message }}</div>
+        @enderror
+    </div>
+
     <div class="payment-line-cash mb-3">
         <div class="input-group input-group-solid">
             <span class="input-group-text">Cash Received</span>
@@ -39,7 +51,7 @@
     </div>
 
     <input type="text" name="payments[{{ $index }}][transaction_reference]" value="{{ $row['transaction_reference'] ?? '' }}" placeholder="Transaction reference"
-        class="form-control form-control-solid @error("payments.{$index}.transaction_reference") is-invalid @enderror">
+        class="form-control form-control-solid payment-line-reference @error("payments.{$index}.transaction_reference") is-invalid @enderror">
     @error("payments.{$index}.transaction_reference")
         <div class="invalid-feedback">{{ $message }}</div>
     @enderror

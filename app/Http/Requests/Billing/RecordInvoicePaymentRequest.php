@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Billing;
 
 use App\Http\Requests\Billing\Concerns\ResolvesPosCashier;
+use App\Http\Requests\Billing\Concerns\ValidatesSystemTender;
 use App\Models\PaymentMethod;
 use App\Services\Settings\SettingService;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Validator;
 class RecordInvoicePaymentRequest extends FormRequest
 {
     use ResolvesPosCashier;
+    use ValidatesSystemTender;
 
     public function authorize(): bool
     {
@@ -31,6 +33,7 @@ class RecordInvoicePaymentRequest extends FormRequest
                     'amount' => $this->input('amount'),
                     'cash_received' => $this->input('cash_received'),
                     'transaction_reference' => $this->input('transaction_reference'),
+                    'gift_card_code' => $this->input('gift_card_code'),
                 ]],
             ]);
         }
@@ -45,6 +48,7 @@ class RecordInvoicePaymentRequest extends FormRequest
             'payments.*.amount' => ['required', 'numeric', 'min:0.01'],
             'payments.*.cash_received' => ['nullable', 'numeric', 'min:0'],
             'payments.*.transaction_reference' => ['nullable', 'string', 'max:255'],
+            'payments.*.gift_card_code' => ['nullable', 'string', 'max:40'],
             'notes' => ['nullable', 'string', 'max:3000'],
             'payment_notes' => ['nullable', 'string', 'max:3000'],
         ] + $this->posCashierRules();
@@ -72,6 +76,8 @@ class RecordInvoicePaymentRequest extends FormRequest
                     $validator->errors()->add('payments', 'Split payments are disabled for this salon. Use a single payment method.');
                 }
 
+                $giftCardTotals = [];
+
                 foreach ($lines as $index => $line) {
                     $method = PaymentMethod::withoutTenantScope()
                         ->where('tenant_id', $invoice->tenant_id)
@@ -81,6 +87,8 @@ class RecordInvoicePaymentRequest extends FormRequest
                         $validator->errors()->add($field($index, 'payment_method_id'), 'Select an active payment method for this salon.');
                         continue;
                     }
+
+                    $this->validateSystemTender($validator, $method, $line, $field($index, 'payment_method_id'), $field($index, 'gift_card_code'), (int) $invoice->tenant_id, $giftCardTotals);
 
                     if ($method->requires_reference && blank($line['transaction_reference'] ?? null)) {
                         $validator->errors()->add($field($index, 'transaction_reference'), "A reference is required for {$method->name}.");

@@ -158,6 +158,13 @@
                 </div>
             @endif
 
+            @if ((float) $invoice->package_discount_amount > 0)
+                <div class="receipt-total-row text-success">
+                    <span>Package Credits</span>
+                    <span>- LKR {{ number_format((float) $invoice->package_discount_amount, 2) }}</span>
+                </div>
+            @endif
+
             @if ((float) $invoice->membership_discount_amount > 0)
                 <div class="receipt-total-row text-danger">
                     <span>Membership Discount</span>
@@ -190,6 +197,17 @@
                     LKR {{ number_format((float) $invoice->total, 2) }}
                 </div>
             </div>
+
+            @if ((float) $invoice->tip_amount > 0)
+                <div class="receipt-total-row mt-4">
+                    <span>Tip</span>
+                    <span>+ LKR {{ number_format((float) $invoice->tip_amount, 2) }}</span>
+                </div>
+                <div class="receipt-total-row fw-bold">
+                    <span>Amount Due</span>
+                    <span>LKR {{ number_format($invoice->amountDue(), 2) }}</span>
+                </div>
+            @endif
 
             <div class="receipt-divider my-5"></div>
 
@@ -264,7 +282,11 @@
                         LKR {{ number_format((float) $payment->amount, 2) }}
                     </span>
                 </div>
-                @if ($payment->transaction_reference)
+                @if ($payment->giftCard)
+                    <div class="text-muted fs-9 mb-3">
+                        Card: {{ $payment->giftCard->code }} &middot; Balance LKR {{ number_format((float) $payment->giftCard->balance, 2) }}
+                    </div>
+                @elseif ($payment->transaction_reference)
                     <div class="text-muted fs-9 mb-3">
                         Ref: {{ $payment->transaction_reference }}
                     </div>

@@ -112,6 +112,11 @@ class Appointment extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function deposits(): HasMany
+    {
+        return $this->hasMany(AppointmentDeposit::class)->latest('id');
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return str($this->status)->replace('_', ' ')->headline()->toString();

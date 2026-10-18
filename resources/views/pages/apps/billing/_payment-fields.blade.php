@@ -21,7 +21,7 @@
     <div class="alert alert-danger border-0 fs-8 mb-5">{{ $message }}</div>
 @enderror
 
-<div id="payment-lines">
+<div id="payment-lines" data-gift-lookup="{{ auth()->user()?->tenant_id ? route('billing.gift-cards.lookup') : '' }}">
     @foreach ($paymentRows as $index => $row)
         @include('pages.apps.billing._payment-line', ['index' => $index, 'row' => $row])
     @endforeach
@@ -81,7 +81,36 @@
             function refreshLine(line) {
                 const type = line.querySelector('.payment-line-method')?.selectedOptions[0]?.dataset.type;
                 line.querySelector('.payment-line-cash').style.display = type === 'cash' ? '' : 'none';
+                line.querySelector('.payment-line-gift').style.display = type === 'gift_card' ? '' : 'none';
+                line.querySelector('.payment-line-reference').style.display = type === 'gift_card' ? 'none' : '';
                 line.querySelector('.payment-line-remove').style.display = lines().length > 1 ? '' : 'none';
+
+                // Nothing is due when package credits or a deposit cover the bill, so a payment is optional.
+                const nothingDue = total <= 0.004 && lines().length === 1;
+                line.querySelector('.payment-line-method').required = ! nothingDue;
+                line.querySelector('.payment-line-amount').required = ! nothingDue;
+            }
+
+            // Shows the card balance as soon as the code is entered, before the sale is submitted.
+            function lookupGiftCard(input) {
+                const status = input.closest('[data-payment-line]').querySelector('.payment-line-gift-status');
+                const url = container.dataset.giftLookup;
+                const code = input.value.trim();
+
+                if (! url || code === '') {
+                    status.textContent = '';
+                    return;
+                }
+
+                fetch(url + '?code=' + encodeURIComponent(code), {headers: {'Accept': 'application/json'}})
+                    .then((response) => response.ok ? response.json() : Promise.reject())
+                    .then(function(card) {
+                        status.textContent = card.message;
+                        status.className = 'fs-8 mt-1 payment-line-gift-status ' + (card.usable ? 'text-success' : 'text-danger');
+                    })
+                    .catch(function() {
+                        status.textContent = '';
+                    });
             }
 
             // The first line absorbs whatever the other lines do not cover, unless the cashier typed it.
@@ -115,7 +144,12 @@
                 all.forEach(refreshLine);
             }
 
-            container.addEventListener('change', refresh);
+            container.addEventListener('change', function(event) {
+                if (event.target.classList.contains('payment-line-gift-code')) {
+                    lookupGiftCard(event.target);
+                }
+                refresh();
+            });
             container.addEventListener('input', function(event) {
                 if (event.target.classList.contains('payment-line-amount')) {
                     event.target.dataset.userEdited = '1';

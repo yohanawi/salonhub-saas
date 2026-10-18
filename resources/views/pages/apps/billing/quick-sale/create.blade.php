@@ -77,7 +77,7 @@
                                 <select name="customer_id" id="quick_sale_customer" class="form-select form-select-solid @error('customer_id') is-invalid @enderror" data-control="select2" data-width="100%" data-placeholder="Search customer by name or phone">
                                     <option value="">Search customer by name or phone</option>
                                     @foreach ($customers as $customer)
-                                        <option value="{{ $customer->id }}" data-points="{{ (int) ($loyaltyPoints[$customer->id] ?? 0) }}" @selected((string) old('customer_id') === (string) $customer->id)>
+                                        <option value="{{ $customer->id }}" data-points="{{ (int) ($loyaltyPoints[$customer->id] ?? 0) }}" data-package-credits="{{ json_encode($packageCredits[$customer->id] ?? (object) []) }}" @selected((string) old('customer_id') === (string) $customer->id)>
                                             {{ $customer->full_name }}@if ($customer->phone) - {{ $customer->phone }}@endif
                                         </option>
                                     @endforeach
@@ -85,6 +85,15 @@
                                 @error('customer_id')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
+
+                                <div class="rounded bg-light-success p-4 mt-4" id="package_credit_wrap" style="display: none;">
+                                    <input type="hidden" name="use_package_credits" value="0">
+                                    <label class="form-check form-check-custom form-check-solid form-check-sm">
+                                        <input class="form-check-input" type="checkbox" name="use_package_credits" value="1" id="use_package_credits" @checked(old('use_package_credits', '1') === '1')>
+                                        <span class="form-check-label fw-semibold text-gray-800">Use package credits</span>
+                                    </label>
+                                    <div class="text-muted fs-8 mt-2" id="package_credit_summary"></div>
+                                </div>
                             </div>
 
                             @if ($canCreateCustomer)
@@ -261,6 +270,10 @@
                                 <span class="text-muted">{{ $taxLabel }}</span>
                                 <span class="fw-semibold" id="estimated_tax">LKR 0.00</span>
                             </div>
+                            <div class="d-flex justify-content-between mb-5" id="package_discount_row" style="display: none !important;">
+                                <span class="text-muted">Package Credits</span>
+                                <span class="fw-semibold text-success" id="estimated_package">- LKR 0.00</span>
+                            </div>
                             <div class="rounded border p-4 mb-5" id="loyalty_wrap" style="display: none;">
                                 <div class="d-flex justify-content-between mb-3">
                                     <span class="text-muted">Available Points</span>
@@ -272,6 +285,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
+                            @include('pages.apps.billing._tips')
                             <div class="separator separator-dashed my-5"></div>
                             <div class="d-flex justify-content-between fs-4 mb-2">
                                 <span class="fw-bold text-gray-900">Estimated Total</span>
@@ -353,15 +367,40 @@
                     return Number(customPrices[service?.value] ?? service?.dataset.price ?? 0);
                 }
 
+                // Remaining package credits of the selected customer, per service id.
+                function packageCredits() {
+                    if (customerMode() !== 'existing' || ! document.getElementById('use_package_credits')?.checked) {
+                        return {};
+                    }
+
+                    try {
+                        return JSON.parse(customerSelect?.selectedOptions[0]?.dataset.packageCredits || '{}');
+                    } catch (error) {
+                        return {};
+                    }
+                }
+
                 // Mirrors TaxService: the invoice discount is shared across lines before tax is applied.
+                // Package credits come off first, as CheckoutService applies them before other discounts.
                 function recalculate() {
                     const lines = [];
+                    const credits = packageCredits();
+                    let packageDiscount = 0;
 
                     servicesBody?.querySelectorAll('tr').forEach(function(row) {
                         const qty = Math.max(0, Number(row.querySelector('.quick-sale-qty')?.value || 0));
-                        const lineTotal = servicePrice(row) * qty;
+                        const price = servicePrice(row);
+                        const lineTotal = price * qty;
+                        const serviceId = row.querySelector('.quick-sale-service')?.value;
+                        const covered = Math.min(qty, Number(credits[serviceId] || 0));
+
+                        if (covered > 0) {
+                            credits[serviceId] -= covered;
+                            packageDiscount += price * covered;
+                        }
+
                         row.querySelector('.quick-sale-line-total').textContent = money(lineTotal);
-                        lines.push({base: lineTotal, rate: defaultTaxRate});
+                        lines.push({base: lineTotal - price * covered, rate: defaultTaxRate});
                     });
 
                     productsBody?.querySelectorAll('tr').forEach(function(row) {
@@ -373,19 +412,23 @@
                         lines.push({base: lineTotal, rate: productRate > 0 ? productRate : defaultTaxRate});
                     });
 
-                    const subtotal = lines.reduce((sum, line) => sum + line.base, 0);
-                    const discount = Math.min(Math.max(0, Number(discountInput?.value || 0)), subtotal);
+                    const subtotal = lines.reduce((sum, line) => sum + line.base, 0) + packageDiscount;
+                    const payable = subtotal - packageDiscount;
+                    const discount = Math.min(Math.max(0, Number(discountInput?.value || 0)), payable);
                     const tax = lines.reduce(function(sum, line) {
-                        const share = subtotal > 0 ? discount * line.base / subtotal : 0;
+                        const share = payable > 0 ? discount * line.base / payable : 0;
                         return sum + Math.round(taxFor(line.base - share, line.rate) * 100) / 100;
                     }, 0);
-                    const total = Math.max(0, subtotal - discount + (taxInclusive ? 0 : tax));
+                    const total = Math.max(0, payable - discount + (taxInclusive ? 0 : tax));
+                    const tips = window.posTips?.total() || 0;
 
                     document.getElementById('estimated_subtotal').textContent = money(subtotal);
+                    document.getElementById('estimated_package').textContent = '- ' + money(packageDiscount);
+                    document.getElementById('package_discount_row').style.setProperty('display', packageDiscount > 0 ? 'flex' : 'none', 'important');
                     document.getElementById('estimated_tax').textContent = money(tax);
-                    document.getElementById('estimated_total').textContent = money(total);
+                    document.getElementById('estimated_total').textContent = money(total + tips);
 
-                    window.posPayments?.setTotal(total);
+                    window.posPayments?.setTotal(total + tips);
                 }
 
                 function addRow(type) {
@@ -420,6 +463,23 @@
                     if (points <= 0) {
                         loyaltyInput.value = 0;
                     }
+
+                    let credits = {};
+
+                    try {
+                        credits = mode === 'existing' ? JSON.parse(customerSelect?.selectedOptions[0]?.dataset.packageCredits || '{}') : {};
+                    } catch (error) {
+                        credits = {};
+                    }
+
+                    const creditNames = Object.entries(credits).map(function([serviceId, remaining]) {
+                        const option = document.querySelector('#quick-sale-service-template')?.content.querySelector('.quick-sale-service option[value="' + serviceId + '"]');
+                        return remaining + ' x ' + (option ? option.textContent.trim().split(' - ')[0] : 'service');
+                    });
+
+                    document.getElementById('package_credit_wrap').style.display = creditNames.length ? '' : 'none';
+                    document.getElementById('package_credit_summary').textContent = creditNames.length ? 'Remaining: ' + creditNames.join(', ') : '';
+                    recalculate();
                 }
 
                 document.querySelectorAll('[data-add-row]').forEach(function(button) {
@@ -452,6 +512,8 @@
                 }
 
                 discountInput?.addEventListener('input', recalculate);
+                document.getElementById('use_package_credits')?.addEventListener('change', recalculate);
+                document.addEventListener('pos:tips-changed', recalculate);
 
                 // Barcode scanners type the code and press Enter. Codes match a product's barcode or SKU.
                 const scanInput = document.getElementById('quick_sale_scan');

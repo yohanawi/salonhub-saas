@@ -217,6 +217,9 @@
         @if ((float) $invoice->discount > 0)
             <div class="row"><span>Discount</span><span>-{{ $money($invoice->discount) }}</span></div>
         @endif
+        @if ((float) $invoice->package_discount_amount > 0)
+            <div class="row"><span>Package Credits</span><span>-{{ $money($invoice->package_discount_amount) }}</span></div>
+        @endif
         @if ((float) $invoice->loyalty_redemption_amount > 0)
             <div class="row"><span>Loyalty</span><span>-{{ $money($invoice->loyalty_redemption_amount) }}</span></div>
         @endif
@@ -229,6 +232,10 @@
 
         <hr class="rule rule-solid">
         <div class="row bold large"><span>TOTAL LKR</span><span>{{ $money($invoice->total) }}</span></div>
+        @if ((float) $invoice->tip_amount > 0)
+            <div class="row"><span>Tip</span><span>{{ $money($invoice->tip_amount) }}</span></div>
+            <div class="row bold"><span>Amount Due</span><span>{{ $money($invoice->amountDue()) }}</span></div>
+        @endif
         <hr class="rule rule-solid">
 
         @foreach ($invoice->payments as $payment)
@@ -236,7 +243,9 @@
                 <span>{{ $payment->paymentMethod?->name ?? str($payment->method)->headline() }}</span>
                 <span>{{ $money($payment->amount) }}</span>
             </div>
-            @if ($payment->transaction_reference)
+            @if ($payment->giftCard)
+                <div class="small">Card {{ $payment->giftCard->code }} - Bal {{ $money($payment->giftCard->balance) }}</div>
+            @elseif ($payment->transaction_reference)
                 <div class="small">Ref: {{ $payment->transaction_reference }}</div>
             @endif
         @endforeach

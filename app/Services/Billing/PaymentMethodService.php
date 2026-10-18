@@ -18,6 +18,39 @@ class PaymentMethodService
                 $method + ['tenant_id' => $tenant->id]
             );
         }
+
+        // Created once and then left alone, so a salon that switches gift cards off keeps it off.
+        foreach ($this->systemDefaults() as $method) {
+            PaymentMethod::withoutTenantScope()->firstOrCreate(
+                [
+                    'tenant_id' => $tenant->id,
+                    'code' => $method['code'],
+                ],
+                $method + ['tenant_id' => $tenant->id]
+            );
+        }
+    }
+
+    public function systemDefaults(): array
+    {
+        return [
+            [
+                'name' => 'Gift Card',
+                'code' => 'gift_card',
+                'type' => PaymentMethod::TYPE_GIFT_CARD,
+                'is_active' => true,
+                'requires_reference' => false,
+                'sort_order' => 40,
+            ],
+            [
+                'name' => 'Deposit',
+                'code' => 'deposit',
+                'type' => PaymentMethod::TYPE_DEPOSIT,
+                'is_active' => true,
+                'requires_reference' => false,
+                'sort_order' => 90,
+            ],
+        ];
     }
 
     public function defaults(): array

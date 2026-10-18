@@ -28,7 +28,25 @@ class PaymentService
             ]);
         }
 
-        return DB::transaction(function () use ($invoice, $method, $data, $user) {
+        if ($method->type === PaymentMethod::TYPE_DEPOSIT && blank($data['appointment_deposit_id'] ?? null)) {
+            throw ValidationException::withMessages([
+                $data['error_field'] ?? 'payment_method_id' => 'Deposits are applied automatically at checkout.',
+            ]);
+        }
+
+        $giftCardField = $data['gift_card_field'] ?? 'gift_card_code';
+
+        if ($method->type === PaymentMethod::TYPE_GIFT_CARD) {
+            if (blank($data['gift_card_code'] ?? null)) {
+                throw ValidationException::withMessages([$giftCardField => 'Enter the gift card code.']);
+            }
+
+            if ($invoice->items()->where('item_type', 'gift_card')->exists()) {
+                throw ValidationException::withMessages([$giftCardField => 'A gift card cannot be used to buy another gift card.']);
+            }
+        }
+
+        return DB::transaction(function () use ($invoice, $method, $data, $user, $giftCardField) {
             // Lock the invoice so concurrent payments cannot both pass the balance check and overpay it.
             $invoice = Invoice::withoutTenantScope()->whereKey($invoice->getKey())->lockForUpdate()->firstOrFail();
 
@@ -71,6 +89,7 @@ class PaymentService
                 'paid_at' => $data['paid_at'] ?? now(),
                 'received_by' => $user->id,
                 'cashier_staff_id' => $data['cashier_staff_id'] ?? null,
+                'appointment_deposit_id' => $data['appointment_deposit_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -78,17 +97,41 @@ class PaymentService
                 'payment_number' => $this->paymentNumber($payment),
             ]);
 
-            $invoice = $this->refreshInvoicePaymentStatus($invoice);
-
-            app(CommissionGenerator::class)->generateForInvoice($invoice, $user);
-            app(PromotionService::class)->recordUsageForInvoice($invoice, $user);
-
-            if ($invoice->payment_status === Invoice::PAYMENT_PAID && ! $invoice->items()->where('item_type', 'membership')->exists()) {
-                app(LoyaltyService::class)->earnFromInvoice($invoice->fresh(['tenant', 'customer', 'items.service']), $user);
+            if ($method->type === PaymentMethod::TYPE_GIFT_CARD) {
+                app(GiftCardService::class)->redeem($payment, (string) $data['gift_card_code'], $user, $giftCardField);
             }
+
+            $this->settle($this->refreshInvoicePaymentStatus($invoice), $user);
 
             return $payment->fresh(['paymentMethod', 'receiver']);
         });
+    }
+
+    /**
+     * For an invoice with nothing left to pay before any payment is taken, e.g. when package credits
+     * cover every service. It still has to be marked paid and run the usual follow-up.
+     */
+    public function settleWithoutPayment(Invoice $invoice, User $user): Invoice
+    {
+        $invoice = $this->refreshInvoicePaymentStatus($invoice);
+        $this->settle($invoice, $user);
+
+        return $invoice;
+    }
+
+    private function settle(Invoice $invoice, User $user): void
+    {
+        if ($invoice->payment_status === Invoice::PAYMENT_PAID) {
+            app(TipService::class)->markEarned($invoice);
+        }
+
+        app(CommissionGenerator::class)->generateForInvoice($invoice, $user);
+        app(PromotionService::class)->recordUsageForInvoice($invoice, $user);
+
+        // Gift card value earns points when it is spent, not when the card is bought.
+        if ($invoice->payment_status === Invoice::PAYMENT_PAID && ! $invoice->items()->whereIn('item_type', ['membership', 'gift_card'])->exists()) {
+            app(LoyaltyService::class)->earnFromInvoice($invoice->fresh(['tenant', 'customer', 'items.service']), $user);
+        }
     }
 
     /**
@@ -152,6 +195,8 @@ class PaymentService
                     'cash_received' => $isCash && $split ? max((float) ($line['cash_received'] ?? 0), (float) $line['amount']) : ($line['cash_received'] ?? null),
                     'notes' => $notes,
                     'cashier_staff_id' => $cashierStaffId,
+                    'gift_card_code' => $line['gift_card_code'] ?? null,
+                    'gift_card_field' => "payments.{$line['index']}.gift_card_code",
                     'error_field' => "payments.{$line['index']}.payment_method_id",
                 ], $user);
 
@@ -166,9 +211,11 @@ class PaymentService
             ->where('status', Payment::STATUS_COMPLETED)
             ->sum('amount');
 
-        $total = (float) $invoice->total;
-        $balance = max(0, $total - $paidAmount);
+        // Tips are owed on top of the sale total, so they are part of what has to be paid.
+        $total = $invoice->amountDue();
+        $balance = max(0, round($total - $paidAmount, 2));
         $paymentStatus = match (true) {
+            $total <= 0.009 => Invoice::PAYMENT_PAID,
             $paidAmount <= 0 => Invoice::PAYMENT_UNPAID,
             $paidAmount < $total => Invoice::PAYMENT_PARTIAL,
             default => Invoice::PAYMENT_PAID,

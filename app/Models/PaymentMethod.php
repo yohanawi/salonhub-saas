@@ -17,6 +17,14 @@ class PaymentMethod extends Model
     public const TYPE_QR = 'qr';
     public const TYPE_ONLINE = 'online';
     public const TYPE_OTHER = 'other';
+    // System methods are created by PaymentMethodService and settle against a gift card or a held deposit.
+    public const TYPE_GIFT_CARD = 'gift_card';
+    public const TYPE_DEPOSIT = 'deposit';
+
+    public const SYSTEM_TYPES = [
+        self::TYPE_GIFT_CARD,
+        self::TYPE_DEPOSIT,
+    ];
 
     public const TYPES = [
         self::TYPE_CASH,
@@ -48,6 +56,27 @@ class PaymentMethod extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Methods a cashier can take a payment with at the POS. Deposits are only ever applied by checkout.
+     */
+    public function scopeTenderable(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->where('type', '!=', self::TYPE_DEPOSIT);
+    }
+
+    /**
+     * Methods that move real money, for expenses, refunds and other payouts.
+     */
+    public function scopeManual(Builder $query): Builder
+    {
+        return $query->where('is_active', true)->whereNotIn('type', self::SYSTEM_TYPES);
+    }
+
+    public function isSystem(): bool
+    {
+        return in_array($this->type, self::SYSTEM_TYPES, true);
     }
 
     public function getTypeLabelAttribute(): string

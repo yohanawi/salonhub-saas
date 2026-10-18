@@ -75,7 +75,7 @@ class MembershipService
                 $this->paymentMethods->ensureDefaults($tenant);
                 $method = PaymentMethod::withoutTenantScope()
                     ->where('tenant_id', $tenant->id)
-                    ->where('is_active', true)
+                    ->manual()
                     ->findOrFail($data['payment_method_id']);
 
                 $branchId = $data['branch_id'] ?? $customer->branch_id;

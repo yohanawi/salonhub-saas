@@ -11,6 +11,8 @@ use App\Models\Promotion;
 use App\Models\Product;
 use App\Services\Billing\CashRegisterService;
 use App\Services\Billing\CheckoutService;
+use App\Services\Billing\DepositService;
+use App\Services\Billing\PackageService;
 use App\Services\Billing\PaymentMethodService;
 use App\Services\Billing\PosPinService;
 use App\Services\Billing\TaxService;
@@ -24,7 +26,7 @@ use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    public function create(Request $request, Appointment $appointment, PaymentMethodService $paymentMethods, PlanEntitlementService $entitlements, LoyaltyService $loyalty, MembershipBenefitService $membershipBenefits, TaxService $taxes, SettingService $settings, CashRegisterService $cashRegister, PosPinService $posPin): View|RedirectResponse
+    public function create(Request $request, Appointment $appointment, PaymentMethodService $paymentMethods, PlanEntitlementService $entitlements, LoyaltyService $loyalty, MembershipBenefitService $membershipBenefits, TaxService $taxes, SettingService $settings, CashRegisterService $cashRegister, PosPinService $posPin, PackageService $packages, DepositService $deposits): View|RedirectResponse
     {
         $this->authorize('checkout', Invoice::class);
         $this->authorize('view', $appointment);
@@ -50,11 +52,30 @@ class CheckoutController extends Controller
 
         $appointment->load(['branch', 'customer', 'appointmentServices.service', 'appointmentServices.staff']);
 
+        // Estimate of the services the customer's package credits will cover; CheckoutService decides.
+        $credits = $packages->availableCredits($appointment->customer)->all();
+        $packageCovered = $appointment->appointmentServices->sum(function ($line) use (&$credits) {
+            if (($credits[$line->service_id] ?? 0) <= 0) {
+                return 0;
+            }
+
+            $credits[$line->service_id]--;
+
+            return (float) ($line->unit_price ?? $line->price);
+        });
+
+        $tipStaff = \App\Models\Staff::withoutTenantScope()
+            ->where('tenant_id', $appointment->tenant_id)
+            ->where('status', \App\Models\Staff::STATUS_ACTIVE)
+            ->whereHas('branches', fn ($query) => $query->where('branches.id', $appointment->branch_id)->where('staff_branches.status', 'active'))
+            ->orderBy('first_name')
+            ->get();
+
         return view('pages/apps.billing.checkout.create', [
             'appointment' => $appointment,
             'paymentMethods' => PaymentMethod::withoutTenantScope()
                 ->where('tenant_id', $appointment->tenant_id)
-                ->active()
+                ->tenderable()
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(),
@@ -81,6 +102,9 @@ class CheckoutController extends Controller
             'cashShift' => $cashRegister->openShiftFor($appointment->branch_id),
             'requireShift' => $cashRegister->requiresOpenShift($appointment->tenant_id, $appointment->branch_id),
             'posPin' => $posPin->viewData($appointment->branch, $request->user()),
+            'tipStaff' => $tipStaff,
+            'packageCovered' => round($packageCovered, 2),
+            'heldDeposit' => $deposits->heldAmount($appointment),
         ]);
     }
 

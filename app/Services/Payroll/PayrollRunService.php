@@ -117,7 +117,7 @@ class PayrollRunService
             'employees_count' => $items->count(),
             'basic_salary_total' => $items->sum('basic_pay'),
             'commission_total' => $items->sum('commission_amount'),
-            'earnings_total' => $items->sum(fn (PayrollItem $item) => (float) $item->allowance_amount + (float) $item->bonus_amount + (float) $item->other_earnings),
+            'earnings_total' => $items->sum(fn (PayrollItem $item) => (float) $item->allowance_amount + (float) $item->bonus_amount + (float) $item->other_earnings + (float) $item->tip_amount),
             'deductions_total' => $items->sum('total_deductions'),
             'gross_pay' => $items->sum('gross_pay'),
             'total_deductions' => $items->sum('total_deductions'),

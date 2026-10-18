@@ -16,6 +16,7 @@ use App\Services\Inventory\InventoryService;
 use App\Services\Loyalty\LoyaltyService;
 use App\Services\Membership\MembershipBenefitService;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\SettingService;
 use App\Services\StaffAvailabilityService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,11 @@ class CheckoutService
         private readonly TaxService $taxes,
         private readonly InvoiceNumberService $invoiceNumbers,
         private readonly AppointmentPricingService $pricing,
-        private readonly StaffAvailabilityService $staffAvailability
+        private readonly StaffAvailabilityService $staffAvailability,
+        private readonly TipService $tips,
+        private readonly PackageService $packages,
+        private readonly DepositService $deposits,
+        private readonly SettingService $settings
     ) {
     }
 
@@ -119,7 +124,11 @@ class CheckoutService
         $branch->loadMissing('tenant');
         $tenant = $branch->tenant;
 
-        $membershipResult = $this->membershipBenefits->applyToItemSnapshots($customer, $items);
+        $tipLines = $this->tips->linesFromInput($branch, $data['tips'] ?? []);
+        $tipTotal = round((float) $tipLines->sum('amount'), 2);
+        // Package credits go first, so membership and promotion discounts only apply to what is left to pay.
+        $packageResult = $this->packages->applyToItemSnapshots($customer, $items, (bool) ($data['use_package_credits'] ?? true));
+        $membershipResult = $this->membershipBenefits->applyToItemSnapshots($customer, $packageResult['items']);
         $promotionResult = $this->promotions->applyToItemSnapshots($tenant, $customer, $branch, $membershipResult['items'], $data);
 
         if ($promotionResult['items']->isEmpty()) {
@@ -155,6 +164,7 @@ class CheckoutService
             'subtotal' => $subtotal,
             'discount' => $discount,
             'membership_discount_amount' => $membershipResult['discount'],
+            'package_discount_amount' => $packageResult['discount'],
             'promotion_name' => $promotionResult['promotion']?->name,
             'promotion_coupon_code' => $promotionResult['coupon']?->code,
             'promotion_discount_type' => $promotionResult['promotion']?->discount_type,
@@ -167,8 +177,9 @@ class CheckoutService
             'tax_name' => $tax > 0 ? $taxConfig['name'] : null,
             'tax_inclusive' => $tax > 0 && $taxConfig['inclusive'],
             'total' => $total,
+            'tip_amount' => $tipTotal,
             'paid_amount' => 0,
-            'balance_amount' => $total,
+            'balance_amount' => round($total + $tipTotal, 2),
             'status' => Invoice::STATUS_ISSUED,
             'payment_status' => Invoice::PAYMENT_UNPAID,
             'issued_at' => $issuedAt,
@@ -179,10 +190,16 @@ class CheckoutService
         ]);
 
         $itemSnapshots->each(fn (array $item) => $invoice->items()->create($item));
+        $this->packages->recordUsage($invoice);
+        $this->tips->recordForInvoice($invoice, $tipLines, $user);
 
         if ((int) ($data['loyalty_points_to_redeem'] ?? 0) > 0) {
             $this->loyalty->redeemForInvoice($invoice->fresh(['tenant', 'customer']), (int) $data['loyalty_points_to_redeem'], $user);
             $invoice->refresh();
+        }
+
+        if ($appointment) {
+            $this->deposits->applyToInvoice($invoice, $appointment, $user, $data['cashier_staff_id'] ?? null);
         }
 
         $this->recordPayments($invoice, $data, $user);
@@ -213,6 +230,25 @@ class CheckoutService
                 'transaction_reference' => $data['transaction_reference'] ?? null,
                 'gateway_reference' => $data['gateway_reference'] ?? null,
             ]]);
+        }
+
+        $due = (float) Invoice::withoutTenantScope()->whereKey($invoice->id)->value('balance_amount');
+
+        // Nothing to pay is fine when package credits or a deposit covered the bill; otherwise an
+        // invoice may only be left unpaid when the salon allows credit sales.
+        if ($lines->isEmpty() && $due > 0.009 && ! $this->settings->get('pos.allow_credit_sales', $invoice->tenant_id, $invoice->branch_id)) {
+            throw ValidationException::withMessages([
+                'payments' => 'Add a payment for the LKR ' . number_format($due, 2) . ' due.',
+            ]);
+        }
+
+        if ($lines->isEmpty()) {
+            // A deposit that covered everything has already settled the invoice through its payment.
+            if ($due <= 0.009 && $invoice->fresh()->payment_status !== Invoice::PAYMENT_PAID) {
+                $this->payments->settleWithoutPayment($invoice, $user);
+            }
+
+            return;
         }
 
         $this->payments->recordLines($invoice, $lines->all(), $data['payment_notes'] ?? null, $user, $data['cashier_staff_id'] ?? null);

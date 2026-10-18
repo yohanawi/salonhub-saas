@@ -76,10 +76,16 @@
                                 <tr><td>Gross Sales</td><td class="text-end">{{ $money($sales['subtotal']) }}</td></tr>
                                 <tr><td class="ps-6 text-muted">Promotion discounts</td><td class="text-end text-danger">- {{ $money($sales['promotion_discount']) }}</td></tr>
                                 <tr><td class="ps-6 text-muted">Membership discounts</td><td class="text-end text-danger">- {{ $money($sales['membership_discount']) }}</td></tr>
+                                @if ($sales['package_discount'] > 0)
+                                    <tr><td class="ps-6 text-muted">Package credits used</td><td class="text-end text-danger">- {{ $money($sales['package_discount']) }}</td></tr>
+                                @endif
                                 <tr><td class="ps-6 text-muted">Line &amp; manual discounts</td><td class="text-end text-danger">- {{ $money($sales['other_discount']) }}</td></tr>
                                 <tr><td class="ps-6 text-muted">Loyalty redemptions</td><td class="text-end text-danger">- {{ $money($sales['loyalty_redemption']) }}</td></tr>
                                 <tr><td>Tax</td><td class="text-end">{{ $money($sales['tax']) }}</td></tr>
                                 <tr class="fw-bold"><td>Sales Total</td><td class="text-end">{{ $money($sales['total']) }}</td></tr>
+                                @if ($sales['tips'] > 0)
+                                    <tr><td class="text-muted">Tips collected for staff</td><td class="text-end">{{ $money($sales['tips']) }}</td></tr>
+                                @endif
                             </tbody>
                         </table>
 

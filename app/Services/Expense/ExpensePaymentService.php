@@ -16,7 +16,7 @@ class ExpensePaymentService
     {
         $method = PaymentMethod::withoutTenantScope()
             ->where('tenant_id', $expense->tenant_id)
-            ->where('is_active', true)
+            ->manual()
             ->findOrFail($data['payment_method_id']);
 
         if ($method->requires_reference && blank($data['reference_number'] ?? null)) {

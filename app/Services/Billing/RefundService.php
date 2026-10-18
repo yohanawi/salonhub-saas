@@ -79,7 +79,7 @@ class RefundService
 
             $method = PaymentMethod::withoutTenantScope()
                 ->where('tenant_id', $invoice->tenant_id)
-                ->where('is_active', true)
+                ->manual()
                 ->find($data['payment_method_id'] ?? null);
 
             if (! $method) {

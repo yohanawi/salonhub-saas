@@ -303,6 +303,28 @@
                                 </a>
                             </div>
                         @endif
+                        @if (auth()->user()->tenant_id && auth()->user()->can('gift_cards.view'))
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.gift-cards.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.gift-cards.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Gift Cards</span>
+                                </a>
+                            </div>
+                        @endif
+                        @if (auth()->user()->tenant_id && auth()->user()->can('service_packages.view'))
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.service-packages.*', 'billing.customer-packages.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.service-packages.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Service Packages</span>
+                                </a>
+                            </div>
+                        @endif
                         @can('viewAny', \App\Models\CashRegisterShift::class)
                             <div class="menu-item">
                                 <a class="menu-link {{ request()->routeIs('billing.cash-register.*') ? 'active' : '' }}"

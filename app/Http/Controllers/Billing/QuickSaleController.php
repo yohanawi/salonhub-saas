@@ -14,6 +14,7 @@ use App\Models\Service;
 use App\Models\Staff;
 use App\Services\Billing\CashRegisterService;
 use App\Services\Billing\CheckoutService;
+use App\Services\Billing\PackageService;
 use App\Services\Billing\PaymentMethodService;
 use App\Services\Billing\PosPinService;
 use App\Services\Billing\TaxService;
@@ -39,7 +40,8 @@ class QuickSaleController extends Controller
         SettingService $settings,
         LoyaltyService $loyalty,
         CashRegisterService $cashRegister,
-        PosPinService $posPin
+        PosPinService $posPin,
+        PackageService $packages
     ): View {
         $this->authorize('create', Invoice::class);
 
@@ -96,7 +98,7 @@ class QuickSaleController extends Controller
             'loyaltyPoints' => $loyaltyPoints,
             'paymentMethods' => PaymentMethod::withoutTenantScope()
                 ->where('tenant_id', $tenant->id)
-                ->active()
+                ->tenderable()
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(),
@@ -117,6 +119,8 @@ class QuickSaleController extends Controller
             'cashShift' => $cashRegister->openShiftFor($branch->id),
             'requireShift' => $cashRegister->requiresOpenShift($tenant->id, $branch->id),
             'posPin' => $posPin->viewData($branch, $user),
+            'tipStaff' => $staff,
+            'packageCredits' => $packages->creditsByCustomer($tenant->id, $customers->pluck('id')),
         ]);
     }
 

@@ -135,7 +135,7 @@ class ExpenseController extends Controller
 
         return view('pages/apps.expense-management.expenses.show', [
             'expense' => $expense,
-            'paymentMethods' => PaymentMethod::withoutTenantScope()->where('tenant_id', $expense->tenant_id)->active()->orderBy('sort_order')->orderBy('name')->get(),
+            'paymentMethods' => PaymentMethod::withoutTenantScope()->where('tenant_id', $expense->tenant_id)->manual()->orderBy('sort_order')->orderBy('name')->get(),
         ]);
     }
 
@@ -188,7 +188,7 @@ class ExpenseController extends Controller
             'branches' => $this->branches($request, $branchContext, $tenant, $isSuperAdmin),
             'categories' => $this->categories($tenant, $isSuperAdmin, $request, true),
             'vendors' => $this->vendors($tenant, $isSuperAdmin, $request, true),
-            'paymentMethods' => $tenant ? PaymentMethod::withoutTenantScope()->where('tenant_id', $tenant->id)->active()->orderBy('sort_order')->orderBy('name')->get() : collect(),
+            'paymentMethods' => $tenant ? PaymentMethod::withoutTenantScope()->where('tenant_id', $tenant->id)->manual()->orderBy('sort_order')->orderBy('name')->get() : collect(),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'selectedTenant' => $tenant,
         ];

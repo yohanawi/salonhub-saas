@@ -94,7 +94,7 @@ class CustomerMembershipController extends Controller
             'customers' => $tenant ? Customer::withoutTenantScope()->where('tenant_id', $tenant->id)->orderBy('first_name')->get() : collect(),
             'plans' => $tenant ? MembershipPlan::withoutTenantScope()->where('tenant_id', $tenant->id)->where('status', MembershipPlan::STATUS_ACTIVE)->orderBy('name')->get() : collect(),
             'branches' => $tenant ? Branch::withoutTenantScope()->where('tenant_id', $tenant->id)->orderBy('name')->get() : collect(),
-            'paymentMethods' => $tenant ? PaymentMethod::withoutTenantScope()->where('tenant_id', $tenant->id)->where('is_active', true)->orderBy('name')->get() : collect(),
+            'paymentMethods' => $tenant ? PaymentMethod::withoutTenantScope()->where('tenant_id', $tenant->id)->manual()->orderBy('name')->get() : collect(),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'selectedTenant' => $tenant,
             'isSuperAdmin' => $isSuperAdmin,

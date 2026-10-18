@@ -481,6 +481,18 @@
                             </div>
                         @endif
 
+                        {{-- Package credits --}}
+                        @if ((float) $invoice->package_discount_amount > 0)
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <span class="text-muted">
+                                    Package Credits
+                                </span>
+                                <span class="fw-semibold text-success">
+                                    - LKR {{ number_format((float) $invoice->package_discount_amount, 2) }}
+                                </span>
+                            </div>
+                        @endif
+
                         {{-- Membership --}}
                         @if ((float) $invoice->membership_discount_amount > 0)
                             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -532,6 +544,22 @@
                                 LKR {{ number_format((float) $invoice->total, 2) }}
                             </div>
                         </div>
+
+                        {{-- Tips --}}
+                        @if ((float) $invoice->tip_amount > 0)
+                            <div class="mb-5">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted">Tips</span>
+                                    <span class="fw-semibold text-gray-800">+ LKR {{ number_format((float) $invoice->tip_amount, 2) }}</span>
+                                </div>
+                                @foreach ($invoice->tips as $tip)
+                                    <div class="d-flex justify-content-between text-muted fs-8 ps-4">
+                                        <span>{{ $tip->staff?->full_name ?? 'Staff' }} &middot; {{ str($tip->status)->headline() }}</span>
+                                        <span>LKR {{ number_format((float) $tip->amount, 2) }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
 
                         {{-- Paid --}}
                         <div class="d-flex justify-content-between align-items-center mb-5">

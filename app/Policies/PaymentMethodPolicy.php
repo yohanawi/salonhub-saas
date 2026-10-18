@@ -27,7 +27,9 @@ class PaymentMethodPolicy
             return true;
         }
 
+        // Gift card and deposit methods are managed by the system; their type must not change.
         return (int) $user->tenant_id === (int) $paymentMethod->tenant_id
+            && ! $paymentMethod->isSystem()
             && $user->can('payment_methods.manage');
     }
 }

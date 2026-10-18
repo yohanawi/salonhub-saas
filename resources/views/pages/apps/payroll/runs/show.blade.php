@@ -49,13 +49,14 @@
             <div class="card-body pt-0">
                 <div class="table-responsive">
                     <table class="table align-middle table-row-dashed gy-5">
-                        <thead><tr class="text-muted fw-bold fs-7 text-uppercase"><th>Staff</th><th>Basic</th><th>Commission</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Payment</th><th class="text-end">Payslip</th></tr></thead>
+                        <thead><tr class="text-muted fw-bold fs-7 text-uppercase"><th>Staff</th><th>Basic</th><th>Commission</th><th>Tips</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Payment</th><th class="text-end">Payslip</th></tr></thead>
                         <tbody>
                             @foreach($run->items as $item)
                                 <tr>
                                     <td class="fw-bold">{{ $item->staff?->full_name }}</td>
                                     <td>LKR {{ number_format((float) $item->basic_pay, 2) }}</td>
                                     <td>LKR {{ number_format((float) $item->commission_amount, 2) }}</td>
+                                    <td>LKR {{ number_format((float) $item->tip_amount, 2) }}</td>
                                     <td>LKR {{ number_format((float) $item->gross_pay, 2) }}</td>
                                     <td>LKR {{ number_format((float) $item->total_deductions, 2) }}</td>
                                     <td class="fw-bold">LKR {{ number_format((float) $item->net_pay, 2) }}</td>

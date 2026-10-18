@@ -8,11 +8,14 @@ use App\Http\Requests\Appointment\UpdateAppointmentRequest;
 use App\Models\Appointment;
 use App\Models\Branch;
 use App\Models\Customer;
+use App\Models\PaymentMethod;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Services\Appointment\AppointmentBookingService;
 use App\Services\Appointment\AppointmentStatusService;
+use App\Services\Billing\DepositService;
+use App\Services\Billing\PosPinService;
 use App\Services\BranchContext;
 use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
@@ -107,15 +110,30 @@ class AppointmentController extends Controller
             ->with('status', 'Appointment created successfully.');
     }
 
-    public function show(Request $request, Appointment $appointment, PlanEntitlementService $entitlements): View
+    public function show(Request $request, Appointment $appointment, PlanEntitlementService $entitlements, DepositService $deposits, PosPinService $posPin): View
     {
         $this->authorize('view', $appointment);
         $entitlements->ensureFeature($appointment->tenant, 'appointment_calendar');
 
-        $appointment->load(['tenant', 'branch', 'customer', 'invoice', 'appointmentServices.service', 'appointmentServices.staff', 'statusHistory.changedBy', 'createdBy', 'updatedBy', 'cancelledBy']);
+        $appointment->load(['tenant', 'branch', 'customer', 'invoice', 'appointmentServices.service', 'appointmentServices.staff', 'statusHistory.changedBy', 'createdBy', 'updatedBy', 'cancelledBy', 'deposits.paymentMethod', 'deposits.appliedInvoice']);
+
+        $user = $request->user();
+        $showDeposits = $user->tenant_id
+            && $entitlements->featureEnabled($appointment->tenant, 'pos_billing')
+            && ($user->can('deposits.create') || $user->can('deposits.manage') || $appointment->deposits->isNotEmpty());
 
         return view('pages/apps.appointment-management.appointments.show', [
             'appointment' => $appointment,
+            'deposits' => $showDeposits ? [
+                'list' => $appointment->deposits,
+                'held' => $deposits->heldAmount($appointment),
+                'suggested' => $deposits->suggestedAmount($appointment),
+                'required' => $deposits->required($appointment),
+                'canCreate' => $user->can('deposits.create'),
+                'canManage' => $user->can('deposits.manage'),
+                'paymentMethods' => PaymentMethod::withoutTenantScope()->where('tenant_id', $appointment->tenant_id)->manual()->orderBy('sort_order')->orderBy('name')->get(),
+                'posPin' => $appointment->branch ? $posPin->viewData($appointment->branch, $user) : null,
+            ] : null,
         ]);
     }
 

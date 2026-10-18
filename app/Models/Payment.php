@@ -61,6 +61,16 @@ class Payment extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function giftCard(): BelongsTo
+    {
+        return $this->belongsTo(GiftCard::class);
+    }
+
+    public function deposit(): BelongsTo
+    {
+        return $this->belongsTo(AppointmentDeposit::class, 'appointment_deposit_id');
+    }
+
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);

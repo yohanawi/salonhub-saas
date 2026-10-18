@@ -33,7 +33,7 @@ class DayEndReportService
             ->where('status', Invoice::STATUS_ISSUED)
             ->whereBetween('issued_at', $range);
 
-        $sales = (clone $issued)->selectRaw('COUNT(*) as invoices, COALESCE(SUM(subtotal), 0) as subtotal, COALESCE(SUM(discount), 0) as discount, COALESCE(SUM(promotion_discount_amount), 0) as promotion, COALESCE(SUM(membership_discount_amount), 0) as membership, COALESCE(SUM(loyalty_redemption_amount), 0) as loyalty, COALESCE(SUM(tax), 0) as tax, COALESCE(SUM(total), 0) as total')->first();
+        $sales = (clone $issued)->selectRaw('COUNT(*) as invoices, COALESCE(SUM(subtotal), 0) as subtotal, COALESCE(SUM(discount), 0) as discount, COALESCE(SUM(promotion_discount_amount), 0) as promotion, COALESCE(SUM(membership_discount_amount), 0) as membership, COALESCE(SUM(package_discount_amount), 0) as package, COALESCE(SUM(tip_amount), 0) as tips, COALESCE(SUM(loyalty_redemption_amount), 0) as loyalty, COALESCE(SUM(tax), 0) as tax, COALESCE(SUM(total), 0) as total')->first();
 
         $voided = Invoice::withoutTenantScope()
             ->where('tenant_id', $tenant->id)
@@ -101,10 +101,13 @@ class DayEndReportService
                 'discount' => $discount,
                 'promotion_discount' => $promotion,
                 'membership_discount' => $membership,
-                'other_discount' => round(max(0, $discount - $promotion - $membership), 2),
+                'package_discount' => round((float) $sales->package, 2),
+                'other_discount' => round(max(0, $discount - $promotion - $membership - (float) $sales->package), 2),
                 'loyalty_redemption' => round((float) $sales->loyalty, 2),
                 'tax' => round((float) $sales->tax, 2),
                 'total' => round((float) $sales->total, 2),
+                // Collected with the sales but owed to staff, so not part of the sales total.
+                'tips' => round((float) $sales->tips, 2),
             ],
             'item_types' => $itemTypes,
             'voided' => ['invoices' => (int) $voided->invoices, 'total' => round((float) $voided->total, 2)],

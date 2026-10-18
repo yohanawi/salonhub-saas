@@ -1523,6 +1523,10 @@
 
 
 
+                    @if ($deposits)
+                        @include('pages.apps.appointment-management.appointments._deposits')
+                    @endif
+
                     {{-- ====================================================
                         STATUS WORKFLOW
                     ==================================================== --}}

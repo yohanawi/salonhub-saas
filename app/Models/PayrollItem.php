@@ -15,6 +15,7 @@ class PayrollItem extends Model
 
     protected $casts = [
         'commission_enabled_snapshot' => 'boolean',
+        'tip_amount' => 'decimal:2',
         'basic_salary_snapshot' => 'decimal:2',
         'hourly_rate_snapshot' => 'decimal:2',
         'daily_rate_snapshot' => 'decimal:2',

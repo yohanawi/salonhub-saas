@@ -20,6 +20,8 @@ class InvoiceItem extends Model
 
     protected $casts = [
         'quantity' => 'integer',
+        'package_quantity' => 'integer',
+        'package_discount_amount' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'gross_amount' => 'decimal:2',
         'discount' => 'decimal:2',
