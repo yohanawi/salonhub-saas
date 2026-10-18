@@ -292,6 +292,39 @@
                         <span class="menu-arrow"></span>
                     </span>
                     <div class="menu-sub menu-sub-accordion">
+                        @if (auth()->user()->tenant_id && auth()->user()->can('create', \App\Models\Invoice::class))
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.quick-sale.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.quick-sale.create') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Quick Sale</span>
+                                </a>
+                            </div>
+                        @endif
+                        @can('viewAny', \App\Models\CashRegisterShift::class)
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.cash-register.*') ? 'active' : '' }}"
+                                    href="{{ route('billing.cash-register.index') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Cash Register</span>
+                                </a>
+                            </div>
+                        @endcan
+                        @if (auth()->user()->tenant_id && auth()->user()->can('viewReports', \App\Models\Invoice::class))
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.reports.day-end') ? 'active' : '' }}"
+                                    href="{{ route('billing.reports.day-end') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Day-End Report</span>
+                                </a>
+                            </div>
+                        @endif
                         <div class="menu-item">
                             <a class="menu-link {{ request()->routeIs('billing.invoices.*') ? 'active' : '' }}"
                                 href="{{ route('billing.invoices.index') }}">

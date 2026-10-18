@@ -17,6 +17,7 @@ use App\Models\Setting;
 use App\Models\Staff;
 use App\Models\StaffCommission;
 use App\Models\StaffSalaryStructure;
+use App\Models\CashRegisterShift;
 use App\Models\Invoice;
 use App\Models\CustomerMembership;
 use App\Models\LoyaltyEarningRule;
@@ -41,6 +42,7 @@ use App\Models\Vendor;
 use App\Policies\AppointmentPolicy;
 use App\Policies\AuditLogPolicy;
 use App\Policies\BranchPolicy;
+use App\Policies\CashRegisterShiftPolicy;
 use App\Policies\CommissionPayoutPolicy;
 use App\Policies\CommissionRulePolicy;
 use App\Policies\CommissionSettingPolicy;
@@ -89,6 +91,7 @@ class AuthServiceProvider extends ServiceProvider
         Appointment::class => AppointmentPolicy::class,
         AuditLog::class => AuditLogPolicy::class,
         Branch::class => BranchPolicy::class,
+        CashRegisterShift::class => CashRegisterShiftPolicy::class,
         CommissionPayout::class => CommissionPayoutPolicy::class,
         CommissionRule::class => CommissionRulePolicy::class,
         CommissionSetting::class => CommissionSettingPolicy::class,

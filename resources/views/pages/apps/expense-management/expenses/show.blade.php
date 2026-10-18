@@ -68,6 +68,9 @@
                                 <div>
                                     <div class="fw-bold text-gray-900">{{ $payment->paymentMethod?->name ?? str($payment->payment_method)->headline() }}</div>
                                     <div class="text-muted fs-8">{{ $payment->payment_date?->format('M d, Y') }} @if($payment->reference_number)- Ref: {{ $payment->reference_number }}@endif</div>
+                                    @if ($payment->cash_register_shift_id)
+                                        <span class="badge badge-light-info mt-1">From drawer · {{ $payment->cashRegisterShift?->shift_number }}</span>
+                                    @endif
                                 </div>
                                 <div class="fw-bold text-gray-900">LKR {{ number_format((float) $payment->amount, 2) }}</div>
                             </div>
@@ -133,12 +136,13 @@
                                 @csrf
                                 <div class="mb-5">
                                     <label class="form-label required">Payment Method</label>
-                                    <select name="payment_method_id" class="form-select form-select-solid" required>
+                                    <select name="payment_method_id" class="form-select form-select-solid" required data-drawer-method>
                                         @foreach ($paymentMethods as $method)
-                                            <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                            <option value="{{ $method->id }}" data-type="{{ $method->type }}" @selected((string) old('payment_method_id') === (string) $method->id)>{{ $method->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
+                                @include('pages.apps.expense-management.expenses._drawer-toggle')
                                 <div class="mb-5">
                                     <label class="form-label required">Amount</label>
                                     <input type="number" min="0.01" max="{{ $expense->balance_amount }}" step="0.01" name="amount" value="{{ number_format((float) $expense->balance_amount, 2, '.', '') }}" class="form-control form-control-solid" required>

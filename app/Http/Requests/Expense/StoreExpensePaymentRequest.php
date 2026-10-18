@@ -19,6 +19,7 @@ class StoreExpensePaymentRequest extends FormRequest
             'payment_date' => ['required', 'date'],
             'reference_number' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:3000'],
+            'from_cash_drawer' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -99,13 +99,14 @@ class CustomerController extends Controller
             $entitlements->ensureFeature($customer->tenant, 'customer_management');
         }
 
-        $customer->load(['tenant', 'branch', 'noteEntries.user', 'appointments.branch', 'sales.payments']);
+        $customer->load(['tenant', 'branch', 'noteEntries.user', 'appointments.branch', 'sales.payments', 'sales.refunds']);
         $customer->loadCount(['appointments', 'sales', 'noteEntries']);
 
         return view('pages/apps.customer-management.customers.show', [
             'customer' => $customer,
             'totalSpend' => $customer->sales->sum(fn($sale) => (float) $sale->total),
-            'totalPaid' => $customer->sales->sum(fn($sale) => $sale->payments->sum(fn($payment) => (float) $payment->amount)),
+            'totalPaid' => $customer->sales->sum(fn($sale) => $sale->payments->where('status', \App\Models\Payment::STATUS_COMPLETED)->sum(fn($payment) => (float) $payment->amount)
+                - $sale->refunds->where('status', \App\Models\Refund::STATUS_COMPLETED)->sum(fn($refund) => (float) $refund->amount)),
         ]);
     }
 

@@ -166,6 +166,92 @@ class DashboardKpiManagementTest extends TestCase
             ->assertSee('LKR 6,990.00');
     }
 
+    public function test_dashboard_today_follows_the_salons_calendar_day(): void
+    {
+        // 20:00 UTC on Oct 18 is already 01:30 on Oct 19 in Colombo.
+        $this->travelTo(\Carbon\CarbonImmutable::parse('2026-10-18 20:00:00', 'UTC'));
+        [$tenant, $owner, $branch] = $this->salonOwner();
+
+        $invoice = Invoice::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'invoice_number' => 'INV-TZ-001',
+            'subtotal' => 1500,
+            'total' => 1500,
+            'paid_amount' => 1500,
+            'balance_amount' => 0,
+            'status' => Invoice::STATUS_ISSUED,
+            'payment_status' => Invoice::PAYMENT_PAID,
+            'issued_at' => now(),
+        ]);
+
+        foreach ([['2026-10-18 19:00:00', 1000], ['2026-10-18 18:00:00', 500]] as $index => [$paidAt, $amount]) {
+            Payment::create([
+                'tenant_id' => $tenant->id,
+                'branch_id' => $branch->id,
+                'sale_id' => $invoice->id,
+                'payment_number' => 'PAY-TZ-00' . $index,
+                'amount' => $amount,
+                'method' => 'cash',
+                'status' => Payment::STATUS_COMPLETED,
+                'paid_at' => \Carbon\CarbonImmutable::parse($paidAt, 'UTC'),
+            ]);
+        }
+
+        $category = \App\Models\ExpenseCategory::create(['tenant_id' => $tenant->id, 'name' => 'Pantry', 'code' => 'PANTRY', 'is_active' => true]);
+
+        foreach ([['2026-10-19', 300], ['2026-10-18', 700]] as $index => [$date, $amount]) {
+            \App\Models\Expense::create([
+                'tenant_id' => $tenant->id,
+                'branch_id' => $branch->id,
+                'expense_number' => 'EXP-TZ-00' . $index,
+                'category_id' => $category->id,
+                'expense_date' => $date,
+                'description' => 'Pantry',
+                'amount' => $amount,
+                'subtotal' => $amount,
+                'tax_amount' => 0,
+                'discount_amount' => 0,
+                'total_amount' => $amount,
+                'paid_amount' => 0,
+                'balance_amount' => $amount,
+                'currency' => 'LKR',
+                'payment_status' => \App\Models\Expense::PAYMENT_UNPAID,
+                'approval_status' => \App\Models\Expense::APPROVAL_PENDING,
+                'expense_status' => \App\Models\Expense::STATUS_CONFIRMED,
+            ]);
+        }
+
+        $customer = Customer::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'first_name' => 'Amali',
+            'status' => Customer::STATUS_ACTIVE,
+        ]);
+
+        // Appointment times are the salon's wall-clock time.
+        foreach (['2026-10-19 10:00:00', '2026-10-18 22:00:00'] as $index => $startsAt) {
+            Appointment::create([
+                'tenant_id' => $tenant->id,
+                'branch_id' => $branch->id,
+                'customer_id' => $customer->id,
+                'appointment_number' => 'APT-TZ-00' . $index,
+                'starts_at' => $startsAt,
+                'ends_at' => \Carbon\CarbonImmutable::parse($startsAt)->addHour(),
+                'status' => Appointment::STATUS_CONFIRMED,
+                'booking_source' => 'reception',
+            ]);
+        }
+
+        $dashboard = $this->actingAs($owner)->get(route('dashboard'))->assertOk()->viewData('dashboard');
+
+        $this->assertEquals(1000.0, $dashboard['summary']['revenue']);
+        $this->assertEquals(300.0, $dashboard['summary']['expenses']);
+        $this->assertSame(1, collect($dashboard['cards'])->firstWhere('label', 'Appointments')['value']);
+        $this->assertSame(['Oct 19'], $dashboard['charts']['revenue']['labels']);
+        $this->assertSame([1000.0], $dashboard['charts']['revenue']['series']);
+    }
+
     private function salonOwner(): array
     {
         $ownerRole = Role::firstOrCreate(['name' => 'Salon Owner', 'guard_name' => 'web']);

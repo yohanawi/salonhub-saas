@@ -19,6 +19,7 @@ use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
@@ -99,17 +100,23 @@ class ExpenseController extends Controller
         // Recording a payment needs the pay permission, not just permission to create expenses.
         abort_if($recordsPayment && ! $request->user()->hasRole('Super Admin') && ! $request->user()->can('expenses.pay'), 403);
 
-        $expense = $expenses->create($tenant, $request->validated(), $request->user());
+        // The expense and its first payment are saved together, so a refused payment leaves no half-entered expense.
+        $expense = DB::transaction(function () use ($expenses, $payments, $tenant, $request, $recordsPayment) {
+            $expense = $expenses->create($tenant, $request->validated(), $request->user());
 
-        if ($recordsPayment) {
-            $payments->record($expense, [
-                'payment_method_id' => $request->integer('payment_method_id'),
-                'amount' => $request->input('paid_amount'),
-                'payment_date' => $request->input('payment_date') ?: $expense->expense_date->toDateString(),
-                'reference_number' => $request->input('payment_reference_number'),
-                'notes' => $request->input('payment_notes'),
-            ], $request->user());
-        }
+            if ($recordsPayment) {
+                $payments->record($expense, [
+                    'payment_method_id' => $request->integer('payment_method_id'),
+                    'amount' => $request->input('paid_amount'),
+                    'payment_date' => $request->input('payment_date') ?: $expense->expense_date->toDateString(),
+                    'reference_number' => $request->input('payment_reference_number'),
+                    'notes' => $request->input('payment_notes'),
+                    'from_cash_drawer' => $request->boolean('from_cash_drawer'),
+                ], $request->user());
+            }
+
+            return $expense;
+        });
 
         if ($request->hasFile('receipt')) {
             $this->storeAttachment($expense, $request->file('receipt'), $request->user()->id);

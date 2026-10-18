@@ -25,6 +25,7 @@ class AuditLogService
     private const MODULES = [
         'Appointment' => 'appointments',
         'Branch' => 'branches',
+        'CashRegisterShift' => 'payments',
         'Customer' => 'customers',
         'CustomerMembership' => 'memberships',
         'Expense' => 'expenses',
@@ -34,6 +35,7 @@ class AuditLogService
         'Plan' => 'subscriptions',
         'Product' => 'inventory',
         'Promotion' => 'promotions',
+        'Refund' => 'payments',
         'PromotionCoupon' => 'promotions',
         'Service' => 'services',
         'ServiceCategory' => 'services',

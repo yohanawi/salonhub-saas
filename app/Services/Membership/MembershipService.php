@@ -2,6 +2,7 @@
 
 namespace App\Services\Membership;
 
+use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\CustomerMembership;
 use App\Models\Invoice;
@@ -9,6 +10,7 @@ use App\Models\MembershipPlan;
 use App\Models\PaymentMethod;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Billing\InvoiceNumberService;
 use App\Services\Billing\PaymentMethodService;
 use App\Services\Billing\PaymentService;
 use Illuminate\Support\Carbon;
@@ -19,7 +21,8 @@ class MembershipService
 {
     public function __construct(
         private readonly PaymentService $payments,
-        private readonly PaymentMethodService $paymentMethods
+        private readonly PaymentMethodService $paymentMethods,
+        private readonly InvoiceNumberService $invoiceNumbers
     ) {
     }
 
@@ -75,12 +78,15 @@ class MembershipService
                     ->where('is_active', true)
                     ->findOrFail($data['payment_method_id']);
 
+                $branchId = $data['branch_id'] ?? $customer->branch_id;
+                $issuedAt = now();
+
                 $invoice = Invoice::create([
                     'tenant_id' => $tenant->id,
-                    'branch_id' => $data['branch_id'] ?? $customer->branch_id,
+                    'branch_id' => $branchId,
                     'customer_id' => $customer->id,
                     'customer_membership_id' => $membership->id,
-                    'invoice_number' => 'INV-TMP-' . uniqid(),
+                    'invoice_number' => $this->invoiceNumbers->next($tenant->id, $branchId ? Branch::withoutTenantScope()->find($branchId) : null, $issuedAt),
                     'subtotal' => $total,
                     'discount' => 0,
                     'tax' => 0,
@@ -89,14 +95,10 @@ class MembershipService
                     'balance_amount' => $total,
                     'status' => Invoice::STATUS_ISSUED,
                     'payment_status' => Invoice::PAYMENT_UNPAID,
-                    'issued_at' => now(),
+                    'issued_at' => $issuedAt,
                     'notes' => 'Membership purchase: ' . $plan->name,
                     'created_by' => $user->id,
                     'updated_by' => $user->id,
-                ]);
-
-                $invoice->update([
-                    'invoice_number' => 'INV-' . $invoice->issued_at->format('Y') . '-' . str_pad((string) $invoice->id, 6, '0', STR_PAD_LEFT),
                 ]);
 
                 $invoice->items()->create([

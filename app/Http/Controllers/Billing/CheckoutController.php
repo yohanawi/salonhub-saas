@@ -9,18 +9,22 @@ use App\Models\Invoice;
 use App\Models\PaymentMethod;
 use App\Models\Promotion;
 use App\Models\Product;
+use App\Services\Billing\CashRegisterService;
 use App\Services\Billing\CheckoutService;
 use App\Services\Billing\PaymentMethodService;
+use App\Services\Billing\PosPinService;
+use App\Services\Billing\TaxService;
 use App\Services\Loyalty\LoyaltyService;
 use App\Services\Membership\MembershipBenefitService;
 use App\Services\PlanEntitlementService;
+use App\Services\Settings\SettingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    public function create(Request $request, Appointment $appointment, PaymentMethodService $paymentMethods, PlanEntitlementService $entitlements, LoyaltyService $loyalty, MembershipBenefitService $membershipBenefits): View|RedirectResponse
+    public function create(Request $request, Appointment $appointment, PaymentMethodService $paymentMethods, PlanEntitlementService $entitlements, LoyaltyService $loyalty, MembershipBenefitService $membershipBenefits, TaxService $taxes, SettingService $settings, CashRegisterService $cashRegister, PosPinService $posPin): View|RedirectResponse
     {
         $this->authorize('checkout', Invoice::class);
         $this->authorize('view', $appointment);
@@ -70,6 +74,13 @@ class CheckoutController extends Controller
                 ->orderByDesc('priority')
                 ->orderBy('name')
                 ->get(),
+            'taxConfig' => $taxes->configFor($appointment->branch),
+            'canApplyDiscount' => $request->user()->can('applyDiscount', Invoice::class)
+                && $settings->get('pos.allow_manual_discount', $appointment->tenant_id, $appointment->branch_id),
+            'allowSplitPayment' => (bool) $settings->get('pos.allow_split_payment', $appointment->tenant_id, $appointment->branch_id),
+            'cashShift' => $cashRegister->openShiftFor($appointment->branch_id),
+            'requireShift' => $cashRegister->requiresOpenShift($appointment->tenant_id, $appointment->branch_id),
+            'posPin' => $posPin->viewData($appointment->branch, $request->user()),
         ]);
     }
 
@@ -78,10 +89,11 @@ class CheckoutController extends Controller
         $this->authorize('view', $appointment);
         $entitlements->ensureFeature($appointment->tenant, 'pos_billing');
 
-        $invoice = $checkout->checkoutAppointment($appointment, $request->validated(), $request->user());
+        $invoice = $checkout->checkoutAppointment($appointment, ['cashier_staff_id' => $request->cashierStaffId()] + $request->validated(), $request->user());
 
         return redirect()
             ->route('billing.invoices.show', $invoice)
-            ->with('status', 'Checkout completed and invoice created.');
+            ->with('status', 'Checkout completed and invoice created.')
+            ->with('print_receipt', true);
     }
 }

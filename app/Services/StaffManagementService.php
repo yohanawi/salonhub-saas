@@ -21,6 +21,7 @@ class StaffManagementService
             $this->syncBreaks($staff, $tenant, $data['breaks'] ?? []);
             $this->syncTimeOff($staff, $tenant, $data['time_off'] ?? []);
             $this->syncCommissionSettings($staff, $tenant, $data['commission_settings'] ?? []);
+            $this->syncPosPin($staff, $data);
 
             return $staff->fresh(['branches', 'services', 'schedules', 'breaks', 'timeOff', 'commissionSettings']);
         });
@@ -37,6 +38,7 @@ class StaffManagementService
             $this->syncBreaks($staff, $staff->tenant, $data['breaks'] ?? []);
             $this->syncTimeOff($staff, $staff->tenant, $data['time_off'] ?? []);
             $this->syncCommissionSettings($staff, $staff->tenant, $data['commission_settings'] ?? []);
+            $this->syncPosPin($staff, $data);
 
             return $staff->fresh(['branches', 'services', 'schedules', 'breaks', 'timeOff', 'commissionSettings']);
         });
@@ -72,6 +74,16 @@ class StaffManagementService
             'commission_type' => $data['commission_type'] ?? 'percentage',
             'commission_value' => $data['commission_value'] ?? 0,
         ];
+    }
+
+    // A blank PIN field keeps the current PIN, so editing other details never wipes it.
+    private function syncPosPin(Staff $staff, array $data): void
+    {
+        if (filled($data['pos_pin'] ?? null)) {
+            $staff->setPosPin((string) $data['pos_pin']);
+        } elseif (! empty($data['clear_pos_pin'])) {
+            $staff->setPosPin(null);
+        }
     }
 
     private function syncBranches(Staff $staff, Tenant $tenant, array $branches, mixed $primaryBranchId): void

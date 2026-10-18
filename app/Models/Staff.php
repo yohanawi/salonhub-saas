@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Hash;
 
 class Staff extends Model
 {
@@ -38,8 +39,13 @@ class Staff extends Model
 
     protected $guarded = [];
 
+    protected $hidden = [
+        'pos_pin',
+    ];
+
     protected $casts = [
         'commission_value' => 'decimal:2',
+        'pos_pin_updated_at' => 'datetime',
         'hire_date' => 'date',
         'date_of_birth' => 'date',
         'is_bookable' => 'boolean',
@@ -145,6 +151,24 @@ class Staff extends Model
     public function getStatusLabelAttribute(): string
     {
         return str($this->status)->replace('_', ' ')->headline()->toString();
+    }
+
+    public function hasPosPin(): bool
+    {
+        return filled($this->pos_pin);
+    }
+
+    public function setPosPin(?string $pin): void
+    {
+        $this->forceFill([
+            'pos_pin' => filled($pin) ? Hash::make($pin) : null,
+            'pos_pin_updated_at' => filled($pin) ? now() : null,
+        ])->save();
+    }
+
+    public function checkPosPin(string $pin): bool
+    {
+        return $this->hasPosPin() && Hash::check($pin, $this->pos_pin);
     }
 
     public function primaryBranch(): ?Branch

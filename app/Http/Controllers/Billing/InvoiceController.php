@@ -7,7 +7,11 @@ use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\Refund;
 use App\Models\Tenant;
+use App\Services\Billing\CashRegisterService;
+use App\Services\Billing\PosPinService;
+use App\Services\Billing\RefundService;
 use App\Services\BranchContext;
 use App\Services\Commission\CommissionGenerator;
 use App\Services\Inventory\InventoryService;
@@ -15,6 +19,7 @@ use App\Services\Loyalty\LoyaltyService;
 use App\Services\Membership\MembershipBenefitService;
 use App\Services\PlanEntitlementService;
 use App\Services\Promotions\PromotionService;
+use App\Services\Settings\SettingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +47,7 @@ class InvoiceController extends Controller
             : $branchContext->availableBranches($request->user());
 
         $invoices = ($isSuperAdmin ? Invoice::withoutTenantScope() : Invoice::query()->where('tenant_id', $tenant->id))
-            ->with(['tenant', 'branch', 'customer', 'appointment', 'items.staff', 'payments.paymentMethod'])
+            ->with(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'items.staff', 'payments.paymentMethod'])
             ->when(! $isSuperAdmin && ! ($branchContext->hasTenantWideBranchAccess($request->user()) || $request->user()->can('billing.view_all_branches')), function (Builder $query) use ($visibleBranches) {
                 $query->whereIn('branch_id', $visibleBranches->pluck('id'));
             })
@@ -74,7 +79,7 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function show(Request $request, Invoice $invoice, PlanEntitlementService $entitlements): View
+    public function show(Request $request, Invoice $invoice, PlanEntitlementService $entitlements, RefundService $refunds, SettingService $settings, CashRegisterService $cashRegister, PosPinService $posPin): View
     {
         $this->authorize('view', $invoice);
 
@@ -82,18 +87,63 @@ class InvoiceController extends Controller
             $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
         }
 
-        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'items.staff', 'promotion', 'promotionCoupon', 'promotionUsages', 'payments.paymentMethod', 'payments.receiver', 'createdBy', 'voidedBy']);
+        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'payments.cashier', 'items.staff', 'promotion', 'promotionCoupon', 'promotionUsages', 'payments.paymentMethod', 'payments.receiver', 'createdBy', 'voidedBy', 'refunds.items.invoiceItem', 'refunds.paymentMethod', 'refunds.requestedBy', 'refunds.processedBy']);
+
+        $refundableAmount = $refunds->refundableAmount($invoice);
+        $canRequestRefund = $request->user()->can('refund', $invoice)
+            && $invoice->status === Invoice::STATUS_ISSUED
+            && in_array($invoice->payment_status, [Invoice::PAYMENT_PAID, Invoice::PAYMENT_PARTIALLY_REFUNDED], true)
+            && $refundableAmount > 0
+            && $settings->get('pos.allow_refunds', $invoice->tenant_id, $invoice->branch_id);
+        $activeMethods = fn () => PaymentMethod::withoutTenantScope()
+            ->where('tenant_id', $invoice->tenant_id)
+            ->active()
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
 
         return view('pages/apps.billing.invoices.show', [
             'invoice' => $invoice,
-            'paymentMethods' => $request->user()->can('collectPayment', $invoice)
-                ? PaymentMethod::withoutTenantScope()
-                    ->where('tenant_id', $invoice->tenant_id)
-                    ->active()
-                    ->orderBy('sort_order')
-                    ->orderBy('name')
-                    ->get()
-                : collect(),
+            'paymentMethods' => $request->user()->can('collectPayment', $invoice) ? $activeMethods() : collect(),
+            'canRequestRefund' => $canRequestRefund,
+            'canApproveRefund' => $request->user()->can('approveRefund', $invoice),
+            'refundMethods' => $canRequestRefund ? $activeMethods() : collect(),
+            'returnableItems' => $canRequestRefund ? $refunds->returnableItems($invoice) : collect(),
+            'refundableAmount' => $refundableAmount,
+            'allowSplitPayment' => (bool) $settings->get('pos.allow_split_payment', $invoice->tenant_id, $invoice->branch_id),
+            'cashShift' => $cashRegister->openShiftFor($invoice->branch_id),
+            'requireShift' => $cashRegister->requiresOpenShift($invoice->tenant_id, $invoice->branch_id),
+            'receiptFormat' => $settings->get('invoice.receipt_format', $invoice->tenant_id, $invoice->branch_id),
+            // Only straight after the sale, so reopening the invoice later does not print again.
+            'autoPrintReceipt' => (bool) $request->session()->get('print_receipt')
+                && $settings->get('pos.auto_print_receipt', $invoice->tenant_id, $invoice->branch_id),
+            'posPin' => $request->user()->can('collectPayment', $invoice) && $invoice->branch
+                ? $posPin->viewData($invoice->branch, $request->user())
+                : null,
+        ]);
+    }
+
+    /**
+     * Standalone 80mm receipt for counter thermal printers. `?print=1` opens the print dialog on load.
+     */
+    public function receipt(Request $request, Invoice $invoice, PlanEntitlementService $entitlements, SettingService $settings): View
+    {
+        $this->authorize('view', $invoice);
+
+        if (! $request->user()->hasRole('Super Admin')) {
+            $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
+        }
+
+        $invoice->load(['tenant', 'branch', 'customer', 'appointment', 'cashier', 'items.staff', 'payments.paymentMethod']);
+        $setting = fn (string $key) => $settings->get($key, $invoice->tenant_id, $invoice->branch_id);
+
+        return view('pages/apps.billing.invoices.receipt-thermal', [
+            'invoice' => $invoice,
+            'autoPrint' => $request->boolean('print'),
+            'showLogo' => (bool) $setting('invoice.show_logo') && filled($invoice->tenant?->logo_path),
+            'showCustomer' => (bool) $setting('invoice.show_customer_details'),
+            'footerMessage' => $setting('invoice.footer_message'),
+            'terms' => $setting('invoice.terms'),
         ]);
     }
 
@@ -111,6 +161,11 @@ class InvoiceController extends Controller
 
             if ($locked->status === Invoice::STATUS_VOID) {
                 throw ValidationException::withMessages(['invoice' => 'This invoice has already been voided.']);
+            }
+
+            // Voiding reverses the whole sale again, so it would double-count stock and commission already returned.
+            if ($locked->refunds()->whereIn('status', [Refund::STATUS_PENDING, Refund::STATUS_COMPLETED])->exists()) {
+                throw ValidationException::withMessages(['invoice' => 'This invoice has refunds. Use a refund instead of voiding it.']);
             }
 
             $invoice->update([

@@ -74,9 +74,20 @@ class InvoicePolicy
         return $this->view($user, $invoice) && $user->can('invoices.void');
     }
 
+    public function refund(User $user, Invoice $invoice): bool
+    {
+        return $this->view($user, $invoice) && ($user->hasRole('Super Admin') || $user->can('refunds.create'));
+    }
+
+    public function approveRefund(User $user, Invoice $invoice): bool
+    {
+        return $this->view($user, $invoice) && ($user->hasRole('Super Admin') || $user->can('refunds.approve'));
+    }
+
     public function applyDiscount(User $user): bool
     {
-        return $user->hasRole('Super Admin') || $user->can('billing.apply_discount');
+        // Front-desk roles are seeded with "discount.manual" rather than the billing permission.
+        return $user->hasRole('Super Admin') || $user->can('billing.apply_discount') || $user->can('discount.manual');
     }
 
     public function viewReports(User $user): bool

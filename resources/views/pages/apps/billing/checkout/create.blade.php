@@ -10,9 +10,17 @@
     @php
         $subtotal = $appointment->appointmentServices->sum(fn($item) => (float) ($item->unit_price ?? $item->price));
         $lineDiscount = $appointment->appointmentServices->sum(fn($item) => (float) $item->discount_amount);
-        $tax = old('tax_amount', 0);
-        $invoiceDiscount = old('discount_amount', 0);
-        $total = max(0, $subtotal - $lineDiscount - (float) $invoiceDiscount + (float) $tax);
+        $invoiceDiscount = $canApplyDiscount ? (float) old('discount_amount', 0) : 0;
+        $taxBase = max(0, $subtotal - $lineDiscount - $invoiceDiscount);
+        $tax = match (true) {
+            ! $taxConfig['enabled'] => 0,
+            $taxConfig['inclusive'] => round($taxBase - $taxBase / (1 + $taxConfig['rate'] / 100), 2),
+            default => round($taxBase * $taxConfig['rate'] / 100, 2),
+        };
+        $total = $taxBase + ($taxConfig['inclusive'] ? 0 : $tax);
+        $taxLabel = $taxConfig['enabled']
+            ? $taxConfig['name'] . ' (' . rtrim(rtrim(number_format($taxConfig['rate'], 2), '0'), '.') . '%' . ($taxConfig['inclusive'] ? ', included' : '') . ')'
+            : 'Tax';
     @endphp
 
     <div id="kt_app_content_container">
@@ -40,7 +48,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('billing.checkout.appointments.store', $appointment) }}" data-service-subtotal="{{ $subtotal }}" data-service-discount="{{ $lineDiscount }}">
+        <form method="POST" action="{{ route('billing.checkout.appointments.store', $appointment) }}" data-service-subtotal="{{ $subtotal }}" data-service-discount="{{ $lineDiscount }}" data-tax-rate="{{ $taxConfig['rate'] }}" data-tax-inclusive="{{ $taxConfig['inclusive'] ? '1' : '0' }}">
             @csrf
             <div class="row g-8">
                 <div class="col-xl-8">
@@ -114,7 +122,7 @@
                                                         <option value="" data-price="0">Select product</option>
                                                         @foreach ($products as $product)
                                                             @php($stock = $product->inventories->first())
-                                                            <option value="{{ $product->id }}" data-price="{{ (float) $product->selling_price }}">
+                                                            <option value="{{ $product->id }}" data-price="{{ (float) $product->selling_price }}" data-tax-rate="{{ (float) $product->tax_rate }}">
                                                                 {{ $product->name }} - LKR {{ number_format((float) $product->selling_price, 2) }} - Stock {{ $stock?->available_quantity ?? 0 }}
                                                             </option>
                                                         @endforeach
@@ -170,13 +178,18 @@
                                 <label class="form-label fw-semibold">Coupon Code</label>
                                 <input type="text" name="coupon_code" value="{{ old('coupon_code') }}" class="form-control form-control-solid text-uppercase">
                             </div>
-                            <div class="mb-5">
-                                <label class="form-label fw-semibold">Invoice Discount</label>
-                                <input type="number" name="discount_amount" id="discount_amount" min="0" step="0.01" value="{{ old('discount_amount', 0) }}" class="form-control form-control-solid">
-                            </div>
-                            <div class="mb-5">
-                                <label class="form-label fw-semibold">Tax Amount</label>
-                                <input type="number" name="tax_amount" id="tax_amount" min="0" step="0.01" value="{{ old('tax_amount', 0) }}" class="form-control form-control-solid">
+                            @if ($canApplyDiscount)
+                                <div class="mb-5">
+                                    <label class="form-label fw-semibold">Invoice Discount</label>
+                                    <input type="number" name="discount_amount" id="discount_amount" min="0" step="0.01" value="{{ old('discount_amount', 0) }}" class="form-control form-control-solid @error('discount_amount') is-invalid @enderror">
+                                    @error('discount_amount')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endif
+                            <div class="d-flex justify-content-between mb-5">
+                                <span class="text-muted">{{ $taxLabel }}</span>
+                                <span class="fw-semibold" id="estimated_tax">LKR {{ number_format($tax, 2) }}</span>
                             </div>
                             @if ($loyaltyAccount || $activeMembership)
                                 <div class="rounded border p-4 mb-5">
@@ -200,47 +213,7 @@
                                 <span class="fw-bolder text-primary" id="estimated_total">LKR {{ number_format($total, 2) }}</span>
                             </div>
 
-                            <div class="mb-5">
-                                <label class="form-label required fw-semibold">Payment Method</label>
-                                <select name="payment_method_id" id="payment_method_id" class="form-select form-select-solid" required>
-                                    <option value="">Select method</option>
-                                    @foreach ($paymentMethods as $method)
-                                        <option value="{{ $method->id }}" data-type="{{ $method->type }}" data-reference="{{ $method->requires_reference ? '1' : '0' }}" @selected((string) old('payment_method_id') === (string) $method->id)>
-                                            {{ $method->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="mb-5">
-                                <label class="form-label required fw-semibold">Payment Amount</label>
-                                <div class="input-group input-group-solid">
-                                    <span class="input-group-text">LKR</span>
-                                    <input type="number" name="amount" id="payment_amount" min="0.01" step="0.01" value="{{ old('amount', number_format($total, 2, '.', '')) }}" class="form-control" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-5" id="cash_received_wrap">
-                                <label class="form-label fw-semibold">Cash Received</label>
-                                <div class="input-group input-group-solid">
-                                    <span class="input-group-text">LKR</span>
-                                    <input type="number" name="cash_received" min="0" step="0.01" value="{{ old('cash_received') }}" class="form-control">
-                                </div>
-                            </div>
-
-                            <div class="mb-5">
-                                <label class="form-label fw-semibold">Transaction Reference</label>
-                                <input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}" class="form-control form-control-solid">
-                            </div>
-
-                            <div class="mb-7">
-                                <label class="form-label fw-semibold">Payment Notes</label>
-                                <textarea name="payment_notes" class="form-control form-control-solid" rows="3">{{ old('payment_notes') }}</textarea>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary btn-lg w-100">
-                                <i class="bi bi-check2-circle me-2"></i>Complete Sale
-                            </button>
+                            @include('pages.apps.billing._payment-fields')
                         </div>
                     </div>
                 </div>
@@ -251,56 +224,64 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                const method = document.getElementById('payment_method_id');
-                const cashWrap = document.getElementById('cash_received_wrap');
                 const form = document.querySelector('form[data-service-subtotal]');
                 const productsTable = document.getElementById('checkout-products-table');
                 const addProductRow = document.getElementById('add-product-row');
                 const discountInput = document.getElementById('discount_amount');
-                const taxInput = document.getElementById('tax_amount');
+                const estimatedTax = document.getElementById('estimated_tax');
                 const estimatedTotal = document.getElementById('estimated_total');
-                const paymentAmount = document.getElementById('payment_amount');
+                const defaultTaxRate = Number(form?.dataset.taxRate || 0);
+                const taxInclusive = form?.dataset.taxInclusive === '1';
                 let productIndex = 1;
-
-                function refreshCash() {
-                    const selected = method?.selectedOptions[0];
-                    cashWrap.style.display = selected?.dataset.type === 'cash' ? '' : 'none';
-                }
-
-                method?.addEventListener('change', refreshCash);
-                refreshCash();
 
                 function money(value) {
                     return 'LKR ' + Number(value || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 }
 
+                function taxFor(amount, rate) {
+                    if (rate <= 0 || amount <= 0) {
+                        return 0;
+                    }
+
+                    return taxInclusive ? amount - (amount / (1 + rate / 100)) : amount * rate / 100;
+                }
+
+                // Mirrors TaxService: the invoice discount is shared across lines before tax is applied.
+                // Membership and promotion discounts are only known after submit, so this stays an estimate.
                 function recalculate() {
                     const serviceSubtotal = Number(form?.dataset.serviceSubtotal || 0);
                     const serviceDiscount = Number(form?.dataset.serviceDiscount || 0);
-                    let productSubtotal = 0;
+                    const lines = [{base: Math.max(0, serviceSubtotal - serviceDiscount), rate: defaultTaxRate}];
 
                     productsTable?.querySelectorAll('tbody tr').forEach(function(row) {
                         const selected = row.querySelector('.checkout-product')?.selectedOptions[0];
                         const qty = Number(row.querySelector('.checkout-product-qty')?.value || 0);
                         const lineTotal = Number(selected?.dataset.price || 0) * qty;
-                        productSubtotal += lineTotal;
+                        const productRate = Number(selected?.dataset.taxRate || 0);
+                        lines.push({base: lineTotal, rate: productRate > 0 ? productRate : defaultTaxRate});
                         const totalCell = row.querySelector('.checkout-product-total');
                         if (totalCell) {
                             totalCell.textContent = money(lineTotal);
                         }
                     });
 
-                    const discount = Number(discountInput?.value || 0);
-                    const tax = Number(taxInput?.value || 0);
-                    const total = Math.max(0, serviceSubtotal + productSubtotal - serviceDiscount - discount + tax);
+                    const baseTotal = lines.reduce((sum, line) => sum + line.base, 0);
+                    const discount = Math.min(Math.max(0, Number(discountInput?.value || 0)), baseTotal);
+                    const tax = lines.reduce(function(sum, line) {
+                        const share = baseTotal > 0 ? discount * line.base / baseTotal : 0;
+                        return sum + Math.round(taxFor(line.base - share, line.rate) * 100) / 100;
+                    }, 0);
+                    const total = Math.max(0, baseTotal - discount + (taxInclusive ? 0 : tax));
+
+                    if (estimatedTax) {
+                        estimatedTax.textContent = money(tax);
+                    }
 
                     if (estimatedTotal) {
                         estimatedTotal.textContent = money(total);
                     }
 
-                    if (paymentAmount && ! paymentAmount.dataset.userEdited) {
-                        paymentAmount.value = total.toFixed(2);
-                    }
+                    window.posPayments?.setTotal(total);
                 }
 
                 addProductRow?.addEventListener('click', function() {
@@ -332,11 +313,7 @@
                     }
                 });
 
-                paymentAmount?.addEventListener('input', function() {
-                    paymentAmount.dataset.userEdited = '1';
-                });
                 discountInput?.addEventListener('input', recalculate);
-                taxInput?.addEventListener('input', recalculate);
                 recalculate();
             });
         </script>

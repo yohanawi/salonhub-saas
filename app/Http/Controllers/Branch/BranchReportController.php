@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\Inventory;
 use App\Models\Payment;
 use App\Models\Purchase;
+use App\Models\Refund;
 use App\Models\Sale;
 use App\Services\PlanEntitlementService;
 use Illuminate\Http\Request;
@@ -45,10 +46,17 @@ class BranchReportController extends Controller
             ->where('branch_id', $branch->id)
             ->whereBetween('expense_date', [$startDate->toDateString(), $endDate->toDateString()]);
 
-        $paymentTotal = Payment::query()
+        // Net collections: void payments are excluded and refunds paid out in the period are taken off.
+        $paymentTotal = (float) Payment::query()
+            ->where('status', Payment::STATUS_COMPLETED)
             ->whereHas('sale', fn ($query) => $query->where('branch_id', $branch->id))
             ->whereBetween('paid_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
-            ->sum('amount');
+            ->sum('amount')
+            - (float) Refund::query()
+                ->where('branch_id', $branch->id)
+                ->where('status', Refund::STATUS_COMPLETED)
+                ->whereBetween('processed_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
+                ->sum('amount');
 
         $metrics = [
             'appointments' => (clone $appointmentQuery)->count(),

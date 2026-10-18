@@ -19,7 +19,7 @@
                 'icon' => 'bi-circle-half',
                 'label' => $invoice->payment_status_label,
             ],
-            'refunded' => [
+            'refunded', 'partially_refunded' => [
                 'class' => 'info',
                 'icon' => 'bi-arrow-counterclockwise',
                 'label' => $invoice->payment_status_label,
@@ -97,6 +97,12 @@
                                         {{ $invoice->appointment->appointment_number }}
                                     </span>
                                 @endif
+                                @if ($invoice->cashier)
+                                    <span>
+                                        <i class="bi bi-person-badge me-1"></i>
+                                        Cashier: {{ $invoice->cashier->full_name }}
+                                    </span>
+                                @endif
                                 @if ($invoice->issued_at)
                                     <span>
                                         <i class="bi bi-clock me-1"></i>
@@ -109,11 +115,28 @@
 
                     {{-- Actions --}}
                     <div class="d-flex align-items-start flex-wrap gap-3">
-                        <a href="#" class="btn btn-light-primary"
-                            data-receipt-template="invoice-show-receipt-template"
-                            data-receipt-invoice="{{ $invoice->invoice_number }}">
-                            <i class="bi bi-printer"></i>                            
-                        </a>
+                        @if ($receiptFormat === 'thermal_80mm')
+                            <a href="{{ route('billing.invoices.receipt', $invoice) }}" class="btn btn-light-primary"
+                                data-thermal-print="{{ route('billing.invoices.receipt', ['invoice' => $invoice, 'print' => 1]) }}"
+                                title="Print 80mm receipt">
+                                <i class="bi bi-printer me-1"></i>Print
+                            </a>
+                            <a href="#" class="btn btn-light" title="A4 receipt"
+                                data-receipt-template="invoice-show-receipt-template"
+                                data-receipt-invoice="{{ $invoice->invoice_number }}">
+                                A4
+                            </a>
+                        @else
+                            <a href="#" class="btn btn-light-primary" title="Print receipt"
+                                data-receipt-template="invoice-show-receipt-template"
+                                data-receipt-invoice="{{ $invoice->invoice_number }}">
+                                <i class="bi bi-printer"></i>
+                            </a>
+                            <a href="{{ route('billing.invoices.receipt', $invoice) }}" class="btn btn-light" title="Print 80mm receipt"
+                                data-thermal-print="{{ route('billing.invoices.receipt', ['invoice' => $invoice, 'print' => 1]) }}">
+                                80mm
+                            </a>
+                        @endif
                         <a href="{{ route('billing.invoices.index') }}" class="btn btn-light">
                             <i class="bi bi-arrow-left me-2"></i>
                             Back
@@ -308,6 +331,12 @@
                                                     {{ $payment->paid_at->format('M d, Y · h:i A') }}
                                                 </span>
                                             @endif
+                                            @if ($payment->cashier)
+                                                <span class="mx-2">•</span>
+                                                <span>
+                                                    By {{ $payment->cashier->full_name }}
+                                                </span>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -336,6 +365,8 @@
                         @endforelse
                     </div>
                 </div>
+
+                @include('pages.apps.billing.invoices._refunds')
             </div>
 
             <div class="col-xl-4">
@@ -477,7 +508,7 @@
                         {{-- Tax --}}
                         <div class="d-flex justify-content-between align-items-center mb-5">
                             <span class="text-muted">
-                                Tax
+                                {{ $invoice->tax_name ?: 'Tax' }}{{ $invoice->tax_inclusive ? ' (included)' : '' }}
                             </span>
                             <span class="fw-semibold text-gray-800">
                                 LKR {{ number_format((float) $invoice->tax, 2) }}
@@ -511,6 +542,18 @@
                                 LKR {{ number_format((float) $invoice->paid_amount, 2) }}
                             </span>
                         </div>
+
+                        {{-- Refunded --}}
+                        @if ((float) $invoice->refunded_amount > 0)
+                            <div class="d-flex justify-content-between align-items-center mb-5">
+                                <span class="fw-semibold text-info">
+                                    Refunded
+                                </span>
+                                <span class="fw-bolder text-info">
+                                    - LKR {{ number_format((float) $invoice->refunded_amount, 2) }}
+                                </span>
+                            </div>
+                        @endif
 
                         {{-- Balance Box --}}
                         <div class="rounded-4 p-5 {{ $hasBalance ? 'bg-light-danger' : 'bg-light-success' }}">
@@ -583,70 +626,18 @@
                         <div class="card-body pt-4">
                             <form method="POST" action="{{ route('billing.invoices.payments.store', $invoice) }}">
                                 @csrf
-                                <div class="mb-5">
-                                    <label class="form-label required fw-semibold">Payment Method</label>
-                                    <select name="payment_method_id" class="form-select form-select-solid @error('payment_method_id') is-invalid @enderror" required>
-                                        <option value="">Select method</option>
-                                        @foreach ($paymentMethods as $method)
-                                            <option value="{{ $method->id }}" @selected((string) old('payment_method_id') === (string) $method->id)>
-                                                {{ $method->name }}{{ $method->requires_reference ? ' (reference required)' : '' }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('payment_method_id')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-5">
-                                    <label class="form-label required fw-semibold">Amount</label>
-                                    <div class="input-group input-group-solid">
-                                        <span class="input-group-text">LKR</span>
-                                        <input type="number" name="amount" min="0.01" max="{{ number_format((float) $invoice->balance_amount, 2, '.', '') }}" step="0.01"
-                                            value="{{ old('amount', number_format((float) $invoice->balance_amount, 2, '.', '')) }}"
-                                            class="form-control @error('amount') is-invalid @enderror" required>
-                                    </div>
-                                    @error('amount')
-                                        <div class="text-danger fs-8 mt-1">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-5">
-                                    <label class="form-label fw-semibold">Cash Received</label>
-                                    <div class="input-group input-group-solid">
-                                        <span class="input-group-text">LKR</span>
-                                        <input type="number" name="cash_received" min="0" step="0.01" value="{{ old('cash_received') }}"
-                                            class="form-control @error('cash_received') is-invalid @enderror">
-                                    </div>
-                                    @error('cash_received')
-                                        <div class="text-danger fs-8 mt-1">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-5">
-                                    <label class="form-label fw-semibold">Transaction Reference</label>
-                                    <input type="text" name="transaction_reference" value="{{ old('transaction_reference') }}"
-                                        class="form-control form-control-solid @error('transaction_reference') is-invalid @enderror">
-                                    @error('transaction_reference')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-5">
-                                    <label class="form-label fw-semibold">Notes</label>
-                                    <textarea name="notes" class="form-control form-control-solid" rows="2">{{ old('notes') }}</textarea>
-                                </div>
-
-                                <button class="btn btn-primary w-100" type="submit">
-                                    <i class="bi bi-cash-coin me-2"></i>
-                                    Record Payment
-                                </button>
+                                @include('pages.apps.billing._payment-fields', ['total' => (float) $invoice->balance_amount, 'submitLabel' => 'Record Payment'])
                             </form>
+                            @push('scripts')
+                                <script>
+                                    document.addEventListener('DOMContentLoaded', () => window.posPayments?.setTotal(@json((float) $invoice->balance_amount)));
+                                </script>
+                            @endpush
                         </div>
                     </div>
                 @endcan
 
-                @can('void', $invoice)
+                @if (auth()->user()->can('void', $invoice) && $invoice->refunds->whereIn('status', [\App\Models\Refund::STATUS_PENDING, \App\Models\Refund::STATUS_COMPLETED])->isEmpty())
                     <div class="card border-0 shadow-sm">
                         <div class="card-header border-0 pt-8">
                             <div class="card-title">
@@ -695,7 +686,7 @@
                             </form>
                         </div>
                     </div>
-                @endcan
+                @endif
             </div>
         </div>
 
@@ -741,4 +732,16 @@
 
     @include('pages.apps.billing._sweet-alerts')
     @include('pages.apps.billing.invoices._receipt-modal-assets')
+
+    @if ($autoPrintReceipt)
+        @push('scripts')
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Straight after a sale the counter receipt prints without the cashier clicking.
+                    const trigger = document.querySelector({{ Js::from($receiptFormat === 'thermal_80mm' ? '[data-thermal-print]' : '[data-receipt-template]') }});
+                    setTimeout(() => trigger?.click(), 300);
+                });
+            </script>
+        @endpush
+    @endif
 </x-default-layout>

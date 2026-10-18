@@ -88,6 +88,18 @@ class SystemSettingsManagementTest extends TestCase
         $this->assertSame(15, app(SettingService::class)->get('booking.interval_minutes', $tenant));
     }
 
+    public function test_salon_level_change_is_visible_to_already_cached_branch_lookups(): void
+    {
+        [$tenant, $owner, $branch] = $this->tenantOwner();
+        $settings = app(SettingService::class);
+
+        $this->assertTrue($settings->get('pos.allow_refunds', $tenant, $branch));
+
+        $settings->setMany($tenant, null, ['pos.allow_refunds' => false], $owner);
+
+        $this->assertFalse($settings->get('pos.allow_refunds', $tenant, $branch));
+    }
+
     public function test_settings_pages_are_available(): void
     {
         [$tenant, $owner] = $this->tenantOwner();

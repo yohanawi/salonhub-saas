@@ -214,6 +214,41 @@ class InventoryProductManagementTest extends TestCase
         ]);
     }
 
+    public function test_product_tax_is_included_in_invoice_total(): void
+    {
+        [$tenant, $owner, $branch] = $this->tenantSetup();
+        $appointment = $this->completedAppointment($tenant, $owner, $branch);
+        $product = $this->productWithStock($tenant, $branch, 5, 400, 750);
+        $product->update(['tax_rate' => 10]);
+        $cash = PaymentMethod::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Cash',
+            'code' => 'cash',
+            'type' => PaymentMethod::TYPE_CASH,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $cash->id,
+                'amount' => 2650,
+                'product_items' => [
+                    ['product_id' => $product->id, 'quantity' => 2],
+                ],
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+
+        // Service 1000 (untaxed) + products 1500 + 10% product tax 150.
+        $this->assertEquals('2500.00', $invoice->subtotal);
+        $this->assertEquals('150.00', $invoice->tax);
+        $this->assertEquals('2650.00', $invoice->total);
+        $this->assertEquals('2650.00', $invoice->paid_amount);
+        $this->assertSame(Invoice::PAYMENT_PAID, $invoice->payment_status);
+        $this->assertEquals((float) $invoice->total, (float) $invoice->items()->sum('total_amount'));
+    }
+
     public function test_inventory_pages_are_tenant_isolated(): void
     {
         [$tenant, $owner, $branch] = $this->tenantSetup();

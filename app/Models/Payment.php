@@ -46,6 +46,11 @@ class Payment extends Model
         return $this->belongsTo(Invoice::class, 'sale_id');
     }
 
+    public function cashier(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'cashier_staff_id')->withTrashed();
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);

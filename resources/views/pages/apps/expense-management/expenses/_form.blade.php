@@ -110,13 +110,14 @@
                 <div class="card-body">
                     <div class="mb-5">
                         <label class="form-label">Payment Method</label>
-                        <select name="payment_method_id" class="form-select form-select-solid">
+                        <select name="payment_method_id" class="form-select form-select-solid" data-drawer-method>
                             <option value="">No payment now</option>
                             @foreach ($paymentMethods as $method)
-                                <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                <option value="{{ $method->id }}" data-type="{{ $method->type }}" @selected((string) old('payment_method_id') === (string) $method->id)>{{ $method->name }}</option>
                             @endforeach
                         </select>
                     </div>
+                    @include('pages.apps.expense-management.expenses._drawer-toggle')
                     <div class="mb-5">
                         <label class="form-label">Paid Amount</label>
                         <input type="number" min="0" step="0.01" name="paid_amount" value="{{ old('paid_amount', 0) }}" class="form-control form-control-solid">

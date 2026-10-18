@@ -5,6 +5,7 @@ namespace App\Services\Commission;
 use App\Models\CommissionSetting;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\Refund;
 use App\Models\StaffCommission;
 use App\Models\User;
 use App\Services\PlanEntitlementService;
@@ -88,6 +89,64 @@ class CommissionGenerator
                     ]);
                 });
         });
+    }
+
+    /**
+     * Partial refunds cannot reverse the whole commission, so a negative ledger entry for the returned
+     * share is added instead. It keeps the original's settlement state (an already paid commission is
+     * clawed back from the next payout) and leaves the original row untouched for history.
+     */
+    public function reverseForRefundItem(Refund $refund, InvoiceItem $item, int $quantity, User $user): Collection
+    {
+        $share = min(1, $quantity / max(1, (int) $item->quantity));
+
+        return StaffCommission::withoutTenantScope()
+            ->where('tenant_id', $item->tenant_id)
+            ->where('invoice_item_id', $item->id)
+            ->where('source_type', InvoiceItem::class)
+            ->whereNotIn('status', [StaffCommission::STATUS_REVERSED, StaffCommission::STATUS_CANCELLED])
+            ->where('commission_amount', '>', 0)
+            ->get()
+            ->map(function (StaffCommission $commission) use ($refund, $item, $quantity, $share) {
+                $amount = round((float) $commission->commission_amount * $share, 2);
+
+                if ($amount <= 0) {
+                    return null;
+                }
+
+                return StaffCommission::create([
+                    'tenant_id' => $commission->tenant_id,
+                    'branch_id' => $commission->branch_id,
+                    'staff_id' => $commission->staff_id,
+                    'customer_id' => $commission->customer_id,
+                    'appointment_id' => $commission->appointment_id,
+                    'sale_id' => $commission->sale_id,
+                    'sale_item_id' => null,
+                    'invoice_id' => $commission->invoice_id,
+                    'invoice_item_id' => $item->id,
+                    'commission_rule_id' => $commission->commission_rule_id,
+                    'service_id' => $commission->service_id,
+                    'product_id' => $commission->product_id,
+                    'source_type' => Refund::class,
+                    'source_id' => $refund->id,
+                    'gross_amount' => -1 * round((float) $commission->gross_amount * $share, 2),
+                    'discount_amount' => -1 * round((float) $commission->discount_amount * $share, 2),
+                    'net_amount' => -1 * round((float) $commission->net_amount * $share, 2),
+                    'commission_type' => $commission->commission_type,
+                    'commission_rate' => $commission->commission_rate,
+                    'base_amount' => -1 * round((float) $commission->base_amount * $share, 2),
+                    'commission_base' => -1 * round((float) $commission->commission_base * $share, 2),
+                    'commission_amount' => -1 * $amount,
+                    'status' => in_array($commission->status, [StaffCommission::STATUS_PENDING, StaffCommission::STATUS_EARNED], true)
+                        ? $commission->status
+                        : StaffCommission::STATUS_APPROVED,
+                    'earned_at' => now(),
+                    'reversed_commission_id' => $commission->id,
+                    'notes' => "Refund {$refund->refund_number}: {$quantity} of {$item->quantity} returned.",
+                ]);
+            })
+            ->filter()
+            ->values();
     }
 
     private function generateForItem(Invoice $invoice, InvoiceItem $item, User $user): ?StaffCommission

@@ -7,7 +7,6 @@ use App\Http\Requests\Billing\RecordInvoicePaymentRequest;
 use App\Models\Branch;
 use App\Models\Invoice;
 use App\Models\Payment;
-use App\Models\PaymentMethod;
 use App\Models\Tenant;
 use App\Services\Billing\PaymentService;
 use App\Services\BranchContext;
@@ -60,19 +59,18 @@ class PaymentController extends Controller
             $entitlements->ensureFeature($invoice->tenant, 'pos_billing');
         }
 
-        $method = PaymentMethod::withoutTenantScope()
-            ->where('tenant_id', $invoice->tenant_id)
-            ->findOrFail($request->integer('payment_method_id'));
+        $lines = $request->validated('payments');
 
-        $payments->record($invoice, $method, [
-            'amount' => $request->validated('amount'),
-            'transaction_reference' => $request->validated('transaction_reference'),
-            'cash_received' => $request->validated('cash_received'),
-            'notes' => $request->validated('notes'),
-        ], $request->user());
+        $payments->recordLines(
+            $invoice,
+            $lines,
+            $request->validated('payment_notes') ?? $request->validated('notes'),
+            $request->user(),
+            $request->cashierStaffId()
+        );
 
         return redirect()
             ->route('billing.invoices.show', $invoice)
-            ->with('status', 'Payment recorded successfully.');
+            ->with('status', count($lines) > 1 ? 'Split payment recorded successfully.' : 'Payment recorded successfully.');
     }
 }

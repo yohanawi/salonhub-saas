@@ -40,6 +40,8 @@ class StoreStaffRequest extends FormRequest
             'status' => ['required', Rule::in(Staff::STATUSES)],
             'is_bookable' => ['nullable', 'boolean'],
             'show_online' => ['nullable', 'boolean'],
+            'pos_pin' => ['nullable', 'digits_between:4,6', 'confirmed'],
+            'clear_pos_pin' => ['nullable', 'boolean'],
             'commission_type' => ['nullable', Rule::in(StaffCommissionSetting::TYPES)],
             'commission_value' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'primary_branch_id' => ['nullable', 'integer'],

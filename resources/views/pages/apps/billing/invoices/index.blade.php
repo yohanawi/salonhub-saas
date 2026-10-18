@@ -46,6 +46,11 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-4">
+                        @if (auth()->user()->tenant_id && auth()->user()->can('create', \App\Models\Invoice::class))
+                            <a href="{{ route('billing.quick-sale.create') }}" class="btn btn-primary">
+                                <i class="bi bi-cart-plus me-2"></i>New Sale
+                            </a>
+                        @endif
                         <div class="text-end">
                             <div class="text-muted fs-8 fw-semibold text-uppercase">
                                 Total Records
@@ -248,7 +253,7 @@
                                                 'icon' => 'bi-circle-half',
                                             ],
 
-                                            'refunded' => [
+                                            'refunded', 'partially_refunded' => [
                                                 'class' => 'info',
                                                 'icon' => 'bi-arrow-counterclockwise',
                                             ],
@@ -382,6 +387,10 @@
                                                 data-receipt-template="invoice-receipt-template-{{ $invoice->getKey() }}"
                                                 data-receipt-invoice="{{ $invoice->invoice_number }}">
                                                 <i class="bi bi-printer"></i>
+                                            </a>
+                                            <a href="{{ route('billing.invoices.receipt', $invoice) }}" class="btn btn-sm btn-light" title="Print 80mm receipt"
+                                                data-thermal-print="{{ route('billing.invoices.receipt', ['invoice' => $invoice, 'print' => 1]) }}">
+                                                80mm
                                             </a>
                                         </td>
                                     </tr>

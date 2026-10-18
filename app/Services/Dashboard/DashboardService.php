@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
 use App\Models\PromotionUsage;
+use App\Models\Refund;
 use App\Models\Staff;
 use App\Models\StaffCommission;
 use App\Models\Subscription;
@@ -122,8 +123,8 @@ class DashboardService
         $previousAppointments = $this->appointments($tenant, $branchIds, $previousRange, $staff, $personalMode);
         $customers = $this->customers($tenant, $branchIds, $range);
         $previousCustomers = $this->customers($tenant, $branchIds, $previousRange);
-        $revenue = (float) (clone $payments)->sum('amount');
-        $previousRevenue = (float) (clone $previousPayments)->sum('amount');
+        $revenue = (float) (clone $payments)->sum('amount') - (float) $this->refunds($tenant, $branchIds, $range, $staff, $personalMode)->sum('amount');
+        $previousRevenue = (float) (clone $previousPayments)->sum('amount') - (float) $this->refunds($tenant, $branchIds, $previousRange, $staff, $personalMode)->sum('amount');
         $payingCustomers = $this->payingCustomerCount($tenant, $branchIds, $range);
         $expenseTotal = $personalMode ? 0.0 : $this->expenseTotal($tenant, $branchIds, $range);
 
@@ -251,25 +252,42 @@ class DashboardService
             [$start, $end] = [$end->startOfDay(), $start->endOfDay()];
         }
 
-        return [
+        return $this->rangeBetween($start, $end, $timezone) + [
             'key' => array_key_exists($period, $this->periodOptions()) ? $period : 'today',
-            'start' => $start->timezone(config('app.timezone')),
-            'end' => $end->timezone(config('app.timezone')),
+            'label' => $start->isSameDay($end) ? $start->format('M d, Y') : $start->format('M d') . ' - ' . $end->format('M d, Y'),
+        ];
+    }
+
+    /**
+     * A reporting window in the salon's own calendar. Timestamps written with now() are stored in the
+     * app timezone, so they are compared against `start`/`end`; appointment times are entered and stored
+     * as the salon's wall-clock time, so they use `localStart`/`localEnd`; date columns use the dates.
+     */
+    private function rangeBetween(CarbonImmutable $start, CarbonImmutable $end, string $timezone): array
+    {
+        return [
+            'timezone' => $timezone,
+            'start' => $start->setTimezone(config('app.timezone')),
+            'end' => $end->setTimezone(config('app.timezone')),
+            'localStart' => $start,
+            'localEnd' => $end,
             'startDate' => $start->toDateString(),
             'endDate' => $end->toDateString(),
-            'label' => $start->isSameDay($end) ? $start->format('M d, Y') : $start->format('M d') . ' - ' . $end->format('M d, Y'),
         ];
     }
 
     private function previousRange(array $range): array
     {
-        $days = max(1, $range['start']->diffInDays($range['end']) + 1);
-        $end = $range['start']->subSecond();
+        $days = (int) $range['localStart']->startOfDay()->diffInDays($range['localEnd']->startOfDay()) + 1;
+        $end = $range['localStart']->subSecond();
 
-        return [
-            'start' => $end->subDays($days - 1)->startOfDay(),
-            'end' => $end->endOfDay(),
-        ];
+        return $this->rangeBetween($end->subDays($days - 1)->startOfDay(), $end->endOfDay(), $range['timezone']);
+    }
+
+    /** Appointment times are stored as naive wall-clock values, so they are compared as plain strings. */
+    private function wallClock(CarbonImmutable $moment): string
+    {
+        return $moment->format('Y-m-d H:i:s');
     }
 
     private function payments(Tenant $tenant, ?array $branchIds, array $range, ?Staff $staff = null, bool $personalMode = false): Builder
@@ -285,11 +303,24 @@ class DashboardService
             ->when($personalMode && $staff, fn (Builder $query) => $query->whereHas('invoice.items', fn (Builder $query) => $query->where('staff_id', $staff->id)));
     }
 
+    /**
+     * Completed refunds, dated when the money went back, so revenue is net of refunds in the period they happen.
+     */
+    private function refunds(Tenant $tenant, ?array $branchIds, array $range, ?Staff $staff = null, bool $personalMode = false): Builder
+    {
+        return Refund::withoutTenantScope()
+            ->where('refunds.tenant_id', $tenant->id)
+            ->where('refunds.status', Refund::STATUS_COMPLETED)
+            ->whereBetween('refunds.processed_at', [$range['start'], $range['end']])
+            ->when($branchIds !== null, fn (Builder $query) => $query->whereIn('refunds.branch_id', $branchIds))
+            ->when($personalMode && $staff, fn (Builder $query) => $query->whereHas('invoice.items', fn (Builder $query) => $query->where('staff_id', $staff->id)));
+    }
+
     private function appointments(Tenant $tenant, ?array $branchIds, array $range, ?Staff $staff = null, bool $personalMode = false): Builder
     {
         return Appointment::withoutTenantScope()
             ->where('tenant_id', $tenant->id)
-            ->whereBetween('starts_at', [$range['start'], $range['end']])
+            ->whereBetween('starts_at', [$this->wallClock($range['localStart']), $this->wallClock($range['localEnd'])])
             ->when($branchIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $branchIds))
             ->when($personalMode && $staff, fn (Builder $query) => $query->where('staff_id', $staff->id));
     }
@@ -307,12 +338,18 @@ class DashboardService
 
     private function revenueSeries(Tenant $tenant, ?array $branchIds, array $range, ?Staff $staff = null, bool $personalMode = false): array
     {
-        $payments = $this->payments($tenant, $branchIds, $range, $staff, $personalMode)
-            ->selectRaw('DATE(paid_at) as day, SUM(amount) as total')
-            ->groupByRaw('DATE(paid_at)')
-            ->pluck('total', 'day');
+        // Bucketed in PHP by the salon's calendar day; SQL DATE() would bucket by the storage timezone.
+        $byLocalDay = fn (Collection $rows, string $column) => $rows
+            ->groupBy(fn ($row) => CarbonImmutable::parse($row->{$column}, config('app.timezone'))->setTimezone($range['timezone'])->toDateString())
+            ->map(fn (Collection $day) => (float) $day->sum('amount'));
 
-        return $this->dailySeries($range, $payments);
+        $payments = $byLocalDay($this->payments($tenant, $branchIds, $range, $staff, $personalMode)->toBase()->get(['payments.paid_at', 'payments.amount']), 'paid_at');
+        $refunds = $byLocalDay($this->refunds($tenant, $branchIds, $range, $staff, $personalMode)->toBase()->get(['refunds.processed_at', 'refunds.amount']), 'processed_at');
+
+        $net = $payments->keys()->merge($refunds->keys())->unique()
+            ->mapWithKeys(fn ($day) => [$day => (float) ($payments[$day] ?? 0) - (float) ($refunds[$day] ?? 0)]);
+
+        return $this->dailySeries($range, $net);
     }
 
     private function appointmentStatusSeries(Builder $appointments): array
@@ -409,7 +446,7 @@ class DashboardService
         return Appointment::withoutTenantScope()
             ->with(['customer', 'staff', 'branch'])
             ->where('tenant_id', $tenant->id)
-            ->where('starts_at', '>=', now()->subHours(2))
+            ->where('starts_at', '>=', $this->wallClock(CarbonImmutable::now($tenant->timezone ?: config('app.timezone'))->subHours(2)))
             ->when($branchIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $branchIds))
             ->when($personalMode && $staff, fn (Builder $query) => $query->where('staff_id', $staff->id))
             ->orderBy('starts_at')
@@ -469,12 +506,14 @@ class DashboardService
 
     private function membershipSummary(Tenant $tenant, array $range): array
     {
+        $today = CarbonImmutable::now($range['timezone'])->toDateString();
+
         return [
             'active' => CustomerMembership::withoutTenantScope()
                 ->where('tenant_id', $tenant->id)
                 ->where('status', CustomerMembership::STATUS_ACTIVE)
-                ->whereDate('start_date', '<=', today())
-                ->whereDate('end_date', '>=', today())
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
                 ->count(),
             'new' => CustomerMembership::withoutTenantScope()
                 ->where('tenant_id', $tenant->id)
@@ -506,7 +545,7 @@ class DashboardService
         return (float) Expense::withoutTenantScope()
             ->where('tenant_id', $tenant->id)
             ->where('expense_status', '!=', Expense::STATUS_CANCELLED)
-            ->whereBetween('expense_date', [$range['start']->toDateString(), $range['end']->toDateString()])
+            ->whereBetween('expense_date', [$range['startDate'], $range['endDate']])
             ->when($branchIds !== null, fn (Builder $query) => $query->whereIn('branch_id', $branchIds))
             ->sum('total_amount');
     }
@@ -545,7 +584,7 @@ class DashboardService
         return Appointment::withoutTenantScope()
             ->where('tenant_id', $tenant->id)
             ->where('staff_id', $staff->id)
-            ->whereBetween('starts_at', [$range['start'], $range['end']])
+            ->whereBetween('starts_at', [$this->wallClock($range['localStart']), $this->wallClock($range['localEnd'])])
             ->distinct('customer_id')
             ->count('customer_id');
     }
@@ -555,7 +594,7 @@ class DashboardService
         $labels = [];
         $series = [];
 
-        foreach (CarbonPeriod::create($range['start']->startOfDay(), $range['end']->startOfDay()) as $day) {
+        foreach (CarbonPeriod::create($range['localStart']->startOfDay(), $range['localEnd']->startOfDay()) as $day) {
             $key = $day->format('Y-m-d');
             $labels[] = $day->format('M d');
             $series[] = round((float) ($values[$key] ?? 0), 2);

@@ -6,6 +6,7 @@ use App\Models\Expense;
 use App\Models\ExpensePayment;
 use App\Models\PaymentMethod;
 use App\Models\User;
+use App\Services\Billing\CashRegisterService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -24,7 +25,15 @@ class ExpensePaymentService
             ]);
         }
 
-        return DB::transaction(function () use ($expense, $method, $data, $user) {
+        $fromDrawer = filter_var($data['from_cash_drawer'] ?? false, FILTER_VALIDATE_BOOL);
+
+        if ($fromDrawer && $method->type !== PaymentMethod::TYPE_CASH) {
+            throw ValidationException::withMessages([
+                'from_cash_drawer' => 'Only cash payments can be taken from the cash drawer.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($expense, $method, $data, $user, $fromDrawer) {
             // Lock the expense so concurrent payments cannot both pass the balance check and overpay it.
             $expense = Expense::withoutTenantScope()->whereKey($expense->getKey())->lockForUpdate()->firstOrFail();
 
@@ -48,11 +57,15 @@ class ExpensePaymentService
                 ]);
             }
 
+            // Cash paid out of the counter drawer reduces what the open shift should hold at close.
+            $shift = $fromDrawer ? app(CashRegisterService::class)->shiftForDrawerExpense($expense->branch_id, $amount) : null;
+
             $payment = ExpensePayment::create([
                 'tenant_id' => $expense->tenant_id,
                 'branch_id' => $expense->branch_id,
                 'expense_id' => $expense->id,
                 'payment_method_id' => $method->id,
+                'cash_register_shift_id' => $shift?->id,
                 'amount' => $amount,
                 'payment_method' => $method->code,
                 'payment_date' => $data['payment_date'] ?? now()->toDateString(),

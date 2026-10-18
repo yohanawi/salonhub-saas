@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
 
 class SettingService
 {
+    private const CACHE_VERSION_KEY = 'system_settings:version';
+
     public function __construct(private readonly SettingDefinitionRegistry $definitions)
     {
     }
@@ -143,14 +145,18 @@ class SettingService
             ->all();
     }
 
+    /**
+     * Resolved settings cascade (global → salon → branch), so a change at one level is stale in every
+     * cached level below it. Bumping the shared version retires all cached scopes at once.
+     */
     public function forgetCache(?int $tenantId, ?int $branchId = null): void
     {
-        Cache::forget($this->cacheKey($tenantId, $branchId));
-        Cache::forget($this->cacheKey($tenantId, null));
+        Cache::forever(self::CACHE_VERSION_KEY, $this->cacheVersion() + 1);
+    }
 
-        if ($tenantId !== null) {
-            Cache::forget($this->cacheKey(null, null));
-        }
+    private function cacheVersion(): int
+    {
+        return (int) Cache::get(self::CACHE_VERSION_KEY, 1);
     }
 
     private function defaultValue(string $key): mixed
@@ -160,7 +166,7 @@ class SettingService
 
     private function cacheKey(?int $tenantId, ?int $branchId): string
     {
-        return 'system_settings:' . $this->scopeKey($tenantId, $branchId);
+        return 'system_settings:v' . $this->cacheVersion() . ':' . $this->scopeKey($tenantId, $branchId);
     }
 
     private function scopeKey(?int $tenantId, ?int $branchId): string

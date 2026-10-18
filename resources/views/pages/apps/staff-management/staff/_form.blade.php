@@ -1536,6 +1536,56 @@
 
                 </label>
 
+
+                {{-- POS PIN --}}
+                <div class="rounded-4 border border-gray-300 p-5 mt-4">
+
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="symbol symbol-40px me-4">
+                            <div class="symbol-label bg-light-warning">
+                                <i class="bi bi-shield-lock text-warning"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-gray-900 mb-1">
+                                POS PIN
+                                @if ($staffMember->exists && $staffMember->hasPosPin())
+                                    <span class="badge badge-light-success ms-2">Set</span>
+                                @endif
+                            </div>
+                            <div class="text-muted fs-8">
+                                4-6 digits used to confirm sales at a shared POS.
+                                @if ($staffMember->exists && $staffMember->hasPosPin())
+                                    Leave blank to keep the current PIN.
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <input type="password" name="pos_pin" inputmode="numeric" autocomplete="new-password" maxlength="6"
+                                placeholder="New PIN" class="form-control form-control-solid @error('pos_pin') is-invalid @enderror">
+                        </div>
+                        <div class="col-6">
+                            <input type="password" name="pos_pin_confirmation" inputmode="numeric" autocomplete="new-password" maxlength="6"
+                                placeholder="Confirm PIN" class="form-control form-control-solid">
+                        </div>
+                    </div>
+
+                    @error('pos_pin')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+
+                    @if ($staffMember->exists && $staffMember->hasPosPin())
+                        <div class="form-check form-check-custom form-check-solid form-check-sm mt-4">
+                            <input class="form-check-input" type="checkbox" name="clear_pos_pin" value="1" id="clear_pos_pin">
+                            <label class="form-check-label text-muted fs-8" for="clear_pos_pin">Remove PIN</label>
+                        </div>
+                    @endif
+
+                </div>
+
             </div>
 
         </div>

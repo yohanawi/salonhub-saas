@@ -5,7 +5,7 @@
     $paymentClass = match ($invoice->payment_status) {
         'paid' => 'success',
         'partially_paid' => 'warning',
-        'refunded' => 'info',
+        'refunded', 'partially_refunded' => 'info',
         default => 'danger',
     };
 @endphp
@@ -80,6 +80,12 @@
                 <span class="receipt-label">Branch</span>
                 <span class="receipt-value">{{ $invoice->branch?->name ?? '-' }}</span>
             </div>
+            @if ($invoice->cashier)
+                <div class="receipt-info-row">
+                    <span class="receipt-label">Cashier</span>
+                    <span class="receipt-value">{{ $invoice->cashier->full_name }}</span>
+                </div>
+            @endif
         </div>
 
         <div class="receipt-divider mb-6"></div>
@@ -168,7 +174,7 @@
 
             @if ((float) $invoice->tax > 0)
                 <div class="receipt-total-row">
-                    <span>Tax</span>
+                    <span>{{ $invoice->tax_name ?: 'Tax' }}{{ $invoice->tax_inclusive ? ' (included)' : '' }}</span>
                     <span>LKR {{ number_format((float) $invoice->tax, 2) }}</span>
                 </div>
             @endif
@@ -193,6 +199,13 @@
                     LKR {{ number_format((float) $invoice->paid_amount, 2) }}
                 </span>
             </div>
+
+            @if ((float) $invoice->refunded_amount > 0)
+                <div class="receipt-total-row text-info">
+                    <span class="fw-semibold">Refunded</span>
+                    <span class="fw-bolder">- LKR {{ number_format((float) $invoice->refunded_amount, 2) }}</span>
+                </div>
+            @endif
 
             <div class="rounded-3 p-4 mt-4 {{ $hasBalance ? 'bg-light-danger' : 'bg-light-success' }}">
                 <div class="d-flex justify-content-between align-items-center">

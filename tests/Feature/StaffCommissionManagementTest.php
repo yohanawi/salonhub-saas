@@ -21,6 +21,7 @@ use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Commission\CommissionGenerator;
+use App\Services\Settings\SettingService;
 use Database\Seeders\RolesPermissionsSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\PermissionRegistrar;
@@ -140,6 +141,8 @@ class StaffCommissionManagementTest extends TestCase
 
         [$otherTenant, $otherOwner, $otherAppointment] = $this->completedAppointmentSetup();
         $this->enableTenantDefaultCommission($otherTenant, 20);
+        // Invoice numbers are sequential per salon, so give the other salon a distinct prefix to tell them apart.
+        app(SettingService::class)->setMany($otherTenant, null, ['invoice.prefix' => 'OTH'], $otherOwner);
         $otherInvoice = $this->checkout($otherTenant, $otherOwner, $otherAppointment);
 
         $this->actingAs($owner)

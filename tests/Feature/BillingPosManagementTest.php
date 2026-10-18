@@ -17,6 +17,7 @@ use App\Models\Staff;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Settings\SettingService;
 use Database\Seeders\RolesPermissionsSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\PermissionRegistrar;
@@ -372,6 +373,167 @@ class BillingPosManagementTest extends TestCase
             ->assertSee($invoice->invoice_number)
             ->assertSee('invoiceShowReceiptModal')
             ->assertSee('Thank you for visiting');
+    }
+
+    public function test_branch_tax_is_calculated_after_discounts_and_manual_tax_is_ignored(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        $appointment->branch->update(['tax_enabled' => true, 'tax_name' => 'VAT', 'tax_rate' => 18]);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $this->cashMethod($tenant)->id,
+                'amount' => 5000,
+                'discount_amount' => 300,
+                'tax_amount' => 9999,
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+
+        // 3000 - 200 line discount - 300 invoice discount = 2500 taxable, 18% = 450.
+        $this->assertEquals('450.00', $invoice->tax);
+        $this->assertEquals('2950.00', $invoice->total);
+        $this->assertSame('VAT', $invoice->tax_name);
+        $this->assertFalse($invoice->tax_inclusive);
+        $this->assertSame(Invoice::PAYMENT_PAID, $invoice->payment_status);
+        $this->assertDatabaseHas('sale_items', [
+            'sale_id' => $invoice->id,
+            'item_type' => 'service',
+            'tax_rate' => 18,
+            'tax_amount' => 450,
+            'total_amount' => 3250,
+        ]);
+    }
+
+    public function test_tax_inclusive_prices_report_tax_without_increasing_total(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        app(SettingService::class)->setMany($tenant, null, [
+            'tax.enabled' => true,
+            'tax.name' => 'VAT',
+            'tax.rate' => 12,
+            'tax.prices_include_tax' => true,
+        ], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $this->cashMethod($tenant)->id,
+                'amount' => 2800,
+            ])
+            ->assertRedirect();
+
+        $invoice = Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->firstOrFail();
+
+        // 2800 already includes 12% VAT: 2800 - 2800 / 1.12 = 300.
+        $this->assertEquals('300.00', $invoice->tax);
+        $this->assertEquals('2800.00', $invoice->total);
+        $this->assertTrue($invoice->tax_inclusive);
+    }
+
+    public function test_manual_discount_requires_permission(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        $cashier = User::factory()->create(['tenant_id' => $tenant->id, 'email_verified_at' => now()]);
+        $cashier->assignRole(Role::firstOrCreate(['name' => 'Cashier', 'guard_name' => 'web'])
+            ->givePermissionTo(['appointments.view', 'billing.view', 'billing.checkout', 'payments.create']));
+        $cashier->branches()->attach($appointment->branch_id, ['tenant_id' => $tenant->id]);
+
+        $this->actingAs($cashier)
+            ->get(route('billing.checkout.appointments.create', $appointment))
+            ->assertOk()
+            ->assertDontSee('name="discount_amount"', false);
+
+        $this->actingAs($cashier)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $this->cashMethod($tenant)->id,
+                'amount' => 2800,
+                'discount_amount' => 1000,
+            ])
+            ->assertSessionHasErrors('discount_amount');
+
+        $this->assertFalse(Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->exists());
+
+        $this->actingAs($cashier)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $this->cashMethod($tenant)->id,
+                'amount' => 2800,
+            ])
+            ->assertSessionHasNoErrors();
+    }
+
+    public function test_manual_discount_is_blocked_when_disabled_in_settings(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        app(SettingService::class)->setMany($tenant, null, ['pos.allow_manual_discount' => false], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $this->cashMethod($tenant)->id,
+                'amount' => 2800,
+                'discount_amount' => 100,
+            ])
+            ->assertSessionHasErrors('discount_amount');
+    }
+
+    public function test_invoice_numbers_are_sequential_per_tenant(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        [$otherTenant, $otherOwner, $otherAppointment] = $this->completedAppointmentSetup();
+        $secondAppointment = $this->duplicateAppointment($appointment);
+        $year = now()->format('Y');
+
+        foreach ([[$owner, $appointment, $tenant], [$otherOwner, $otherAppointment, $otherTenant], [$owner, $secondAppointment, $tenant]] as [$user, $toCheckout, $owningTenant]) {
+            $this->actingAs($user)
+                ->post(route('billing.checkout.appointments.store', $toCheckout), [
+                    'payment_method_id' => $this->cashMethod($owningTenant)->id,
+                    'amount' => 2800,
+                ])
+                ->assertRedirect();
+        }
+
+        $this->assertSame(
+            ["INV-{$year}-000001", "INV-{$year}-000002"],
+            Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->orderBy('id')->pluck('invoice_number')->all()
+        );
+        $this->assertSame(
+            ["INV-{$year}-000001"],
+            Invoice::withoutTenantScope()->where('tenant_id', $otherTenant->id)->pluck('invoice_number')->all()
+        );
+    }
+
+    public function test_invoice_number_uses_format_prefix_and_next_number_settings(): void
+    {
+        [$tenant, $owner, $appointment] = $this->completedAppointmentSetup();
+        app(SettingService::class)->setMany($tenant, null, [
+            'invoice.prefix' => 'GLOW',
+            'invoice.number_format' => '{PREFIX}/{BRANCH}/{NUMBER}',
+            'invoice.next_number' => 500,
+        ], $owner);
+
+        $this->actingAs($owner)
+            ->post(route('billing.checkout.appointments.store', $appointment), [
+                'payment_method_id' => $this->cashMethod($tenant)->id,
+                'amount' => 2800,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('GLOW/CMB/000500', Invoice::withoutTenantScope()->where('tenant_id', $tenant->id)->value('invoice_number'));
+    }
+
+    private function duplicateAppointment(Appointment $appointment): Appointment
+    {
+        $copy = $appointment->replicate();
+        $copy->appointment_number = 'APT-202608-000002';
+        $copy->save();
+
+        $appointment->appointmentServices->each(function (AppointmentService $service) use ($copy) {
+            $serviceCopy = $service->replicate();
+            $serviceCopy->appointment_id = $copy->id;
+            $serviceCopy->save();
+        });
+
+        return $copy->fresh(['appointmentServices']);
     }
 
     private function cashMethod(Tenant $tenant): PaymentMethod

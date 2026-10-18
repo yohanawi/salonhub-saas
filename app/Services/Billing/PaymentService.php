@@ -48,6 +48,8 @@ class PaymentService
                 ]);
             }
 
+            $shift = app(CashRegisterService::class)->shiftForTransaction($invoice->tenant_id, $invoice->branch_id, $method, $data['error_field'] ?? 'payment_method_id');
+
             $payment = Payment::create([
                 'tenant_id' => $invoice->tenant_id,
                 'branch_id' => $invoice->branch_id,
@@ -55,6 +57,7 @@ class PaymentService
                 'customer_id' => $invoice->customer_id,
                 'payment_number' => null,
                 'payment_method_id' => $method->id,
+                'cash_register_shift_id' => $shift?->id,
                 'amount' => $amount,
                 'method' => $method->code,
                 'reference' => $data['transaction_reference'] ?? null,
@@ -67,6 +70,7 @@ class PaymentService
                 'status' => Payment::STATUS_COMPLETED,
                 'paid_at' => $data['paid_at'] ?? now(),
                 'received_by' => $user->id,
+                'cashier_staff_id' => $data['cashier_staff_id'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -84,6 +88,75 @@ class PaymentService
             }
 
             return $payment->fresh(['paymentMethod', 'receiver']);
+        });
+    }
+
+    /**
+     * Records one payment per tender line of a split bill. A single line is capped at the balance;
+     * in a split the excess comes off the cash lines as change. Card and other non-cash lines are never
+     * reduced silently, because the customer was actually charged that amount.
+     *
+     * @param  array<int, array{index?: int|string, payment_method_id: int|string, amount: int|float|string, cash_received?: mixed, transaction_reference?: ?string, gateway_reference?: ?string}>  $lines
+     */
+    public function recordLines(Invoice $invoice, array $lines, ?string $notes, User $user, ?int $cashierStaffId = null): void
+    {
+        $lines = collect($lines)->values()->map(fn (array $line, int $position) => $line + ['index' => $position]);
+
+        $methods = PaymentMethod::withoutTenantScope()
+            ->where('tenant_id', $invoice->tenant_id)
+            ->whereIn('id', $lines->pluck('payment_method_id'))
+            ->get()
+            ->keyBy('id');
+
+        $lines = $lines->map(function (array $line) use ($methods) {
+            $method = $methods->get((int) $line['payment_method_id']);
+
+            if (! $method) {
+                throw ValidationException::withMessages(["payments.{$line['index']}.payment_method_id" => 'Select an active payment method for this salon.']);
+            }
+
+            return $line + ['method' => $method];
+        });
+
+        $split = $lines->count() > 1;
+        $balance = (float) Invoice::withoutTenantScope()->whereKey($invoice->getKey())->value('balance_amount');
+
+        if ($split) {
+            $nonCash = round((float) $lines->filter(fn (array $line) => $line['method']->type !== PaymentMethod::TYPE_CASH)->sum('amount'), 2);
+
+            if ($nonCash > $balance + 0.009) {
+                throw ValidationException::withMessages([
+                    'payments' => 'Card and other non-cash payments add up to LKR ' . number_format($nonCash, 2) . ', more than the LKR ' . number_format($balance, 2) . ' due.',
+                ]);
+            }
+
+            // Non-cash first, so any excess lands on cash, which can be given back as change.
+            $lines = $lines->sortBy(fn (array $line) => $line['method']->type === PaymentMethod::TYPE_CASH ? 1 : 0)->values();
+        }
+
+        DB::transaction(function () use ($invoice, $lines, $split, $balance, $notes, $user, $cashierStaffId) {
+            foreach ($lines as $line) {
+                $amount = min((float) $line['amount'], $balance);
+
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $isCash = $line['method']->type === PaymentMethod::TYPE_CASH;
+
+                $this->record($invoice, $line['method'], [
+                    'amount' => $amount,
+                    'transaction_reference' => $line['transaction_reference'] ?? null,
+                    'gateway_reference' => $line['gateway_reference'] ?? null,
+                    // When a split's cash share is reduced, the customer still handed over the original amount.
+                    'cash_received' => $isCash && $split ? max((float) ($line['cash_received'] ?? 0), (float) $line['amount']) : ($line['cash_received'] ?? null),
+                    'notes' => $notes,
+                    'cashier_staff_id' => $cashierStaffId,
+                    'error_field' => "payments.{$line['index']}.payment_method_id",
+                ], $user);
+
+                $balance = round($balance - $amount, 2);
+            }
         });
     }
 

@@ -299,6 +299,30 @@ Breadcrumbs::for('billing.checkout.appointments.create', function (BreadcrumbTra
     $trail->push('Checkout ' . $appointment->appointment_number, route('billing.checkout.appointments.create', $appointment));
 });
 
+// Home > Dashboard > Billing > Cash Register
+Breadcrumbs::for('billing.cash-register.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Cash Register', route('billing.cash-register.index'));
+});
+
+// Home > Dashboard > Billing > Cash Register > [Shift]
+Breadcrumbs::for('billing.cash-register.show', function (BreadcrumbTrail $trail, \App\Models\CashRegisterShift $shift) {
+    $trail->parent('billing.cash-register.index');
+    $trail->push($shift->shift_number, route('billing.cash-register.show', $shift));
+});
+
+// Home > Dashboard > Billing > Day-End Report
+Breadcrumbs::for('billing.reports.day-end', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Day-End Report', route('billing.reports.day-end'));
+});
+
+// Home > Dashboard > Billing > Quick Sale
+Breadcrumbs::for('billing.quick-sale.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Quick Sale', route('billing.quick-sale.create'));
+});
+
 // Home > Dashboard > Billing > Invoices
 Breadcrumbs::for('billing.invoices.index', function (BreadcrumbTrail $trail) {
     $trail->parent('billing.index');

@@ -28,12 +28,14 @@ class Invoice extends Model
     public const PAYMENT_UNPAID = 'unpaid';
     public const PAYMENT_PARTIAL = 'partially_paid';
     public const PAYMENT_PAID = 'paid';
+    public const PAYMENT_PARTIALLY_REFUNDED = 'partially_refunded';
     public const PAYMENT_REFUNDED = 'refunded';
 
     public const PAYMENT_STATUSES = [
         self::PAYMENT_UNPAID,
         self::PAYMENT_PARTIAL,
         self::PAYMENT_PAID,
+        self::PAYMENT_PARTIALLY_REFUNDED,
         self::PAYMENT_REFUNDED,
     ];
 
@@ -51,13 +53,20 @@ class Invoice extends Model
         'promotion_discount_value' => 'decimal:2',
         'promotion_discount_amount' => 'decimal:2',
         'tax' => 'decimal:2',
+        'tax_inclusive' => 'boolean',
         'total' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'balance_amount' => 'decimal:2',
+        'refunded_amount' => 'decimal:2',
         'issued_at' => 'datetime',
         'paid_at' => 'datetime',
         'voided_at' => 'datetime',
     ];
+
+    public function cashier(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class, 'cashier_staff_id')->withTrashed();
+    }
 
     public function branch(): BelongsTo
     {

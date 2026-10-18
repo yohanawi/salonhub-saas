@@ -10,6 +10,7 @@ use App\Models\LoyaltyEarningRule;
 use App\Models\LoyaltyPointTransaction;
 use App\Models\LoyaltyProgram;
 use App\Models\MembershipBenefit;
+use App\Models\Refund;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -249,6 +250,51 @@ class LoyaltyService
             $invoice,
             $user,
             $reason ?: 'Points reversed for invoice ' . $invoice->invoice_number
+        );
+    }
+
+    /**
+     * Takes back the share of earned points that matches the money refunded so far. Earlier refunds
+     * on the same invoice are counted, so several partial refunds never reverse more than was earned.
+     */
+    public function reverseForRefund(Refund $refund, User $user): ?LoyaltyPointTransaction
+    {
+        $invoice = $refund->invoice;
+
+        $earned = LoyaltyPointTransaction::withoutTenantScope()
+            ->where('tenant_id', $invoice->tenant_id)
+            ->where('type', LoyaltyPointTransaction::TYPE_EARN)
+            ->where('source_type', Invoice::class)
+            ->where('source_id', $invoice->id)
+            ->first();
+
+        if (! $earned || (float) $invoice->paid_amount <= 0) {
+            return null;
+        }
+
+        $alreadyReversed = (int) abs((int) LoyaltyPointTransaction::withoutTenantScope()
+            ->where('tenant_id', $invoice->tenant_id)
+            ->where('type', LoyaltyPointTransaction::TYPE_REFUND_REVERSAL)
+            ->where('source_type', Refund::class)
+            ->whereIn('source_id', $invoice->refunds()->select('id'))
+            ->sum('points'));
+
+        $refundedShare = min(1, (float) $invoice->refunded_amount / (float) $invoice->paid_amount);
+        $target = $refundedShare >= 1 ? (int) $earned->points : (int) floor((int) $earned->points * $refundedShare);
+        $account = CustomerLoyaltyAccount::withoutTenantScope()->whereKey($earned->loyalty_account_id)->firstOrFail();
+        $points = min($target - $alreadyReversed, (int) $account->available_points);
+
+        if ($points <= 0) {
+            return null;
+        }
+
+        return $this->movePoints(
+            $account,
+            -$points,
+            LoyaltyPointTransaction::TYPE_REFUND_REVERSAL,
+            $refund,
+            $user,
+            'Points reversed for refund ' . $refund->refund_number
         );
     }
 

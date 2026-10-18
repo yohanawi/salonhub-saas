@@ -78,6 +78,25 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 80mm receipts print from a hidden frame, so the cashier stays on the invoice page.
+            document.querySelectorAll('[data-thermal-print]').forEach((trigger) => {
+                trigger.addEventListener('click', (event) => {
+                    event.preventDefault();
+
+                    let frame = document.querySelector('[data-thermal-print-frame]');
+
+                    if (!frame) {
+                        frame = document.createElement('iframe');
+                        frame.title = 'Thermal receipt print frame';
+                        frame.setAttribute('data-thermal-print-frame', '');
+                        frame.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0;';
+                        document.body.appendChild(frame);
+                    }
+
+                    frame.src = trigger.dataset.thermalPrint + '&t=' + Date.now();
+                });
+            });
+
             const modalElement = document.querySelector('[data-receipt-modal]');
 
             if (!modalElement || typeof bootstrap === 'undefined') {

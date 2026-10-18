@@ -26,6 +26,7 @@ class InvoiceItem extends Model
         'discount_amount' => 'decimal:2',
         'membership_discount_amount' => 'decimal:2',
         'promotion_discount_amount' => 'decimal:2',
+        'tax_rate' => 'decimal:4',
         'tax_amount' => 'decimal:2',
         'net_amount' => 'decimal:2',
         'total' => 'decimal:2',
@@ -70,6 +71,11 @@ class InvoiceItem extends Model
     public function promotion(): BelongsTo
     {
         return $this->belongsTo(Promotion::class);
+    }
+
+    public function refundItems(): HasMany
+    {
+        return $this->hasMany(RefundItem::class, 'sale_item_id');
     }
 
     public function commissions(): HasMany
