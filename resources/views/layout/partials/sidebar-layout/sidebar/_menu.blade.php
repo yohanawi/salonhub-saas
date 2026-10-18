@@ -346,6 +346,24 @@
                                     <span class="menu-title">Day-End Report</span>
                                 </a>
                             </div>
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.reports.sales*') ? 'active' : '' }}"
+                                    href="{{ route('billing.reports.sales') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Sales Report</span>
+                                </a>
+                            </div>
+                            <div class="menu-item">
+                                <a class="menu-link {{ request()->routeIs('billing.reports.tax*') ? 'active' : '' }}"
+                                    href="{{ route('billing.reports.tax') }}">
+                                    <span class="menu-bullet">
+                                        <span class="bullet bullet-dot"></span>
+                                    </span>
+                                    <span class="menu-title">Tax Report</span>
+                                </a>
+                            </div>
                         @endif
                         <div class="menu-item">
                             <a class="menu-link {{ request()->routeIs('billing.invoices.*') ? 'active' : '' }}"

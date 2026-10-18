@@ -17,6 +17,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('loyalty:expire-points')->dailyAt('01:00');
         $schedule->command('memberships:expire')->dailyAt('01:15');
+        $schedule->command('appointments:send-reminders')->everyFifteenMinutes()->withoutOverlapping();
     }
 
     /**

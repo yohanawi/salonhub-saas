@@ -13,6 +13,7 @@ use App\Services\Billing\CashRegisterService;
 use App\Services\Billing\PackageService;
 use App\Services\Billing\PaymentMethodService;
 use App\Services\Billing\PosPinService;
+use App\Services\Billing\TaxService;
 use App\Services\BranchContext;
 use App\Services\PlanEntitlementService;
 use App\Services\Settings\SettingService;
@@ -57,7 +58,8 @@ class CustomerPackageController extends Controller
         PaymentMethodService $paymentMethods,
         SettingService $settings,
         CashRegisterService $cashRegister,
-        PosPinService $posPin
+        PosPinService $posPin,
+        TaxService $taxes
     ): View {
         $tenant = $this->tenant($request, 'service_packages.sell', $entitlements);
         $branch = $branchContext->currentForOperation($request->user());
@@ -72,6 +74,7 @@ class CustomerPackageController extends Controller
             'cashShift' => $cashRegister->openShiftFor($branch->id),
             'requireShift' => $cashRegister->requiresOpenShift($tenant->id, $branch->id),
             'posPin' => $posPin->viewData($branch, $request->user()),
+            'taxConfig' => $taxes->configFor($branch),
         ]);
     }
 

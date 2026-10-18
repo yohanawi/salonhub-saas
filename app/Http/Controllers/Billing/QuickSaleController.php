@@ -166,6 +166,8 @@ class QuickSaleController extends Controller
             return $checkout->quickSale($branch, $customer, $data, $user);
         });
 
+        app(\App\Services\Messaging\CustomerNotifier::class)->invoiceReceipt($invoice, $user);
+
         return redirect()
             ->route('billing.invoices.show', $invoice)
             ->with('status', 'Sale completed and invoice ' . $invoice->invoice_number . ' created.')

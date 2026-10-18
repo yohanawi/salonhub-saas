@@ -71,6 +71,7 @@ class PackageService
                 'item_name' => $package->name,
                 'description' => $package->summary,
                 'amount' => (float) $package->price,
+                'taxable' => true,
             ], $data, $user, $cashierStaffId);
 
             $customerPackage->update(['invoice_id' => $invoice->id]);

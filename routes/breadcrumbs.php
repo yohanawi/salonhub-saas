@@ -363,6 +363,18 @@ Breadcrumbs::for('billing.payment-methods.edit', function (BreadcrumbTrail $trai
     $trail->push($paymentMethod->name, route('billing.payment-methods.edit', $paymentMethod));
 });
 
+// Home > Dashboard > Billing > Sales Report
+Breadcrumbs::for('billing.reports.sales', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Sales Report', route('billing.reports.sales'));
+});
+
+// Home > Dashboard > Billing > Tax Report
+Breadcrumbs::for('billing.reports.tax', function (BreadcrumbTrail $trail) {
+    $trail->parent('billing.index');
+    $trail->push('Tax Report', route('billing.reports.tax'));
+});
+
 // Home > Dashboard > Billing > Gift Cards
 Breadcrumbs::for('billing.gift-cards.index', function (BreadcrumbTrail $trail) {
     $trail->parent('billing.index');

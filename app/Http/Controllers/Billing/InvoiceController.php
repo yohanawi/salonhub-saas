@@ -14,6 +14,8 @@ use App\Services\Billing\DepositService;
 use App\Services\Billing\GiftCardService;
 use App\Services\Billing\PackageService;
 use App\Services\Billing\TipService;
+use App\Services\Messaging\CustomerNotifier;
+use App\Services\Messaging\MessagingService;
 use App\Services\Billing\PosPinService;
 use App\Services\Billing\RefundService;
 use App\Services\BranchContext;
@@ -118,6 +120,7 @@ class InvoiceController extends Controller
             'cashShift' => $cashRegister->openShiftFor($invoice->branch_id),
             'requireShift' => $cashRegister->requiresOpenShift($invoice->tenant_id, $invoice->branch_id),
             'receiptFormat' => $settings->get('invoice.receipt_format', $invoice->tenant_id, $invoice->branch_id),
+            'canSendReceipt' => app(MessagingService::class)->enabled($invoice->tenant_id, $invoice->branch_id) && $request->user()->can('create', Invoice::class),
             // Only straight after the sale, so reopening the invoice later does not print again.
             'autoPrintReceipt' => (bool) $request->session()->get('print_receipt')
                 && $settings->get('pos.auto_print_receipt', $invoice->tenant_id, $invoice->branch_id),
@@ -149,6 +152,30 @@ class InvoiceController extends Controller
             'footerMessage' => $setting('invoice.footer_message'),
             'terms' => $setting('invoice.terms'),
         ]);
+    }
+
+    public function sendReceipt(Request $request, Invoice $invoice, CustomerNotifier $notifier, MessagingService $messaging): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+        abort_unless($request->user()->can('create', Invoice::class), 403);
+
+        $data = $request->validate(['phone' => ['nullable', 'string', 'max:30']]);
+
+        if (! $messaging->enabled($invoice->tenant_id, $invoice->branch_id)) {
+            throw ValidationException::withMessages(['phone' => 'SMS / WhatsApp is not set up. Add the provider in Settings first.']);
+        }
+
+        $log = $notifier->invoiceReceipt($invoice, $request->user(), $data['phone'] ?? null, manual: true);
+
+        if (! $log) {
+            throw ValidationException::withMessages(['phone' => 'Enter a valid mobile number for the customer.']);
+        }
+
+        $log->refresh();
+
+        return back()->with('status', $log->status === \App\Models\MessageLog::STATUS_FAILED
+            ? 'The receipt could not be sent: ' . $log->error
+            : 'Receipt sent to ' . $log->recipient . '.');
     }
 
     public function void(Request $request, Invoice $invoice, InventoryService $inventory, CommissionGenerator $commissions, LoyaltyService $loyalty, PromotionService $promotions, MembershipBenefitService $membershipBenefits, GiftCardService $giftCards, PackageService $packages, DepositService $deposits, TipService $tips): RedirectResponse

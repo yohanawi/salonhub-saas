@@ -152,7 +152,9 @@
 <body>
     <div class="toolbar">
         <button type="button" onclick="window.print()">Print</button>
-        <button type="button" onclick="window.close()">Close</button>
+        @unless ($publicView ?? false)
+            <button type="button" onclick="window.close()">Close</button>
+        @endunless
     </div>
 
     <div class="receipt">

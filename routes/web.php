@@ -16,6 +16,10 @@ use App\Http\Controllers\Billing\AppointmentDepositController;
 use App\Http\Controllers\Billing\CustomerPackageController;
 use App\Http\Controllers\Billing\GiftCardController;
 use App\Http\Controllers\Billing\InvoiceController;
+use App\Http\Controllers\Billing\PublicReceiptController;
+use App\Http\Controllers\Settings\MessageLogController;
+use App\Http\Controllers\Billing\SalesReportController;
+use App\Http\Controllers\Billing\TaxReportController;
 use App\Http\Controllers\Billing\ServicePackageController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Billing\PaymentMethodController;
@@ -91,6 +95,9 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+// Receipt link texted to customers; the signature is the access check.
+Route::get('/r/{invoice}', [PublicReceiptController::class, 'show'])->middleware(['signed', 'throttle:60,1'])->whereNumber('invoice')->name('receipts.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -192,6 +199,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/cash-register/{shift}/movements', [CashRegisterController::class, 'movement'])->name('cash-register.movements.store');
         Route::post('/cash-register/{shift}/close', [CashRegisterController::class, 'close'])->name('cash-register.close');
         Route::get('/reports/day-end', [DayEndReportController::class, 'index'])->name('reports.day-end');
+        Route::get('/reports/sales', [SalesReportController::class, 'index'])->name('reports.sales');
+        Route::get('/reports/sales/export', [SalesReportController::class, 'export'])->name('reports.sales.export');
+        Route::get('/reports/tax', [TaxReportController::class, 'index'])->name('reports.tax');
+        Route::get('/reports/tax/export', [TaxReportController::class, 'export'])->name('reports.tax.export');
         Route::get('/gift-cards/lookup', [GiftCardController::class, 'lookup'])->name('gift-cards.lookup');
         Route::post('/gift-cards/{giftCard}/void', [GiftCardController::class, 'void'])->name('gift-cards.void');
         Route::resource('/gift-cards', GiftCardController::class)->only(['index', 'create', 'store', 'show'])->parameters(['gift-cards' => 'giftCard']);
@@ -203,6 +214,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/quick-sale', [QuickSaleController::class, 'create'])->name('quick-sale.create');
         Route::post('/quick-sale', [QuickSaleController::class, 'store'])->name('quick-sale.store');
         Route::get('/invoices/{invoice}/receipt', [InvoiceController::class, 'receipt'])->name('invoices.receipt');
+        Route::post('/invoices/{invoice}/send-receipt', [InvoiceController::class, 'sendReceipt'])->name('invoices.send-receipt');
         Route::post('/invoices/{invoice}/void', [InvoiceController::class, 'void'])->name('invoices.void');
         Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('invoices.payments.store');
         Route::post('/invoices/{invoice}/refunds', [RefundController::class, 'store'])->name('invoices.refunds.store');
@@ -333,6 +345,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/', [SystemSettingsController::class, 'index'])->name('index');
+        Route::get('/messages', [MessageLogController::class, 'index'])->name('messages.index');
+        Route::post('/messages/test', [MessageLogController::class, 'test'])->name('messages.test');
         Route::get('/{section}', [SystemSettingsController::class, 'edit'])->name('edit');
         Route::patch('/{section}', [SystemSettingsController::class, 'update'])->name('update');
     });

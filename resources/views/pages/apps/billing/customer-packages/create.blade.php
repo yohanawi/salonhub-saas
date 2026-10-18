@@ -74,9 +74,15 @@
                                 <div class="card-title"><h2 class="fw-bold text-gray-900 mb-0">Payment</h2></div>
                             </div>
                             <div class="card-body pt-4">
+                                @if ($taxConfig['enabled'])
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span class="text-muted">{{ $taxConfig['name'] }} ({{ rtrim(rtrim(number_format($taxConfig['rate'], 2), '0'), '.') }}%{{ $taxConfig['inclusive'] ? ', included' : '' }})</span>
+                                        <span class="fw-semibold" id="package_tax">LKR 0.00</span>
+                                    </div>
+                                @endif
                                 <div class="d-flex justify-content-between fs-4 mb-7">
                                     <span class="fw-bold text-gray-900">Total</span>
-                                    <span class="fw-bolder text-primary" id="package_total">LKR 0.00</span>
+                                    <span class="fw-bolder text-primary" id="package_total" data-tax-rate="{{ $taxConfig['enabled'] ? $taxConfig['rate'] : 0 }}" data-tax-inclusive="{{ $taxConfig['inclusive'] ? '1' : '0' }}">LKR 0.00</span>
                                 </div>
                                 @include('pages.apps.billing._payment-fields', ['total' => 0, 'submitLabel' => 'Sell Package'])
                             </div>
@@ -90,11 +96,26 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                const totalEl = document.getElementById('package_total');
+                const rate = Number(totalEl?.dataset.taxRate || 0);
+                const inclusive = totalEl?.dataset.taxInclusive === '1';
+                const money = (value) => 'LKR ' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                // Mirrors TaxService: a package is a prepayment for services, so it is taxed when sold.
                 function refresh() {
                     const selected = document.querySelector('input[name="service_package_id"]:checked');
                     const price = Number(selected?.dataset.price || 0);
-                    document.getElementById('package_total').textContent = 'LKR ' + price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    window.posPayments?.setTotal(price);
+                    const tax = rate <= 0 ? 0 : Math.round((inclusive ? price - price / (1 + rate / 100) : price * rate / 100) * 100) / 100;
+                    const total = inclusive ? price : price + tax;
+
+                    const taxEl = document.getElementById('package_tax');
+
+                    if (taxEl) {
+                        taxEl.textContent = money(tax);
+                    }
+
+                    totalEl.textContent = money(total);
+                    window.posPayments?.setTotal(total);
                 }
 
                 document.querySelectorAll('input[name="service_package_id"]').forEach((radio) => radio.addEventListener('change', refresh));

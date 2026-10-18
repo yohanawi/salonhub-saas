@@ -114,6 +114,7 @@ class CheckoutController extends Controller
         $entitlements->ensureFeature($appointment->tenant, 'pos_billing');
 
         $invoice = $checkout->checkoutAppointment($appointment, ['cashier_staff_id' => $request->cashierStaffId()] + $request->validated(), $request->user());
+        app(\App\Services\Messaging\CustomerNotifier::class)->invoiceReceipt($invoice, $request->user());
 
         return redirect()
             ->route('billing.invoices.show', $invoice)

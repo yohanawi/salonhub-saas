@@ -665,6 +665,26 @@
                     </div>
                 @endcan
 
+                @if ($canSendReceipt)
+                    <div class="card border-0 shadow-sm mb-8">
+                        <div class="card-body p-8">
+                            <h3 class="fw-bold text-gray-900 mb-1">
+                                <i class="bi bi-chat-dots text-success me-2"></i>Send Receipt
+                            </h3>
+                            <div class="text-muted fs-8 mb-4">By SMS / WhatsApp, with a link to the receipt.</div>
+                            <form method="POST" action="{{ route('billing.invoices.send-receipt', $invoice) }}" class="d-flex gap-2">
+                                @csrf
+                                <input type="tel" name="phone" value="{{ old('phone', $invoice->customer?->phone) }}" placeholder="07X XXX XXXX" required
+                                    class="form-control form-control-solid @error('phone') is-invalid @enderror" aria-label="Mobile number">
+                                <button type="submit" class="btn btn-light-success flex-shrink-0">Send</button>
+                            </form>
+                            @error('phone')
+                                <div class="text-danger fs-8 mt-2">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                @endif
+
                 @if (auth()->user()->can('void', $invoice) && $invoice->refunds->whereIn('status', [\App\Models\Refund::STATUS_PENDING, \App\Models\Refund::STATUS_COMPLETED])->isEmpty())
                     <div class="card border-0 shadow-sm">
                         <div class="card-header border-0 pt-8">

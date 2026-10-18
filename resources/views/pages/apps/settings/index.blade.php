@@ -35,6 +35,11 @@
                             <div class="text-muted fs-7">
                                 Configure platform, saloon and branch behavior from one centralized settings hub.
                             </div>
+                            @if (auth()->user()->tenant_id && auth()->user()->can('settings.notification.manage'))
+                                <a href="{{ route('settings.messages.index') }}" class="btn btn-sm btn-light-success mt-3">
+                                    <i class="bi bi-chat-dots me-1"></i>SMS / WhatsApp Message Log
+                                </a>
+                            @endif
                         </div>
                     </div>
 
