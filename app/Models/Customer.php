@@ -37,6 +37,8 @@ class Customer extends Model
 
     protected $casts = [
         'date_of_birth' => 'date',
+        'anniversary_date' => 'date',
+        'referral_rewarded_at' => 'datetime',
         'last_visit_at' => 'datetime',
         'marketing_consent' => 'boolean',
     ];
@@ -98,6 +100,31 @@ class Customer extends Model
             ->whereDate('start_date', '<=', today())
             ->whereDate('end_date', '>=', today())
             ->latest('end_date');
+    }
+
+    public function referrer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'referred_by_customer_id');
+    }
+
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'referred_by_customer_id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(CustomerPhoto::class)->latest('taken_on')->latest('id');
+    }
+
+    public function consultations(): HasMany
+    {
+        return $this->hasMany(CustomerConsultation::class)->latest('id');
+    }
+
+    public function hasAllergies(): bool
+    {
+        return filled(trim((string) $this->allergies));
     }
 
     public function getFullNameAttribute(): string

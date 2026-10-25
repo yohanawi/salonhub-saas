@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\User;
 use App\Services\Audit\AuditLogService;
 use App\Services\CustomerManagementService;
+use App\Services\Customers\CustomerDuplicateService;
 use App\Services\PlanEntitlementService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,8 @@ class QuickSaleService
             return $existing;
         }
 
+        $existingCustomer = null;
+
         if ($data['customer_mode'] === QuickSaleRequest::CUSTOMER_NEW) {
             if (! $this->entitlements->featureEnabled($tenant, 'customer_management')) {
                 throw ValidationException::withMessages([
@@ -50,15 +53,22 @@ class QuickSaleService
                 ]);
             }
 
-            $this->entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+            // At the till there is no form to warn on, so a phone/email already on file reuses that customer.
+            $existingCustomer = app(CustomerDuplicateService::class)
+                ->find($tenant->id, $data['new_customer']['phone'] ?? null, $data['new_customer']['email'] ?? null)
+                ->first();
+
+            if (! $existingCustomer) {
+                $this->entitlements->ensureCanCreate($tenant, 'max_customers', 'Your subscription customer limit has been reached.');
+            }
         }
 
         try {
             // The new customer and the sale commit together, so a failed payment leaves no orphan customer.
-            $invoice = DB::transaction(function () use ($data, $tenant, $branch, $user) {
+            $invoice = DB::transaction(function () use ($data, $tenant, $branch, $user, $existingCustomer) {
                 $customer = match ($data['customer_mode']) {
                     QuickSaleRequest::CUSTOMER_EXISTING => Customer::withoutTenantScope()->where('tenant_id', $tenant->id)->findOrFail($data['customer_id']),
-                    QuickSaleRequest::CUSTOMER_NEW => $this->customers->create($tenant, [
+                    QuickSaleRequest::CUSTOMER_NEW => $existingCustomer ?? $this->customers->create($tenant, [
                         'branch_id' => $branch->id,
                         'first_name' => $data['new_customer']['first_name'],
                         'last_name' => $data['new_customer']['last_name'] ?? null,

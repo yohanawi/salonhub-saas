@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Branch;
 use App\Models\Service;
 use App\Models\Tenant;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ServiceCatalogService
@@ -19,6 +21,7 @@ class ServiceCatalogService
             $service = $tenant->services()->create($this->servicePayload($data, $tenant));
 
             $this->syncBranches($service, $tenant, $branches);
+            $this->syncExtras($service, $tenant, $data);
 
             return $service->fresh(['category', 'branches']);
         });
@@ -32,6 +35,7 @@ class ServiceCatalogService
 
             $service->update($this->servicePayload($data, $service->tenant, $service));
             $this->syncBranches($service, $service->tenant, $branches);
+            $this->syncExtras($service, $service->tenant, $data);
 
             return $service->fresh(['category', 'branches']);
         });
@@ -81,7 +85,70 @@ class ServiceCatalogService
             'default_duration_minutes' => $data['default_duration_minutes'],
             'is_active' => (bool) ($data['is_active'] ?? false),
             'sort_order' => $data['sort_order'] ?? 0,
+            // Fields the request did not send keep their current value (or the column default for new services).
+            'online_description' => array_key_exists('online_description', $data) ? $data['online_description'] : $service?->online_description,
+            'show_online' => array_key_exists('show_online', $data) ? (bool) $data['show_online'] : ($service?->show_online ?? true),
+            'is_addon' => array_key_exists('is_addon', $data) ? (bool) $data['is_addon'] : ($service?->is_addon ?? false),
         ];
+    }
+
+    /**
+     * Image, suggested add-ons and consumable products. Add-ons and consumables are only touched when the
+     * form sent them, so callers that update the core fields alone keep the existing configuration.
+     */
+    private function syncExtras(Service $service, Tenant $tenant, array $data): void
+    {
+        $this->syncImage($service, $data);
+
+        if (array_key_exists('addon_ids', $data) || ! empty($data['addons_present'])) {
+            $addons = [];
+
+            foreach (array_values(array_unique(array_map('intval', $data['addon_ids'] ?? []))) as $index => $addonId) {
+                if ($addonId === (int) $service->id) {
+                    continue;
+                }
+
+                $addons[$addonId] = ['tenant_id' => $tenant->id, 'sort_order' => $index];
+            }
+
+            $service->addons()->sync($addons);
+        }
+
+        if (array_key_exists('consumables', $data) || ! empty($data['consumables_present'])) {
+            $consumables = [];
+
+            foreach ($data['consumables'] ?? [] as $line) {
+                if (empty($line['product_id'])) {
+                    continue;
+                }
+
+                $consumables[(int) $line['product_id']] = [
+                    'tenant_id' => $tenant->id,
+                    'quantity' => max(1, (int) ($line['quantity'] ?? 1)),
+                ];
+            }
+
+            $service->consumables()->sync($consumables);
+        }
+    }
+
+    private function syncImage(Service $service, array $data): void
+    {
+        $image = $data['image'] ?? null;
+
+        if (! $image instanceof UploadedFile && empty($data['remove_image'])) {
+            return;
+        }
+
+        if ($service->image_path) {
+            Storage::disk('public')->delete($service->image_path);
+        }
+
+        $service->update([
+            'image_path' => $image instanceof UploadedFile
+                ? $image->store("services/{$service->tenant_id}", 'public')
+                : null,
+        ]);
     }
 
     private function uniqueSlug(string $slug, Tenant $tenant, ?Service $service = null): string

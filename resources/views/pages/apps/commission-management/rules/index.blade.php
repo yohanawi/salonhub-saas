@@ -30,7 +30,18 @@
                                     <td class="fw-bold">{{ str($rule->commission_scope)->replace('_', ' + ')->headline() }}</td>
                                     @if($isSuperAdmin)<td>{{ $rule->tenant?->name }}</td>@endif
                                     <td>{{ collect([$rule->branch?->name, $rule->staff?->full_name, $rule->service?->name, $rule->product?->name])->filter()->implode(' / ') ?: 'Tenant default' }}</td>
-                                    <td>{{ str($rule->commission_type)->headline() }} {{ $rule->commission_type === 'percentage' ? $rule->commission_value . '%' : 'LKR ' . number_format((float) $rule->commission_value, 2) }}</td>
+                                    <td>
+                                        @if ($rule->isTiered())
+                                            Tiered
+                                            <div class="text-muted fs-8">
+                                                @foreach ($rule->sortedTiers() as $tier)
+                                                    {{ number_format($tier['min_sales']) }}+ → {{ rtrim(rtrim(number_format($tier['rate'], 2), '0'), '.') }}%@if (! $loop->last), @endif
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            {{ str($rule->commission_type)->headline() }} {{ $rule->commission_type === 'percentage' ? $rule->commission_value . '%' : 'LKR ' . number_format((float) $rule->commission_value, 2) }}
+                                        @endif
+                                    </td>
                                     <td>{{ str($rule->calculate_on)->replace('_', ' ')->headline() }}</td>
                                     <td><span class="badge badge-light-{{ $rule->is_active ? 'success' : 'danger' }}">{{ $rule->is_active ? 'Active' : 'Inactive' }}</span></td>
                                     <td class="text-end">

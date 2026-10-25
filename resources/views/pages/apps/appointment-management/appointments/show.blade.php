@@ -449,6 +449,87 @@
         @endif
 
 
+        {{-- Saved shortages are shown below with a retry button, so the one-off flash would only repeat them. --}}
+        @if (session('warning') && ! $appointment->stock_shortages)
+            <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-8">
+                <div class="symbol symbol-45px me-4">
+                    <span class="symbol-label bg-warning bg-opacity-10 rounded-3">
+                        <i class="bi bi-exclamation-triangle-fill text-warning fs-2"></i>
+                    </span>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-bold text-gray-900 mb-1">Stock not deducted</div>
+                    <div class="text-gray-700">{{ session('warning') }}</div>
+                </div>
+            </div>
+        @endif
+
+        @if ($appointment->stock_shortages)
+            <div class="alert alert-warning border-0 shadow-sm d-flex flex-column flex-md-row align-items-md-center gap-4 mb-8">
+                <div class="d-flex align-items-center flex-grow-1">
+                    <div class="symbol symbol-45px me-4">
+                        <span class="symbol-label bg-warning bg-opacity-10 rounded-3">
+                            <i class="bi bi-box-seam text-warning fs-2"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <div class="fw-bold text-gray-900 mb-1">Service products still to be deducted</div>
+                        <div class="text-gray-700">
+                            {{ collect($appointment->stock_shortages)->map(fn ($shortage) => "{$shortage['name']} ({$shortage['quantity']})")->implode(', ') }}
+                            — the branch did not have enough stock when this appointment was completed.
+                        </div>
+                    </div>
+                </div>
+                @can('complete', $appointment)
+                    <form method="POST" action="{{ route('appointment-management.appointments.consume-stock', $appointment) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-sm btn-warning text-nowrap">
+                            <i class="bi bi-arrow-repeat me-1"></i>
+                            Deduct Now
+                        </button>
+                    </form>
+                @endcan
+            </div>
+        @endif
+
+        @if ($appointment->customer?->hasAllergies())
+            <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-8">
+                <i class="bi bi-exclamation-octagon-fill fs-1 me-4"></i>
+                <div><div class="fw-bold">Allergies & sensitivities: {{ $appointment->customer->full_name }}</div><div>{{ $appointment->customer->allergies }}</div></div>
+            </div>
+        @endif
+
+        @if ($waitlistMatches->isNotEmpty())
+            <div class="card border-0 shadow-sm mb-8">
+                <div class="card-body p-6">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="bi bi-hourglass-split text-warning fs-2 me-3"></i>
+                        <div>
+                            <div class="fw-bold text-gray-900">Fill this slot from the waitlist</div>
+                            <div class="text-muted fs-8">{{ $waitlistMatches->count() }} waiting {{ Str::plural('customer', $waitlistMatches->count()) }} suit this time, oldest request first.</div>
+                        </div>
+                    </div>
+                    @foreach ($waitlistMatches as $match)
+                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 py-3 border-top border-gray-200">
+                            <div>
+                                <div class="fw-semibold text-gray-900">{{ $match['entry']->customer?->full_name }} <span class="text-muted fs-8">{{ $match['entry']->customer?->phone }}</span></div>
+                                <div class="text-muted fs-8">{{ $match['entry']->service?->name }} · wants {{ $match['entry']->timeWindowLabel() }}</div>
+                            </div>
+                            <form method="POST" action="{{ route('appointment-management.waitlist.book', $match['entry']) }}">
+                                @csrf
+                                <input type="hidden" name="starts_at" value="{{ $match['starts_at']->format('Y-m-d H:i') }}">
+                                <input type="hidden" name="staff_id" value="{{ $match['staff']->id }}">
+                                <button type="submit" class="btn btn-sm btn-warning text-nowrap">
+                                    Book {{ $match['starts_at']->format('h:i A') }} with {{ $match['staff']->first_name }}
+                                </button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+
         @if ($errors->any())
             <div class="alert alert-danger border-0 shadow-sm
                         d-flex align-items-center mb-8">
@@ -1797,6 +1878,12 @@
                                                        form-control-solid
                                                        mb-3"
                                                 rows="3" placeholder="Enter cancellation reason..."></textarea>
+
+                                            @if ($cancellationNotice)
+                                                <div class="alert alert-warning py-3 px-4 fs-8 mb-3">
+                                                    {{ $cancellationNotice }}
+                                                </div>
+                                            @endif
 
 
                                             <button

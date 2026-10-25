@@ -33,6 +33,7 @@ class Product extends Model
         'selling_price' => 'decimal:2',
         'tax_rate' => 'decimal:4',
         'track_inventory' => 'boolean',
+        'track_batches' => 'boolean',
         'allow_negative_stock' => 'boolean',
         'is_sellable' => 'boolean',
         'is_consumable' => 'boolean',
@@ -67,6 +68,54 @@ class Product extends Model
     public function inventories(): HasMany
     {
         return $this->hasMany(Inventory::class);
+    }
+
+    public function branchPrices(): HasMany
+    {
+        return $this->hasMany(BranchProduct::class);
+    }
+
+    /**
+     * The retail price at a branch: its own price when one is set, otherwise the product's default.
+     */
+    public function priceAt(Branch|int|null $branch): float
+    {
+        $branchId = $branch instanceof Branch ? $branch->id : $branch;
+
+        if (! $branchId) {
+            return (float) $this->selling_price;
+        }
+
+        $override = $this->relationLoaded('branchPrices')
+            ? $this->branchPrices->firstWhere('branch_id', $branchId)
+            : BranchProduct::withoutTenantScope()->where('product_id', $this->id)->where('branch_id', $branchId)->first();
+
+        return (float) ($override?->selling_price ?? $this->selling_price);
+    }
+
+    /**
+     * Shows branch prices on POS screens: replaces each product's selling_price in memory (never saved).
+     *
+     * @param  \Illuminate\Support\Collection<int, Product>  $products
+     */
+    public static function applyBranchPrices(\Illuminate\Support\Collection $products, int $branchId): \Illuminate\Support\Collection
+    {
+        $prices = BranchProduct::withoutTenantScope()
+            ->where('branch_id', $branchId)
+            ->whereIn('product_id', $products->pluck('id'))
+            ->pluck('selling_price', 'product_id');
+
+        return $products->each(function (Product $product) use ($prices) {
+            if (isset($prices[$product->id])) {
+                $product->setAttribute('default_selling_price', $product->selling_price);
+                $product->setAttribute('selling_price', $prices[$product->id]);
+            }
+        });
+    }
+
+    public function batches(): HasMany
+    {
+        return $this->hasMany(ProductBatch::class);
     }
 
     public function purchaseItems(): HasMany

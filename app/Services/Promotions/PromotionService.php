@@ -11,6 +11,8 @@ use App\Models\PromotionCoupon;
 use App\Models\PromotionUsage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Settings\SettingService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +25,10 @@ class PromotionService
         $coupon = null;
 
         if (filled($data['coupon_code'] ?? null)) {
+            if (! app(SettingService::class)->get('promotion.coupons_enabled', $tenant->id, $branch->id)) {
+                throw ValidationException::withMessages(['coupon_code' => 'This salon is not accepting coupon codes right now.']);
+            }
+
             $coupon = PromotionCoupon::withoutTenantScope()
                 ->with('promotion')
                 ->where('tenant_id', $tenant->id)
@@ -130,6 +136,18 @@ class PromotionService
             return $this->ineligible('Promotion is not available for this branch.', $promotion, $coupon);
         }
 
+        if ($promotion->hasTimeWindow() && ! $this->withinTimeWindow($promotion, $branch)) {
+            return $this->ineligible('Promotion is only available ' . $promotion->schedule_label . '.', $promotion, $coupon);
+        }
+
+        if ($promotion->isBirthday()) {
+            $birthdayResult = $this->checkBirthday($promotion, $customer, $branch);
+
+            if ($birthdayResult) {
+                return $this->ineligible($birthdayResult, $promotion, $coupon);
+            }
+        }
+
         if ($coupon) {
             $couponResult = $this->checkCoupon($promotion, $coupon, $customer);
 
@@ -160,7 +178,13 @@ class PromotionService
             return $this->ineligible('Minimum quantity of ' . $promotion->minimum_quantity . ' is required.', $promotion, $coupon);
         }
 
-        $discount = $this->calculateDiscount($promotion, $eligibleSubtotal);
+        if ($promotion->isBogo() && $eligibleQuantity < (int) $promotion->buy_quantity + (int) $promotion->get_quantity) {
+            return $this->ineligible("Add {$promotion->buy_quantity} + {$promotion->get_quantity} eligible items for this offer.", $promotion, $coupon);
+        }
+
+        $discount = $promotion->isBogo()
+            ? round(array_sum($this->bogoAllocation($promotion, $items)), 2)
+            : $this->calculateDiscount($promotion, $eligibleSubtotal);
 
         if ($discount <= 0) {
             return $this->ineligible('Promotion does not produce a discount for this invoice.', $promotion, $coupon);
@@ -355,6 +379,10 @@ class PromotionService
             return $items;
         }
 
+        if ($promotion->isBogo()) {
+            return $this->applyLineDiscounts($items, $promotion, $this->bogoAllocation($promotion, $items));
+        }
+
         [$eligibleSubtotal] = $this->eligibleBasis($promotion, $items);
         $remaining = $discount;
         $originalDiscount = $discount;
@@ -383,6 +411,145 @@ class PromotionService
 
             return $item;
         });
+    }
+
+    /**
+     * Buy X get Y: every eligible unit is listed by its net unit price, highest first; in each group of
+     * X+Y units the cheapest Y are discounted. Returns the discount per item index.
+     *
+     * @return array<int|string, float>
+     */
+    private function bogoAllocation(Promotion $promotion, Collection $items): array
+    {
+        $buy = max(1, (int) $promotion->buy_quantity);
+        $get = max(1, (int) $promotion->get_quantity);
+        $percentage = min(100, max(0, (float) ($promotion->get_discount_percentage ?? 100)));
+        $units = [];
+
+        foreach ($items as $index => $item) {
+            if ($this->eligibleBasis($promotion, collect([$item]))[1] <= 0) {
+                continue;
+            }
+
+            $quantity = max(1, (int) ($item['quantity'] ?? 1));
+            $unitNet = max(0, (float) ($item['gross_amount'] ?? 0) - (float) ($item['discount_amount'] ?? 0)) / $quantity;
+
+            for ($unit = 0; $unit < $quantity; $unit++) {
+                $units[] = ['index' => $index, 'price' => $unitNet];
+            }
+        }
+
+        usort($units, fn (array $a, array $b) => $b['price'] <=> $a['price']);
+
+        $allocation = [];
+
+        foreach (array_chunk($units, $buy + $get) as $group) {
+            if (count($group) < $buy + $get) {
+                break;
+            }
+
+            foreach (array_slice($group, $buy) as $unit) {
+                $allocation[$unit['index']] = ($allocation[$unit['index']] ?? 0) + $unit['price'] * $percentage / 100;
+            }
+        }
+
+        $total = array_sum($allocation);
+
+        if ($promotion->maximum_discount_amount !== null && $total > (float) $promotion->maximum_discount_amount && $total > 0) {
+            $scale = (float) $promotion->maximum_discount_amount / $total;
+            $allocation = array_map(fn ($amount) => $amount * $scale, $allocation);
+        }
+
+        return array_map(fn ($amount) => round($amount, 2), $allocation);
+    }
+
+    /**
+     * @param  array<int|string, float>  $allocation
+     */
+    private function applyLineDiscounts(Collection $items, Promotion $promotion, array $allocation): Collection
+    {
+        return $items->map(function (array $item, $index) use ($promotion, $allocation) {
+            $lineDiscount = min((float) ($allocation[$index] ?? 0), max(0, (float) $item['gross_amount'] - (float) ($item['discount_amount'] ?? 0)));
+
+            if ($lineDiscount <= 0) {
+                return $item;
+            }
+
+            $item['promotion_id'] = $promotion->id;
+            $item['promotion_discount_amount'] = round((float) ($item['promotion_discount_amount'] ?? 0) + $lineDiscount, 2);
+            $item['discount'] = round((float) ($item['discount'] ?? 0) + $lineDiscount, 2);
+            $item['discount_amount'] = round((float) ($item['discount_amount'] ?? 0) + $lineDiscount, 2);
+            $item['net_amount'] = max(0, round((float) ($item['gross_amount'] ?? 0) - (float) ($item['discount_amount'] ?? 0) + (float) ($item['tax_amount'] ?? 0), 2));
+            $item['total'] = $item['net_amount'];
+            $item['total_amount'] = $item['net_amount'];
+
+            return $item;
+        });
+    }
+
+    /**
+     * Happy hour / day-of-week offers, judged on the branch's local clock.
+     */
+    private function withinTimeWindow(Promotion $promotion, Branch $branch): bool
+    {
+        $now = CarbonImmutable::now($branch->timezone ?: ($branch->tenant?->timezone ?: config('app.timezone')));
+        $days = array_map('intval', $promotion->active_days ?? []);
+
+        if ($days !== [] && ! in_array($now->dayOfWeek, $days, true)) {
+            return false;
+        }
+
+        if (! $promotion->active_from_time && ! $promotion->active_to_time) {
+            return true;
+        }
+
+        $current = $now->format('H:i:s');
+        $from = $promotion->active_from_time ? substr((string) $promotion->active_from_time, 0, 8) : '00:00:00';
+        $to = $promotion->active_to_time ? substr((string) $promotion->active_to_time, 0, 8) : '23:59:59';
+        $from = strlen($from) === 5 ? $from . ':00' : $from;
+        $to = strlen($to) === 5 ? $to . ':59' : $to;
+
+        // A window like 22:00-02:00 runs past midnight.
+        return $from <= $to
+            ? $current >= $from && $current <= $to
+            : $current >= $from || $current <= $to;
+    }
+
+    private function checkBirthday(Promotion $promotion, ?Customer $customer, Branch $branch): ?string
+    {
+        if (! $customer) {
+            return 'Select the customer to apply their birthday offer.';
+        }
+
+        if (! $customer->date_of_birth) {
+            return "Add the customer's date of birth to use the birthday offer.";
+        }
+
+        $today = CarbonImmutable::now($branch->timezone ?: ($branch->tenant?->timezone ?: config('app.timezone')))->startOfDay();
+        $dob = CarbonImmutable::parse($customer->date_of_birth);
+        // 29 Feb birthdays fall on 28 Feb in other years.
+        $birthday = $today->setDate($today->year, $dob->month, min($dob->day, CarbonImmutable::create($today->year, $dob->month, 1)->daysInMonth));
+
+        $inWindow = match ($promotion->birthday_window ?: 'week') {
+            'day' => $today->isSameDay($birthday),
+            'month' => $today->month === $birthday->month,
+            default => collect([$birthday->subYear(), $birthday, $birthday->addYear()])
+                ->contains(fn (CarbonImmutable $date) => abs($today->diffInDays($date, false)) <= 3),
+        };
+
+        if (! $inWindow) {
+            return 'The birthday offer is only available around the customer\'s birthday.';
+        }
+
+        $usedThisYear = PromotionUsage::withoutTenantScope()
+            ->where('tenant_id', $promotion->tenant_id)
+            ->where('promotion_id', $promotion->id)
+            ->where('customer_id', $customer->id)
+            ->where('status', PromotionUsage::STATUS_USED)
+            ->whereYear('used_at', $today->year)
+            ->exists();
+
+        return $usedThisYear ? 'The birthday offer has already been used this year.' : null;
     }
 
     private function hasCompletedBusiness(Customer $customer): bool

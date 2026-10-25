@@ -11,6 +11,7 @@ use App\Models\CommissionRule;
 use App\Models\CommissionSetting;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\SalaryAdvance;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Setting;
@@ -37,6 +38,11 @@ use App\Models\ProductBrand;
 use App\Models\ProductCategory;
 use App\Models\StockAdjustment;
 use App\Models\StockMovement;
+use App\Models\ProductBatch;
+use App\Models\Purchase;
+use App\Models\StockTake;
+use App\Models\StockTransfer;
+use App\Models\Supplier;
 use App\Models\Unit;
 use App\Models\Vendor;
 use App\Policies\AppointmentPolicy;
@@ -67,6 +73,7 @@ use App\Policies\ProductBrandPolicy;
 use App\Policies\ProductCategoryPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ServiceCategoryPolicy;
+use App\Policies\SalaryAdvancePolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SettingPolicy;
 use App\Policies\StaffPolicy;
@@ -74,6 +81,11 @@ use App\Policies\StaffCommissionPolicy;
 use App\Policies\StaffSalaryStructurePolicy;
 use App\Policies\StockAdjustmentPolicy;
 use App\Policies\StockMovementPolicy;
+use App\Policies\ProductBatchPolicy;
+use App\Policies\PurchasePolicy;
+use App\Policies\StockTakePolicy;
+use App\Policies\StockTransferPolicy;
+use App\Policies\SupplierPolicy;
 use App\Policies\UnitPolicy;
 use App\Policies\VendorPolicy;
 use App\Models\User;
@@ -89,6 +101,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Appointment::class => AppointmentPolicy::class,
+        \App\Models\WaitlistEntry::class => \App\Policies\WaitlistEntryPolicy::class,
         AuditLog::class => AuditLogPolicy::class,
         Branch::class => BranchPolicy::class,
         CashRegisterShift::class => CashRegisterShiftPolicy::class,
@@ -115,6 +128,7 @@ class AuthServiceProvider extends ServiceProvider
         Product::class => ProductPolicy::class,
         ProductBrand::class => ProductBrandPolicy::class,
         ProductCategory::class => ProductCategoryPolicy::class,
+        SalaryAdvance::class => SalaryAdvancePolicy::class,
         Service::class => ServicePolicy::class,
         ServiceCategory::class => ServiceCategoryPolicy::class,
         Setting::class => SettingPolicy::class,
@@ -123,6 +137,11 @@ class AuthServiceProvider extends ServiceProvider
         StaffSalaryStructure::class => StaffSalaryStructurePolicy::class,
         StockAdjustment::class => StockAdjustmentPolicy::class,
         StockMovement::class => StockMovementPolicy::class,
+        ProductBatch::class => ProductBatchPolicy::class,
+        Purchase::class => PurchasePolicy::class,
+        StockTake::class => StockTakePolicy::class,
+        StockTransfer::class => StockTransferPolicy::class,
+        Supplier::class => SupplierPolicy::class,
         Unit::class => UnitPolicy::class,
         Vendor::class => VendorPolicy::class,
     ];

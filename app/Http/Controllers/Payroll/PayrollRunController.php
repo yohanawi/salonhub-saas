@@ -9,11 +9,15 @@ use App\Models\Tenant;
 use App\Services\BranchContext;
 use App\Services\Payroll\PayrollApprovalService;
 use App\Services\Payroll\PayrollRunService;
+use App\Services\Payroll\PayrollExportService;
+use App\Services\Payroll\PayslipService;
 use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PayrollRunController extends Controller
 {
@@ -86,6 +90,55 @@ class PayrollRunController extends Controller
         $approval->reject($payrollRun, $request->user(), $data['notes'] ?? null);
 
         return back()->with('status', 'Payroll returned for correction.');
+    }
+
+    public function sendPayslips(Request $request, PayrollRun $payrollRun, PayslipService $payslips, PlanEntitlementService $entitlements): RedirectResponse
+    {
+        $this->authorize('approve', $payrollRun);
+        $entitlements->ensureFeature($payrollRun->tenant, 'payroll');
+
+        $data = $request->validate([
+            'channels' => ['required', 'array', 'min:1'],
+            'channels.*' => [Rule::in(['email', 'message'])],
+        ]);
+
+        if (! in_array($payrollRun->status, [PayrollRun::STATUS_APPROVED, PayrollRun::STATUS_PAID, PayrollRun::STATUS_CLOSED], true)) {
+            return back()->with('error', 'Approve the payroll before sending payslips.');
+        }
+
+        $result = $payslips->sendForRun($payrollRun, $data['channels'], $request->user());
+
+        return back()->with('status', "Payslips sent to {$result['sent']} staff." . ($result['skipped'] ? " {$result['skipped']} skipped (no email/phone on file)." : ''));
+    }
+
+    public function bankExport(PayrollRun $payrollRun, PayrollExportService $exports, PlanEntitlementService $entitlements): StreamedResponse|RedirectResponse
+    {
+        $this->authorize('pay', $payrollRun);
+        $entitlements->ensureFeature($payrollRun->tenant, 'payroll');
+
+        if (! in_array($payrollRun->status, [PayrollRun::STATUS_APPROVED, PayrollRun::STATUS_PAID, PayrollRun::STATUS_CLOSED], true)) {
+            return back()->with('error', 'Approve the payroll before exporting the bank transfer file.');
+        }
+
+        $rows = $exports->bankTransferRows($payrollRun)->map(fn (array $row) => [
+            $row['debit_account'],
+            $row['employee_code'],
+            $row['employee_name'],
+            $row['account_name'],
+            $row['account_number'],
+            $row['bank_name'],
+            $row['bank_code'],
+            $row['branch_code'],
+            $row['amount'],
+            $row['reference'],
+            $row['missing_details'] ? 'MISSING BANK DETAILS' : '',
+        ]);
+
+        return $exports->csv(
+            "bank-transfer-{$payrollRun->run_number}.csv",
+            ['Debit Account', 'Employee Code', 'Employee Name', 'Account Name', 'Account Number', 'Bank', 'Bank Code', 'Branch Code', 'Amount', 'Reference', 'Note'],
+            $rows
+        );
     }
 
     private function tenantContext(Request $request): array

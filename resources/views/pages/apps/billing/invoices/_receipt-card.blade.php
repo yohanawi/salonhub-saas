@@ -28,10 +28,14 @@
                 </div>
             @endif
 
-            @if ($invoice->branch?->address_summary)
+            @if (! empty($business['legal_name']))
+                <div class="text-muted fs-8">{{ $business['legal_name'] }}</div>
+            @endif
+
+            @if ($invoice->branch?->address_summary || ! empty($business['address']))
                 <div class="text-muted fs-8 mt-2">
                     <i class="bi bi-geo-alt me-1"></i>
-                    {{ $invoice->branch->address_summary }}
+                    {{ $invoice->branch?->address_summary ?: $business['address'] }}
                 </div>
             @endif
 
@@ -40,6 +44,19 @@
                     <i class="bi bi-telephone me-1"></i>
                     {{ $invoice->branch->phone }}
                 </div>
+            @endif
+
+            @if (! empty($business['registration_number']) || ! empty($business['tax_number']))
+                <div class="text-muted fs-8 mt-1">
+                    {{ collect([
+                        ! empty($business['registration_number']) ? 'Reg. No: ' . $business['registration_number'] : null,
+                        ! empty($business['tax_number']) ? 'VAT: ' . $business['tax_number'] : null,
+                    ])->filter()->implode(' · ') }}
+                </div>
+            @endif
+
+            @if (! empty($business['website']))
+                <div class="text-muted fs-8 mt-1">{{ $business['website'] }}</div>
             @endif
         </div>
 

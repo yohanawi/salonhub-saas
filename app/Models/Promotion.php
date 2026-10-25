@@ -29,6 +29,27 @@ class Promotion extends Model
         self::STATUS_ARCHIVED,
     ];
 
+    public const TYPE_STANDARD = 'standard';
+    /** Buy X get Y: the cheapest Y of every X+Y eligible units get get_discount_percentage off (100 = free). */
+    public const TYPE_BOGO = 'bogo';
+    /** Applies automatically when the customer's birthday falls in birthday_window. */
+    public const TYPE_BIRTHDAY = 'birthday';
+
+    public const TYPES = [
+        self::TYPE_STANDARD,
+        self::TYPE_BOGO,
+        self::TYPE_BIRTHDAY,
+    ];
+
+    public const BIRTHDAY_WINDOWS = [
+        'day' => 'On the birthday only',
+        'week' => 'Birthday week (3 days either side)',
+        'month' => 'Whole birthday month',
+    ];
+
+    /** Carbon dayOfWeek numbers. */
+    public const DAYS = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 0 => 'Sun'];
+
     public const DISCOUNT_PERCENTAGE = 'percentage';
     public const DISCOUNT_FIXED = 'fixed';
 
@@ -94,6 +115,10 @@ class Promotion extends Model
         'coupon_required' => 'boolean',
         'is_stackable' => 'boolean',
         'priority' => 'integer',
+        'buy_quantity' => 'integer',
+        'get_quantity' => 'integer',
+        'get_discount_percentage' => 'decimal:2',
+        'active_days' => 'array',
     ];
 
     public function creator(): BelongsTo
@@ -178,8 +203,46 @@ class Promotion extends Model
         return 'Active';
     }
 
+    public function isBogo(): bool
+    {
+        return $this->promotion_type === self::TYPE_BOGO;
+    }
+
+    public function isBirthday(): bool
+    {
+        return $this->promotion_type === self::TYPE_BIRTHDAY;
+    }
+
+    public function hasTimeWindow(): bool
+    {
+        return ! empty($this->active_days) || $this->active_from_time || $this->active_to_time;
+    }
+
+    /**
+     * e.g. "Mon, Tue · 14:00–17:00", for lists and receipts.
+     */
+    public function getScheduleLabelAttribute(): ?string
+    {
+        if (! $this->hasTimeWindow()) {
+            return null;
+        }
+
+        $days = collect(self::DAYS)->only(array_map('intval', $this->active_days ?? []))->implode(', ');
+        $times = $this->active_from_time || $this->active_to_time
+            ? substr((string) ($this->active_from_time ?: '00:00'), 0, 5) . '–' . substr((string) ($this->active_to_time ?: '23:59'), 0, 5)
+            : null;
+
+        return collect([$days ?: 'Every day', $times])->filter()->implode(' · ');
+    }
+
     public function getDiscountLabelAttribute(): string
     {
+        if ($this->isBogo()) {
+            $off = (float) ($this->get_discount_percentage ?? 100);
+
+            return "Buy {$this->buy_quantity} get {$this->get_quantity} " . ($off >= 100 ? 'free' : rtrim(rtrim(number_format($off, 2), '0'), '.') . '% off');
+        }
+
         return $this->discount_type === self::DISCOUNT_PERCENTAGE
             ? number_format((float) $this->discount_value, 2) . '%'
             : 'LKR ' . number_format((float) $this->discount_value, 2);

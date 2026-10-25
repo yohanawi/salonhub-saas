@@ -8,7 +8,10 @@ use App\Http\Requests\Profile\UpdateProfileDetailsRequest;
 use App\Http\Requests\Profile\UpdateProfileEmailRequest;
 use App\Http\Requests\Profile\UpdateProfilePasswordRequest;
 use App\Models\AuditLog;
+use App\Models\CommissionPayout;
+use App\Models\PayrollItem;
 use App\Models\Subscription;
+use App\Services\Appointment\StaffAgendaService;
 use App\Services\Audit\AuditLogService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -254,20 +257,58 @@ class ProfileController extends Controller
             'subscriptions' => $subscriptions,
             'seatUsage' => $seatUsage,
             'address' => $user->default_address,
+            'addresses' => $user->addresses,
             'hasPaymentMethod' => false,
         ]);
     }
 
     public function statements(Request $request): View
     {
-        $tenant = $request->user()->tenant;
+        $user = $request->user();
+        $tenant = $user->tenant;
+        $staff = $user->staffProfile;
 
-        $subscriptions = $tenant
+        // Salon subscription charges belong to the business, so staff only see them with settings access.
+        $showSubscriptions = $tenant && (! $staff || $user->can('settings.view'));
+
+        $subscriptions = $showSubscriptions
             ? Subscription::where('tenant_id', $tenant->id)->with('plan')->orderByDesc('starts_at')->get()
+            : collect();
+
+        $payslips = $staff
+            ? PayrollItem::query()
+                ->where('staff_id', $staff->id)
+                ->whereIn('status', [PayrollItem::STATUS_APPROVED, PayrollItem::STATUS_PAID])
+                ->with('period:id,name,start_date,end_date,pay_date')
+                ->latest('id')
+                ->limit(24)
+                ->get()
+            : collect();
+
+        $commissionPayouts = $staff
+            ? CommissionPayout::query()
+                ->where('staff_id', $staff->id)
+                ->where('status', '!=', CommissionPayout::STATUS_CANCELLED)
+                ->latest('period_end')
+                ->limit(24)
+                ->get()
             : collect();
 
         return view('pages.apps.profile.statements', [
             'subscriptions' => $subscriptions->groupBy(fn (Subscription $subscription) => $subscription->starts_at?->year ?? 'Undated'),
+            'payslips' => $payslips,
+            'commissionPayouts' => $commissionPayouts,
+            'currency' => $tenant?->currency ?: 'LKR',
+        ]);
+    }
+
+    public function appointments(Request $request, StaffAgendaService $agenda): View
+    {
+        $staff = $request->user()->staffProfile;
+
+        return view('pages.apps.profile.appointments', [
+            'staff' => $staff,
+            'agenda' => $staff ? $agenda->agenda($staff) : null,
         ]);
     }
 

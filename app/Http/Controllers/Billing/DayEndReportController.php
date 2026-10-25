@@ -10,10 +10,13 @@ use App\Services\PlanEntitlementService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Services\Reports\ReportCatalog;
+use App\Services\Reports\ReportExporter;
+use Symfony\Component\HttpFoundation\Response;
 
 class DayEndReportController extends Controller
 {
-    public function index(Request $request, BranchContext $branchContext, DayEndReportService $reports, PlanEntitlementService $entitlements): View
+    public function index(Request $request, BranchContext $branchContext, DayEndReportService $reports, PlanEntitlementService $entitlements): View|Response
     {
         $this->authorize('viewReports', Invoice::class);
 
@@ -26,6 +29,7 @@ class DayEndReportController extends Controller
         $request->validate([
             'date' => ['nullable', 'date_format:Y-m-d'],
             'branch_id' => ['nullable', 'integer'],
+            'format' => ['nullable', 'in:csv,xlsx,pdf'],
         ]);
 
         $branches = $branchContext->availableBranches($user);
@@ -41,8 +45,17 @@ class DayEndReportController extends Controller
             ? CarbonImmutable::createFromFormat('Y-m-d', $request->string('date')->toString(), $timezone)->startOfDay()
             : CarbonImmutable::now($timezone)->startOfDay();
 
+        $report = $reports->build($tenant, $selectedBranch ? [$selectedBranch->id] : $branches->pluck('id')->all(), $day);
+
+        if ($request->filled('format')) {
+            return app(ReportExporter::class)->download(
+                app(ReportCatalog::class)->dayEndDocument($tenant, $report, $selectedBranch?->name ?? 'All branches'),
+                $request->string('format')->toString()
+            );
+        }
+
         return view('pages/apps.billing.reports.day-end', [
-            'report' => $reports->build($tenant, $selectedBranch ? [$selectedBranch->id] : $branches->pluck('id')->all(), $day),
+            'report' => $report,
             'branches' => $branches,
             'selectedBranch' => $selectedBranch,
             'tenant' => $tenant,

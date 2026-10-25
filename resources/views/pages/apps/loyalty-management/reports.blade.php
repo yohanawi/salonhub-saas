@@ -8,6 +8,10 @@
     @endsection
 
     <div id="kt_app_content_container">
+        <div class="d-flex justify-content-end mb-5">
+            @include('partials.reports._export-buttons', ['route' => 'loyalty-management.reports.index'])
+        </div>
+
         <div class="card border-0 shadow-sm mb-8">
             <div class="card-body p-4 p-lg-6">
                 <div class="d-flex align-items-start gap-5">

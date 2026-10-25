@@ -79,13 +79,13 @@ class CheckoutController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(),
-            'products' => Product::withoutTenantScope()
+            'products' => Product::applyBranchPrices(Product::withoutTenantScope()
                 ->with(['unit', 'inventories' => fn ($query) => $query->where('branch_id', $appointment->branch_id)])
                 ->where('tenant_id', $appointment->tenant_id)
                 ->where('is_active', true)
                 ->where('is_sellable', true)
                 ->orderBy('name')
-                ->get(),
+                ->get(), $appointment->branch_id),
             'loyaltyAccount' => $appointment->customer ? $loyalty->accountFor($appointment->customer) : null,
             'activeMembership' => $appointment->customer ? $membershipBenefits->activeMembership($appointment->customer) : null,
             'promotions' => Promotion::withoutTenantScope()

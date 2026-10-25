@@ -147,6 +147,8 @@
                                     </td>
                                     <td>
                                         <span class="badge badge-light-primary fw-bold">{{ $promotion->discount_label }}</span>
+                                        @if ($promotion->isBirthday())<span class="badge badge-light-danger ms-1">🎂 Birthday</span>@endif
+                                        @if ($promotion->schedule_label)<span class="badge badge-light-info ms-1"><i class="bi bi-clock me-1"></i>{{ $promotion->schedule_label }}</span>@endif
                                     </td>
                                     <td>
                                         <div class="fw-semibold text-gray-800">{{ str($promotion->target_scope)->headline() }}</div>

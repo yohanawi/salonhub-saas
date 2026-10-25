@@ -70,9 +70,13 @@
                     {{-- Service Identity --}}
                     <div class="d-flex flex-column flex-md-row align-items-md-start gap-6">
                         <div class="symbol symbol-60px flex-shrink-0">
-                            <div class="symbol-label bg-light-primary rounded-4">
-                                <i class="bi bi-scissors text-primary fs-1"></i>
-                            </div>
+                            @if ($service->image_url)
+                                <img src="{{ $service->image_url }}" alt="{{ $service->name }}" class="rounded-4" style="object-fit: cover;">
+                            @else
+                                <div class="symbol-label bg-light-primary rounded-4">
+                                    <i class="bi bi-scissors text-primary fs-1"></i>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="flex-grow-1">
@@ -554,6 +558,79 @@
                         </div>
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-5 mt-0">
+        {{-- Online listing --}}
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header border-0 pt-6">
+                    <div class="card-title flex-column">
+                        <h3 class="fw-bold text-gray-900 mb-1">Online Listing</h3>
+                        <div class="text-muted fs-8">
+                            @if ($service->show_online)
+                                <span class="badge badge-light-success">Shown online</span>
+                            @else
+                                <span class="badge badge-light-secondary">Hidden online</span>
+                            @endif
+                            @if ($service->is_addon)
+                                <span class="badge badge-light-info ms-1">Add-on service</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body pt-2">
+                    @if ($service->image_url)
+                        <img src="{{ $service->image_url }}" alt="{{ $service->name }}" class="w-100 rounded-3 mb-4" style="max-height: 180px; object-fit: cover;">
+                    @endif
+                    <div class="text-gray-700 fs-7" style="white-space: pre-line;">{{ $service->online_description ?: 'No online description yet.' }}</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Add-ons --}}
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header border-0 pt-6">
+                    <div class="card-title flex-column">
+                        <h3 class="fw-bold text-gray-900 mb-1">Suggested Add-ons</h3>
+                        <div class="text-muted fs-8">Offered when this service is booked.</div>
+                    </div>
+                </div>
+                <div class="card-body pt-2">
+                    @forelse ($service->addons as $addon)
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-gray-200">
+                            <a href="{{ route('services.show', $addon) }}" class="fw-semibold text-gray-800 text-hover-primary">{{ $addon->name }}</a>
+                            <span class="text-muted fs-8">{{ number_format((float) $addon->default_price, 2) }} · {{ $addon->default_duration_minutes }} min</span>
+                        </div>
+                    @empty
+                        <div class="text-muted fs-7">No add-ons linked.</div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        {{-- Consumables --}}
+        <div class="col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header border-0 pt-6">
+                    <div class="card-title flex-column">
+                        <h3 class="fw-bold text-gray-900 mb-1">Products Used</h3>
+                        <div class="text-muted fs-8">Deducted from stock when the appointment is completed.</div>
+                    </div>
+                </div>
+                <div class="card-body pt-2">
+                    @forelse ($service->consumables as $product)
+                        <div class="d-flex justify-content-between align-items-center py-3 border-bottom border-gray-200">
+                            <span class="fw-semibold text-gray-800">{{ $product->name }}</span>
+                            <span class="badge badge-light-warning">{{ $product->pivot->quantity }} {{ $product->unit?->symbol }}</span>
+                        </div>
+                    @empty
+                        <div class="text-muted fs-7">No consumables linked.</div>
+                    @endforelse
+                </div>
             </div>
         </div>
     </div>

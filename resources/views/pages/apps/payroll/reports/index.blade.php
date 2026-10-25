@@ -2,6 +2,10 @@
     @section('title') Payroll Reports @endsection
     @section('breadcrumbs') {{ Breadcrumbs::render('payroll.reports.index') }} @endsection
     <div id="kt_app_content_container">
+        <div class="d-flex justify-content-end mb-5">
+            @include('partials.reports._export-buttons', ['route' => 'payroll.reports.index'])
+        </div>
+
         @include('pages/apps.payroll.partials._alerts')
         <div class="row g-6 mb-8">
             @foreach([

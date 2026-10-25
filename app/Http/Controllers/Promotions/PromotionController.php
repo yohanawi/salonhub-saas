@@ -157,14 +157,26 @@ class PromotionController extends Controller
 
     private function payload(array $data, int $tenantId): array
     {
+        $type = $data['promotion_type'] ?? Promotion::TYPE_STANDARD;
+        $isBogo = $type === Promotion::TYPE_BOGO;
+        $bogoPercentage = (float) ($data['get_discount_percentage'] ?? 100);
+
         return [
             'tenant_id' => $tenantId,
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'internal_notes' => $data['internal_notes'] ?? null,
-            'promotion_type' => $data['promotion_type'] ?? 'standard',
-            'discount_type' => $data['discount_type'],
-            'discount_value' => $data['discount_value'],
+            'promotion_type' => $type,
+            // Buy X get Y keeps its own rate; discount_type/value mirror it so lists and reports stay meaningful.
+            'discount_type' => $isBogo ? Promotion::DISCOUNT_PERCENTAGE : $data['discount_type'],
+            'discount_value' => $isBogo ? $bogoPercentage : $data['discount_value'],
+            'buy_quantity' => $isBogo ? (int) $data['buy_quantity'] : null,
+            'get_quantity' => $isBogo ? (int) $data['get_quantity'] : null,
+            'get_discount_percentage' => $isBogo ? $bogoPercentage : null,
+            'birthday_window' => $type === Promotion::TYPE_BIRTHDAY ? ($data['birthday_window'] ?? 'week') : null,
+            'active_days' => ! empty($data['active_days']) ? array_values(array_unique(array_map('intval', $data['active_days']))) : null,
+            'active_from_time' => $data['active_from_time'] ?? null,
+            'active_to_time' => $data['active_to_time'] ?? null,
             'maximum_discount_amount' => $data['maximum_discount_amount'] ?? null,
             'application_type' => $data['application_type'],
             'coupon_required' => $data['application_type'] === Promotion::APPLICATION_COUPON,

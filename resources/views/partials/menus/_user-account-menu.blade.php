@@ -24,14 +24,27 @@
     <div class="menu-item px-5">
         <a href="{{ route('profile.show') }}" class="menu-link px-5">My Profile</a>
     </div>
-    <div class="menu-item px-5">
-        <a href="#" class="menu-link px-5">
-            <span class="menu-text">My Projects</span>
-            <span class="menu-badge">
-                <span class="badge badge-light-danger badge-circle fw-bold fs-7">3</span>
-            </span>
-        </a>
-    </div>
+    @if ($accountStaff = Auth::user()->staffProfile)
+        @php($todayAppointmentsCount = app(\App\Services\Appointment\StaffAgendaService::class)->todayCount($accountStaff))
+        <div class="menu-item px-5">
+            <a href="{{ route('profile.appointments') }}" class="menu-link px-5">
+                <span class="menu-text">My Appointments</span>
+                @if ($todayAppointmentsCount > 0)
+                    <span class="menu-badge" data-bs-toggle="tooltip" title="Appointments today">
+                        <span class="badge badge-light-danger badge-circle fw-bold fs-7">{{ $todayAppointmentsCount }}</span>
+                    </span>
+                @endif
+            </a>
+        </div>
+        <div class="menu-item px-5">
+            <a href="{{ route('profile.attendance') }}" class="menu-link px-5">Clock In / Out</a>
+        </div>
+        @if (Auth::user()->can('commissions.view_own') || Auth::user()->can('commissions.view'))
+            <div class="menu-item px-5">
+                <a href="{{ route('profile.commissions') }}" class="menu-link px-5">My Commissions</a>
+            </div>
+        @endif
+    @endif
     <div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
         data-kt-menu-placement="left-start" data-kt-menu-offset="-15px, 0">
         <a href="#" class="menu-link px-5">
@@ -40,15 +53,7 @@
         </a>
         <div class="menu-sub menu-sub-dropdown w-175px py-4">
             <div class="menu-item px-3">
-                <a href="#" class="menu-link px-5">Billing</a>
-            </div>
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link px-5">Payments</a>
-            </div>
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link d-flex flex-stack px-5">Statements
-                    <span class="ms-2 lh-0" data-bs-toggle="tooltip"
-                        title="View your statements">{!! getIcon('information-5', 'fs-5') !!}</span></a>
+                <a href="{{ route('profile.billing') }}" class="menu-link px-5">Billing</a>
             </div>
             <div class="separator my-2"></div>
             <div class="menu-item px-3">
@@ -62,9 +67,11 @@
             </div>
         </div>
     </div>
-    <div class="menu-item px-5">
-        <a href="#" class="menu-link px-5">My Statements</a>
-    </div>
+    @if (Auth::user()->tenant_id || Auth::user()->staffProfile)
+        <div class="menu-item px-5">
+            <a href="{{ route('profile.statements') }}" class="menu-link px-5">My Statements</a>
+        </div>
+    @endif
     <div class="separator my-2"></div>
     <div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
         data-kt-menu-placement="left-start" data-kt-menu-offset="-15px, 0">
@@ -75,55 +82,8 @@
         </a>
         @include('partials/theme-mode/__menu')
     </div>
-    <div class="menu-item px-5" data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
-        data-kt-menu-placement="left-start" data-kt-menu-offset="-15px, 0">
-        <a href="#" class="menu-link px-5">
-            <span class="menu-title position-relative">Language
-                <span class="fs-8 rounded bg-light px-3 py-2 position-absolute translate-middle-y top-50 end-0">English
-                    <img class="w-15px h-15px rounded-1 ms-2" src="{{ image('flags/united-states.svg') }}"
-                        alt="" /></span>
-            </span>
-        </a>
-        <div class="menu-sub menu-sub-dropdown w-175px py-4">
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link d-flex px-5 active">
-                    <span class="symbol symbol-20px me-4">
-                        <img class="rounded-1" src="{{ image('flags/united-states.svg') }}" alt="" />
-                    </span>
-                    English</a>
-            </div>
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link d-flex px-5">
-                    <span class="symbol symbol-20px me-4">
-                        <img class="rounded-1" src="{{ image('flags/spain.svg') }}" alt="" />
-                    </span>
-                    Spanish</a>
-            </div>
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link d-flex px-5">
-                    <span class="symbol symbol-20px me-4">
-                        <img class="rounded-1" src="{{ image('flags/germany.svg') }}" alt="" />
-                    </span>
-                    German</a>
-            </div>
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link d-flex px-5">
-                    <span class="symbol symbol-20px me-4">
-                        <img class="rounded-1" src="{{ image('flags/japan.svg') }}" alt="" />
-                    </span>
-                    Japanese</a>
-            </div>
-            <div class="menu-item px-3">
-                <a href="#" class="menu-link d-flex px-5">
-                    <span class="symbol symbol-20px me-4">
-                        <img class="rounded-1" src="{{ image('flags/france.svg') }}" alt="" />
-                    </span>
-                    French</a>
-            </div>
-        </div>
-    </div>
     <div class="menu-item px-5 my-1">
-        <a href="#" class="menu-link px-5">Account Settings</a>
+        <a href="{{ route('profile.settings') }}" class="menu-link px-5">Account Settings</a>
     </div>
     <div class="menu-item px-5">
         <a class="button-ajax menu-link px-5" href="#" data-action="{{ route('logout') }}" data-method="post"

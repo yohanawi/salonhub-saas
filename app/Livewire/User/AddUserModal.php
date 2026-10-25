@@ -2,8 +2,10 @@
 
 namespace App\Livewire\User;
 
+use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Audit\AuditLogService;
+use App\Services\PlanEntitlementService;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +16,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AddUserModal extends Component
 {
@@ -23,6 +26,7 @@ class AddUserModal extends Component
     public $name;
     public $email;
     public $role;
+    public $tenant_id;
     public $avatar;
     public $saved_avatar;
 
@@ -46,8 +50,32 @@ class AddUserModal extends Component
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->edit_mode ? $this->user_id : null)],
             'role' => ['required', 'string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
+            'tenant_id' => ['nullable', 'integer', Rule::exists('tenants', 'id')],
             'avatar' => 'nullable|sometimes|image|max:1024',
         ];
+    }
+
+    /**
+     * A user joining a salon (new, or moved from another salon) takes one of the plan's user seats.
+     */
+    private function ensureSalonHasUserSeat(?User $existingUser): void
+    {
+        $tenantId = filled($this->tenant_id) ? (int) $this->tenant_id : null;
+
+        if ($tenantId === null || ($existingUser && (int) $existingUser->tenant_id === $tenantId)) {
+            return;
+        }
+
+        try {
+            // Locked so two admins adding users at once cannot both take the last seat.
+            app(PlanEntitlementService::class)->ensureCanCreate(
+                Tenant::query()->lockForUpdate()->findOrFail($tenantId),
+                'max_users',
+                'This salon has reached its plan user limit.'
+            );
+        } catch (ValidationException $exception) {
+            throw ValidationException::withMessages(['tenant_id' => collect($exception->errors())->flatten()->first()]);
+        }
     }
 
     public function render()
@@ -66,7 +94,9 @@ class AddUserModal extends Component
             $roles[$i]->description = $roles_description[$role->name] ?? '';
         }
 
-        return view('livewire.user.add-user-modal', compact('roles'));
+        $tenants = Tenant::query()->orderBy('name')->get(['id', 'name']);
+
+        return view('livewire.user.add-user-modal', compact('roles', 'tenants'));
     }
 
     public function submit()
@@ -93,7 +123,10 @@ class AddUserModal extends Component
 
             // Update or Create a new user record in the database
             $data['email'] = $this->email;
+            $data['tenant_id'] = filled($this->tenant_id) ? (int) $this->tenant_id : null;
             $existingUser = $this->edit_mode ? User::findOrFail($this->user_id) : null;
+
+            $this->ensureSalonHasUserSeat($existingUser);
             $oldValues = $existingUser ? [
                 'name' => $existingUser->name,
                 'email' => $existingUser->email,
@@ -214,6 +247,7 @@ class AddUserModal extends Component
         $this->saved_avatar = $user->profile_photo_url;
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->tenant_id = $user->tenant_id;
         $this->role = $user->roles?->first()->name ?? '';
     }
 

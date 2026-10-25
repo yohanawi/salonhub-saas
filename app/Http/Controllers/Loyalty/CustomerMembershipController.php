@@ -13,6 +13,7 @@ use App\Models\PaymentMethod;
 use App\Models\Tenant;
 use App\Services\Billing\PaymentMethodService;
 use App\Services\Membership\MembershipService;
+use App\Services\Membership\MembershipRenewalService;
 use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -75,9 +76,38 @@ class CustomerMembershipController extends Controller
     {
         $this->authorize('view', $membership);
         $entitlements->ensureFeature($membership->tenant, 'loyalty_membership');
-        $membership->load(['customer', 'plan.benefits', 'usages.benefit', 'invoice']);
+        $membership->load(['customer', 'plan.benefits', 'usages.benefit', 'invoice', 'renewedFrom', 'renewedTo']);
 
-        return view('pages/apps.loyalty-management.memberships.show', ['membership' => $membership]);
+        return view('pages/apps.loyalty-management.memberships.show', [
+            'membership' => $membership,
+            'paymentMethods' => PaymentMethod::withoutTenantScope()->where('tenant_id', $membership->tenant_id)->manual()->where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+
+    public function renew(Request $request, CustomerMembership $membership, MembershipRenewalService $renewals, PlanEntitlementService $entitlements): RedirectResponse
+    {
+        $this->authorize('renew', $membership);
+        $entitlements->ensureFeature($membership->tenant, 'loyalty_membership');
+
+        $data = $request->validate([
+            'payment_method_id' => ['nullable', 'integer', 'exists:payment_methods,id'],
+            'transaction_reference' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $renewal = $renewals->renew($membership, $request->user(), $data);
+
+        return redirect()
+            ->route('loyalty-management.memberships.show', $renewal)
+            ->with('status', 'Membership renewed until ' . $renewal->end_date->format('M d, Y') . ($renewal->invoice && $renewal->invoice->payment_status !== 'paid' ? '. The renewal invoice is awaiting payment.' : '.'));
+    }
+
+    public function toggleAutoRenew(CustomerMembership $membership): RedirectResponse
+    {
+        $this->authorize('renew', $membership);
+
+        $membership->update(['auto_renew' => ! $membership->auto_renew]);
+
+        return back()->with('status', 'Auto-renew turned ' . ($membership->auto_renew ? 'on.' : 'off.'));
     }
 
     public function cancel(CancelMembershipRequest $request, CustomerMembership $membership, MembershipService $memberships, PlanEntitlementService $entitlements): RedirectResponse

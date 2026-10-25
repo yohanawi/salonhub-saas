@@ -3,6 +3,10 @@
     @section('breadcrumbs') {{ Breadcrumbs::render('expense-management.reports.index') }} @endsection
 
     <div id="kt_app_content_container">
+        <div class="d-flex justify-content-end mb-5">
+            @include('partials.reports._export-buttons', ['route' => 'expense-management.reports.index'])
+        </div>
+
         @include('pages/apps.expense-management.partials._alerts')
 
         <div class="card border-0 shadow-sm mb-8">

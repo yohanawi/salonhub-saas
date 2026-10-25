@@ -66,6 +66,18 @@ class CustomerPolicy
         return $this->update($user, $customer) && $user->can('customer.delete');
     }
 
+    /**
+     * Merging a duplicate into $customer moves all of the duplicate's history onto it.
+     */
+    public function merge(User $user, Customer $customer): bool
+    {
+        if ($user->hasRole('Super Admin')) {
+            return $this->update($user, $customer);
+        }
+
+        return $this->update($user, $customer) && $user->can('customer.merge');
+    }
+
     public function viewNotes(User $user, Customer $customer): bool
     {
         if ($user->hasRole('Super Admin')) {

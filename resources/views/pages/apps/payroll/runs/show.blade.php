@@ -19,7 +19,7 @@
                 </div>
             </div>
         </div>
-        <div class="d-flex gap-3 mb-8">
+        <div class="d-flex flex-wrap gap-3 mb-8">
             @if($run->status === \App\Models\PayrollRun::STATUS_CALCULATED)
                 @can('approve', $run)
                     <form method="POST" action="{{ route('payroll.runs.submit', $run) }}">@csrf<button class="btn btn-info">Submit Review</button></form>
@@ -43,13 +43,26 @@
                     </form>
                 @endcan
             @endif
+            @if(in_array($run->status, [\App\Models\PayrollRun::STATUS_APPROVED, \App\Models\PayrollRun::STATUS_PAID, \App\Models\PayrollRun::STATUS_CLOSED], true))
+                @can('pay', $run)
+                    <a href="{{ route('payroll.runs.bank-export', $run) }}" class="btn btn-light-primary"><i class="bi bi-bank me-1"></i>Bank Transfer File</a>
+                @endcan
+                @can('approve', $run)
+                    <form method="POST" action="{{ route('payroll.runs.send-payslips', $run) }}" class="d-flex gap-2 align-items-center" onsubmit="return confirm('Send payslips to all staff in this run?');">
+                        @csrf
+                        <label class="form-check form-check-sm form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="channels[]" value="email" checked><span class="form-check-label">Email (PDF)</span></label>
+                        <label class="form-check form-check-sm form-check-custom form-check-solid"><input class="form-check-input" type="checkbox" name="channels[]" value="message"><span class="form-check-label">SMS / WhatsApp</span></label>
+                        <button class="btn btn-light-success"><i class="bi bi-send me-1"></i>Send All Payslips</button>
+                    </form>
+                @endcan
+            @endif
         </div>
         <div class="card border-0 shadow-sm">
             <div class="card-header border-0 py-6"><h3 class="fw-bold mb-0">Staff Payroll</h3></div>
             <div class="card-body pt-0">
                 <div class="table-responsive">
                     <table class="table align-middle table-row-dashed gy-5">
-                        <thead><tr class="text-muted fw-bold fs-7 text-uppercase"><th>Staff</th><th>Basic</th><th>Commission</th><th>Tips</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Payment</th><th class="text-end">Payslip</th></tr></thead>
+                        <thead><tr class="text-muted fw-bold fs-7 text-uppercase"><th>Staff</th><th>Basic</th><th>Commission</th><th>Tips</th><th>Gross</th><th>EPF (8%)</th><th>Deductions</th><th>Net</th><th>Payment</th><th class="text-end">Payslip</th></tr></thead>
                         <tbody>
                             @foreach($run->items as $item)
                                 <tr>
@@ -58,10 +71,17 @@
                                     <td>LKR {{ number_format((float) $item->commission_amount, 2) }}</td>
                                     <td>LKR {{ number_format((float) $item->tip_amount, 2) }}</td>
                                     <td>LKR {{ number_format((float) $item->gross_pay, 2) }}</td>
+                                    <td>LKR {{ number_format((float) $item->epf_employee_amount, 2) }}</td>
                                     <td>LKR {{ number_format((float) $item->total_deductions, 2) }}</td>
                                     <td class="fw-bold">LKR {{ number_format((float) $item->net_pay, 2) }}</td>
                                     <td><span class="badge badge-light-info">{{ str($item->payment_status)->headline() }}</span></td>
-                                    <td class="text-end"><a href="{{ route('payroll.payslips.show', $item) }}" class="btn btn-sm btn-light">View</a></td>
+                                    <td class="text-end text-nowrap">
+                                        <a href="{{ route('payroll.payslips.show', $item) }}" class="btn btn-sm btn-light">View</a>
+                                        <a href="{{ route('payroll.payslips.pdf', $item) }}" class="btn btn-sm btn-light-primary" title="Download PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                        @if ($item->payslip_sent_at)
+                                            <i class="bi bi-check2-all text-success ms-1" title="Sent {{ $item->payslip_sent_at->format('M d, H:i') }}"></i>
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

@@ -9,6 +9,10 @@
     @endsection
 
     <div id="kt_app_content_container">
+        <div class="d-flex justify-content-end mb-5">
+            @include('partials.reports._export-buttons', ['route' => 'branches.reports.show', 'params' => ['branch' => $branch->id, 'start_date' => $startDate->toDateString(), 'end_date' => $endDate->toDateString()]])
+        </div>
+
 
         {{-- ========================================================= --}}
         {{-- REPORT HEADER --}}

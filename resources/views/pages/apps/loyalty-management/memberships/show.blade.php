@@ -123,6 +123,54 @@
             </div>
 
             <div class="col-xl-5">
+                @can('renew', $membership)
+                    <div class="card border-0 shadow-sm mb-5">
+                        <div class="card-header border-0 pt-7">
+                            <div class="card-title flex-column">
+                                <h3 class="fw-bold mb-1"><i class="bi bi-arrow-repeat text-primary me-2"></i>Renewal</h3>
+                                <div class="text-muted fs-8">
+                                    Ends {{ $membership->end_date?->format('M d, Y') }}.
+                                    @if ($membership->renewal_reminder_sent_at)
+                                        Reminder sent {{ $membership->renewal_reminder_sent_at->format('M d') }}.
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body pt-2">
+                            @if ($membership->renewedFrom)
+                                <div class="text-muted fs-8 mb-3">Renewed from <a href="{{ route('loyalty-management.memberships.show', $membership->renewedFrom) }}">{{ $membership->renewedFrom->membership_number }}</a></div>
+                            @endif
+
+                            @if ($membership->renewedTo)
+                                <div class="alert alert-light-success mb-0">
+                                    Renewed as <a href="{{ route('loyalty-management.memberships.show', $membership->renewedTo) }}" class="fw-bold">{{ $membership->renewedTo->membership_number }}</a>
+                                    until {{ $membership->renewedTo->end_date?->format('M d, Y') }}.
+                                </div>
+                            @elseif ($membership->status !== 'cancelled')
+                                <form method="POST" action="{{ route('loyalty-management.memberships.auto-renew', $membership) }}" class="mb-5">
+                                    @csrf
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Auto-renew is <strong>{{ $membership->auto_renew ? 'on' : 'off' }}</strong></span>
+                                        <button class="btn btn-sm btn-light">{{ $membership->auto_renew ? 'Turn off' : 'Turn on' }}</button>
+                                    </div>
+                                </form>
+
+                                <form method="POST" action="{{ route('loyalty-management.memberships.renew', $membership) }}" onsubmit="return confirm('Renew this membership for another term?');">
+                                    @csrf
+                                    <label class="form-label fw-semibold">Collect payment now (optional)</label>
+                                    <select name="payment_method_id" class="form-select form-select-solid mb-3">
+                                        <option value="">Leave invoice unpaid</option>
+                                        @foreach ($paymentMethods as $method)
+                                            <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="text" name="transaction_reference" class="form-control form-control-solid mb-3" placeholder="Reference (optional)">
+                                    <button class="btn btn-primary w-100"><i class="bi bi-arrow-repeat me-1"></i>Renew for {{ $membership->plan?->duration_value }} {{ $membership->plan?->duration_type }}</button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+                @endcan
                 @can('cancel', $membership)
                     @if($membership->status === 'active')
                         <form method="POST" action="{{ route('loyalty-management.memberships.cancel', $membership) }}" class="card border-0 shadow-sm">

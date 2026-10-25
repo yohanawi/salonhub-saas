@@ -130,6 +130,13 @@
                                 </a>
                             @endcan
 
+                            @can('update', $branch)
+                                <a href="{{ route('branches.pricing.edit', $branch) }}" class="btn btn-light-primary btn-sm">
+                                    <i class="bi bi-tags me-2"></i>
+                                    Prices & Tax
+                                </a>
+                            @endcan
+
                             @can('viewReports', $branch)
                                 <a href="{{ route('branches.reports.show', $branch) }}" class="btn btn-light-info btn-sm">
                                     <i class="bi bi-bar-chart me-2"></i>

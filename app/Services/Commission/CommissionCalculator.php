@@ -19,6 +19,7 @@ class CommissionCalculator
         $commissionCents = match ($rule['commission_type']) {
             CommissionSetting::TYPE_FIXED => $this->toCents((float) $rule['commission_value']),
             CommissionSetting::TYPE_NONE => 0,
+            // Percentage and tiered (whose rate the generator resolves into commission_value).
             default => (int) round($baseCents * ((float) $rule['commission_value'] / 100)),
         };
 

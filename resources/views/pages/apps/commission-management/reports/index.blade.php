@@ -3,6 +3,10 @@
     @section('breadcrumbs') {{ Breadcrumbs::render('commission-management.reports.index') }} @endsection
 
     <div id="kt_app_content_container">
+        <div class="d-flex justify-content-end mb-5">
+            @include('partials.reports._export-buttons', ['route' => 'commission-management.reports.index'])
+        </div>
+
         @include('pages/apps.commission-management.partials._alerts')
         <div class="row g-6 mb-8">
             @foreach([

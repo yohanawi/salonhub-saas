@@ -118,6 +118,15 @@
                                     </div>
                                 </div>
                                 <div class="min-w-175px">
+                                    <label class="form-label fw-semibold text-gray-700 fs-8 mb-2">Segment</label>
+                                    <select name="segment" class="form-select form-select-solid" onchange="this.form.submit()">
+                                        <option value="">All customers</option>
+                                        @foreach ($segments as $key => $segment)
+                                            <option value="{{ $key }}" @selected(request('segment') === $key)>{{ $segment['label'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="min-w-175px">
                                     <label class="form-label fw-semibold text-gray-700 fs-8 mb-2">
                                         Status
                                     </label>

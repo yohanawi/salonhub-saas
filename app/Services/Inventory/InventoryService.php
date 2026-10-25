@@ -6,9 +6,11 @@ use App\Models\Branch;
 use App\Models\Inventory;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\ProductBatch;
 use App\Models\StockAdjustment;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\Settings\SettingService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -33,12 +35,13 @@ class InventoryService
         ?User $user = null,
         ?Model $reference = null,
         ?string $reason = null,
-        ?string $notes = null
+        ?string $notes = null,
+        ?array $batch = null
     ): StockMovement {
         $this->ensureSameTenant($product, $branch);
         $this->ensurePositiveQuantity($quantity);
 
-        return DB::transaction(function () use ($product, $branch, $quantity, $type, $unitCost, $user, $reference, $reason, $notes) {
+        return DB::transaction(function () use ($product, $branch, $quantity, $type, $unitCost, $user, $reference, $reason, $notes, $batch) {
             $stock = $this->stockForUpdate($product, $branch);
             $before = (int) $stock->quantity_on_hand;
             $after = $before + $quantity;
@@ -50,9 +53,17 @@ class InventoryService
                 'average_cost' => $averageCost,
                 'last_received_at' => in_array($type, [StockMovement::TYPE_OPENING_STOCK, StockMovement::TYPE_PURCHASE_RECEIPT, StockMovement::TYPE_TRANSFER_IN, StockMovement::TYPE_SALE_RETURN], true) ? now() : $stock->last_received_at,
                 'last_adjusted_at' => str_starts_with($type, 'adjustment_') ? now() : $stock->last_adjusted_at,
+                // Replenished above the reorder level: the next dip should raise a fresh alert.
+                'low_stock_notified_at' => $after > (int) $product->reorder_level ? null : $stock->low_stock_notified_at,
             ]);
 
-            return $this->movement($product, $branch, $type, $quantity, $before, $after, $unitCost ?: (float) $stock->average_cost, $user, $reference, $reason, $notes);
+            $movement = $this->movement($product, $branch, $type, $quantity, $before, $after, $unitCost ?: (float) $stock->average_cost, $user, $reference, $reason, $notes);
+
+            if ($product->track_batches) {
+                $movement->setRelation('batch', $this->createBatch($product, $branch, $quantity, $unitCost ?: (float) $stock->average_cost, $movement, $reference, $batch));
+            }
+
+            return $movement;
         });
     }
 
@@ -64,17 +75,19 @@ class InventoryService
         ?User $user = null,
         ?Model $reference = null,
         ?string $reason = null,
-        ?string $notes = null
+        ?string $notes = null,
+        ?ProductBatch $fromBatch = null
     ): StockMovement {
         $this->ensureSameTenant($product, $branch);
         $this->ensurePositiveQuantity($quantity);
 
-        return DB::transaction(function () use ($product, $branch, $quantity, $type, $user, $reference, $reason, $notes) {
+        return DB::transaction(function () use ($product, $branch, $quantity, $type, $user, $reference, $reason, $notes, $fromBatch) {
             $stock = $this->stockForUpdate($product, $branch);
             $before = (int) $stock->quantity_on_hand;
             $after = $before - $quantity;
 
-            if ($after < 0 && ! $product->allow_negative_stock) {
+            // Negative stock is allowed per product, or for the whole salon in Settings > Inventory.
+            if ($after < 0 && ! $product->allow_negative_stock && ! app(SettingService::class)->get('inventory.allow_negative_stock', $product->tenant_id, $branch->id)) {
                 throw ValidationException::withMessages([
                     'stock' => "Only {$before} units of {$product->name} are available at {$branch->name}.",
                 ]);
@@ -86,6 +99,10 @@ class InventoryService
                 'last_sold_at' => $type === StockMovement::TYPE_POS_SALE ? now() : $stock->last_sold_at,
                 'last_adjusted_at' => str_starts_with($type, 'adjustment_') || in_array($type, [StockMovement::TYPE_DAMAGED, StockMovement::TYPE_EXPIRED, StockMovement::TYPE_LOST], true) ? now() : $stock->last_adjusted_at,
             ]);
+
+            if ($product->track_batches) {
+                $this->consumeBatches($product, $branch, $quantity, $fromBatch);
+            }
 
             return $this->movement($product, $branch, $type, -$quantity, $before, $after, (float) $stock->average_cost, $user, $reference, $reason, $notes);
         });
@@ -216,6 +233,60 @@ class InventoryService
                     );
                 });
         });
+    }
+
+    private function createBatch(Product $product, Branch $branch, int $quantity, float $unitCost, StockMovement $movement, ?Model $reference, ?array $batch): ProductBatch
+    {
+        $batchNumber = trim((string) ($batch['batch_number'] ?? ''));
+
+        return ProductBatch::withoutTenantScope()->create([
+            'tenant_id' => $product->tenant_id,
+            'branch_id' => $branch->id,
+            'product_id' => $product->id,
+            'batch_number' => $batchNumber !== '' ? $batchNumber : 'LOT-' . str_pad((string) $movement->id, 6, '0', STR_PAD_LEFT),
+            'expiry_date' => $batch['expiry_date'] ?? null,
+            'quantity_received' => $quantity,
+            'quantity_remaining' => $quantity,
+            'unit_cost' => $unitCost,
+            'received_at' => now(),
+            'source_type' => ($reference ?? $movement)->getMorphClass(),
+            'source_id' => ($reference ?? $movement)->getKey(),
+        ]);
+    }
+
+    /**
+     * Draws stock out of batches, soonest-expiring first. Stock that predates batch tracking has no
+     * batch rows, so any quantity the batches cannot cover is simply taken from that untracked remainder.
+     */
+    private function consumeBatches(Product $product, Branch $branch, int $quantity, ?ProductBatch $fromBatch): void
+    {
+        $remaining = $quantity;
+
+        $batches = $fromBatch
+            ? collect([ProductBatch::withoutTenantScope()->lockForUpdate()->findOrFail($fromBatch->id)])
+            : ProductBatch::withoutTenantScope()
+                ->where('tenant_id', $product->tenant_id)
+                ->where('branch_id', $branch->id)
+                ->where('product_id', $product->id)
+                ->inStock()
+                ->fefo()
+                ->lockForUpdate()
+                ->get();
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $take = min($remaining, (int) $batch->quantity_remaining);
+
+            if ($take <= 0) {
+                continue;
+            }
+
+            $batch->update(['quantity_remaining' => (int) $batch->quantity_remaining - $take]);
+            $remaining -= $take;
+        }
     }
 
     private function stockForUpdate(Product $product, Branch $branch): Inventory

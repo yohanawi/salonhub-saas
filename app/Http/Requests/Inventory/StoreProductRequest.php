@@ -31,6 +31,7 @@ class StoreProductRequest extends FormRequest
             'selling_price' => ['required', 'numeric', 'min:0'],
             'tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'track_inventory' => ['nullable', 'boolean'],
+            'track_batches' => ['nullable', 'boolean'],
             'allow_negative_stock' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             'minimum_stock_level' => ['nullable', 'integer', 'min:0'],

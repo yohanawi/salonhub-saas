@@ -158,6 +158,30 @@ class QuickSaleManagementTest extends TestCase
         $this->assertSame($customer->id, Invoice::withoutTenantScope()->where('tenant_id', $this->tenant->id)->value('customer_id'));
     }
 
+    public function test_new_customer_with_a_phone_on_file_reuses_that_customer(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('billing.quick-sale.store'), $this->payload([
+                'customer_mode' => 'new',
+                'new_customer' => ['first_name' => 'Kasuni', 'phone' => '0779876543'],
+                'amount' => 3000,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        // The same person typed in again, with the phone written differently.
+        $this->actingAs($this->owner)
+            ->post(route('billing.quick-sale.store'), $this->payload([
+                'customer_mode' => 'new',
+                'new_customer' => ['first_name' => 'Kasuni', 'phone' => '+94 77 987 6543'],
+                'amount' => 3000,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $customers = Customer::withoutTenantScope()->where('tenant_id', $this->tenant->id)->where('first_name', 'Kasuni')->pluck('id');
+        $this->assertCount(1, $customers);
+        $this->assertSame(2, Invoice::withoutTenantScope()->where('tenant_id', $this->tenant->id)->where('customer_id', $customers->first())->count());
+    }
+
     public function test_failed_sale_does_not_leave_a_new_customer_behind(): void
     {
         $this->actingAs($this->owner)

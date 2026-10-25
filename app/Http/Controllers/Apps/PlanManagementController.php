@@ -12,6 +12,7 @@ use App\Services\PlanEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PlanManagementController extends Controller
@@ -156,7 +157,7 @@ class PlanManagementController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('price')
                 ->get(),
-            'statuses' => ['trialing', 'active', 'past_due', 'cancelled'],
+            'statuses' => Subscription::STATUSES,
         ]);
     }
 
@@ -166,7 +167,7 @@ class PlanManagementController extends Controller
 
         $validated = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
-            'status' => ['required', 'string', 'in:trialing,active,past_due,cancelled'],
+            'status' => ['required', 'string', Rule::in(Subscription::STATUSES)],
         ]);
 
         $plan = Plan::query()->findOrFail($validated['plan_id']);
@@ -179,7 +180,7 @@ class PlanManagementController extends Controller
 
         $subscription = $entitlements->assignPlan($tenant, $plan, $validated['status']);
 
-        if ($validated['status'] === 'cancelled') {
+        if ($validated['status'] === Subscription::STATUS_CANCELLED) {
             $subscription->update([
                 'cancelled_at' => now(),
                 'ends_at' => now(),
@@ -187,6 +188,24 @@ class PlanManagementController extends Controller
         }
 
         return back()->with('status', "Subscription updated for {$tenant->name}.");
+    }
+
+    public function updateTenantStatus(Request $request, Tenant $tenant): RedirectResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in(Tenant::STATUSES)],
+        ]);
+
+        // Users of a suspended salon are signed out on their next request by EnsureUserIsActive.
+        $tenant->update(['status' => $validated['status']]);
+
+        $message = $tenant->isSuspended()
+            ? "{$tenant->name} has been suspended."
+            : "{$tenant->name} has been reactivated.";
+
+        return back()->with('status', $message);
     }
 
     private function authorizeSuperAdmin(Request $request): void

@@ -12,8 +12,13 @@ use App\Models\PaymentMethod;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
+use App\Models\WaitlistEntry;
 use App\Services\Appointment\AppointmentBookingService;
 use App\Services\Appointment\AppointmentStatusService;
+use App\Services\Appointment\BookingWindowService;
+use App\Services\Appointment\CancellationPolicyService;
+use App\Services\Settings\SettingService;
+use App\Services\Appointment\WaitlistService;
 use App\Services\Billing\DepositService;
 use App\Services\Billing\PosPinService;
 use App\Services\BranchContext;
@@ -67,7 +72,12 @@ class AppointmentController extends Controller
             ->orderBy('starts_at')
             ->get();
 
+        $snapBranch = $visibleBranches->firstWhere('id', $request->integer('branch_id')) ?? $visibleBranches->first();
+
         return view('pages/apps.appointment-management.appointments.calendar', [
+            'calendarView' => $request->query('view') === 'cards' ? 'cards' : 'timeline',
+            // Dragged times snap to the salon's booking interval.
+            'snapMinutes' => $snapBranch ? app(BookingWindowService::class)->intervalMinutes($snapBranch) : 15,
             'appointments' => $appointments,
             'branches' => $visibleBranches,
             'staff' => $this->staffOptions($tenant, $isSuperAdmin, $request),
@@ -93,7 +103,7 @@ class AppointmentController extends Controller
 
         return view('pages/apps.appointment-management.appointments.create', $this->formData($request, $branchContext, new Appointment([
             'booking_source' => 'reception',
-            'status' => Appointment::STATUS_PENDING,
+            'status' => $tenant ? app(AppointmentBookingService::class)->defaultStatus($tenant) : Appointment::STATUS_PENDING,
             'starts_at' => now()->addHour()->startOfHour(),
         ]), $tenant, $isSuperAdmin));
     }
@@ -134,6 +144,11 @@ class AppointmentController extends Controller
                 'paymentMethods' => PaymentMethod::withoutTenantScope()->where('tenant_id', $appointment->tenant_id)->manual()->orderBy('sort_order')->orderBy('name')->get(),
                 'posPin' => $appointment->branch ? $posPin->viewData($appointment->branch, $user) : null,
             ] : null,
+            'cancellationNotice' => $this->cancellationNotice($appointment, $deposits),
+            // A cancelled appointment's freed time can go straight to someone on the waitlist.
+            'waitlistMatches' => $user->can('create', WaitlistEntry::class)
+                ? app(WaitlistService::class)->matchesFor($appointment)
+                : collect(),
         ]);
     }
 
@@ -219,7 +234,7 @@ class AppointmentController extends Controller
             'appointment' => $appointment,
             'branches' => $branches,
             'customers' => $tenant ? Customer::withoutTenantScope()->where('tenant_id', $tenant->id)->where('status', Customer::STATUS_ACTIVE)->orderBy('first_name')->orderBy('last_name')->get() : collect(),
-            'services' => $tenant ? Service::withoutTenantScope()->with('category')->where('tenant_id', $tenant->id)->where('is_active', true)->orderBy('name')->get() : collect(),
+            'services' => $tenant ? Service::withoutTenantScope()->with(['category', 'addons' => fn ($query) => $query->where('services.is_active', true)])->where('tenant_id', $tenant->id)->where('is_active', true)->orderBy('name')->get() : collect(),
             'staff' => $this->staffOptions($tenant, $isSuperAdmin, $request),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'selectedTenant' => $tenant,
@@ -228,6 +243,31 @@ class AppointmentController extends Controller
                 : [Appointment::STATUS_PENDING, Appointment::STATUS_CONFIRMED],
             'bookingSources' => Appointment::BOOKING_SOURCES,
         ];
+    }
+
+    /**
+     * Warns, before cancelling, that the cancellation is inside the cut-off and what happens to the deposit.
+     */
+    private function cancellationNotice(Appointment $appointment, DepositService $deposits): ?string
+    {
+        if (! in_array($appointment->status, [Appointment::STATUS_PENDING, Appointment::STATUS_CONFIRMED], true)) {
+            return null;
+        }
+
+        $policy = app(CancellationPolicyService::class);
+
+        if (! $policy->isLate($appointment)) {
+            return null;
+        }
+
+        $notice = 'This is a late cancellation (less than ' . $policy->cutoffHours($appointment) . ' hours before the appointment).';
+        $held = $deposits->heldAmount($appointment);
+
+        if ($held > 0 && app(SettingService::class)->get('booking.forfeit_deposit_on_late_cancellation', $appointment->tenant_id, $appointment->branch_id)) {
+            $notice .= ' The deposit of ' . number_format($held, 2) . ' will be kept.';
+        }
+
+        return $notice;
     }
 
     private function staffOptions(?Tenant $tenant, bool $isSuperAdmin, Request $request)

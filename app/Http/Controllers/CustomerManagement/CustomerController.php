@@ -9,7 +9,12 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Tenant;
 use App\Services\CustomerManagementService;
+use App\Services\Customers\CustomerDuplicateService;
+use App\Services\Customers\CustomerSegmentService;
+use App\Services\Customers\ReferralService;
+use App\Services\Loyalty\CustomerRewardsService;
 use App\Services\PlanEntitlementService;
+use App\Services\Settings\SettingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,6 +48,8 @@ class CustomerController extends Controller
                 });
             })
             ->when($request->filled('status'), fn(Builder $query) => $query->where('status', $request->string('status')->toString()))
+            ->when($tenant && $request->filled('segment') && array_key_exists($request->string('segment')->toString(), CustomerSegmentService::SEGMENTS),
+                fn (Builder $query) => $query->whereIn('customers.id', app(CustomerSegmentService::class)->query($tenant, $request->string('segment')->toString())->select('customers.id')))
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -51,6 +58,7 @@ class CustomerController extends Controller
             'customers' => $customers,
             'isSuperAdmin' => $isSuperAdmin,
             'statuses' => Customer::STATUSES,
+            'segments' => CustomerSegmentService::SEGMENTS,
         ]);
     }
 
@@ -99,11 +107,24 @@ class CustomerController extends Controller
             $entitlements->ensureFeature($customer->tenant, 'customer_management');
         }
 
-        $customer->load(['tenant', 'branch', 'noteEntries.user', 'appointments.branch', 'sales.payments', 'sales.refunds']);
+        $customer->load(['tenant', 'branch', 'noteEntries.user', 'appointments.branch', 'sales.payments', 'sales.refunds', 'referrer', 'referrals', 'photos', 'consultations']);
         $customer->loadCount(['appointments', 'sales', 'noteEntries']);
+
+        $showRewards = $request->user()->can('loyalty.view')
+            && $entitlements->featureEnabled($customer->tenant, 'loyalty_membership');
+
+        $canMerge = $request->user()->can('merge', $customer);
 
         return view('pages/apps.customer-management.customers.show', [
             'customer' => $customer,
+            'possibleDuplicates' => $canMerge
+                ? app(CustomerDuplicateService::class)->find($customer->tenant_id, $customer->phone, $customer->email, $customer->id)
+                : collect(),
+            'canMerge' => $canMerge,
+            'customerSegments' => app(CustomerSegmentService::class)->segmentsFor($customer),
+            'referralCode' => app(ReferralService::class)->codeFor($customer),
+            'rewards' => $showRewards ? app(CustomerRewardsService::class)->summary($customer) : null,
+            'rewardsUrl' => $showRewards ? app(CustomerRewardsService::class)->portalUrl($customer) : null,
             'totalSpend' => $customer->sales->sum(fn($sale) => (float) $sale->total),
             'totalPaid' => $customer->sales->sum(fn($sale) => $sale->payments->where('status', \App\Models\Payment::STATUS_COMPLETED)->sum(fn($payment) => (float) $payment->amount)
                 - $sale->refunds->where('status', \App\Models\Refund::STATUS_COMPLETED)->sum(fn($refund) => (float) $refund->amount)),
@@ -151,6 +172,8 @@ class CustomerController extends Controller
             'selectedTenant' => $tenant,
             'statuses' => Customer::STATUSES,
             'genders' => Customer::GENDERS,
+            'requirePhone' => ! $tenant || (bool) app(SettingService::class)->get('customer.require_phone', $tenant->id),
+            'requireEmail' => $tenant && (bool) app(SettingService::class)->get('customer.require_email', $tenant->id),
         ];
     }
 

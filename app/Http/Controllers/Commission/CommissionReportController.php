@@ -12,10 +12,15 @@ use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Services\Reports\ReportCatalog;
+use App\Services\Reports\ReportExporter;
+use App\Support\Reports\ReportDocument;
+use App\Support\Reports\ReportTable;
+use Symfony\Component\HttpFoundation\Response;
 
 class CommissionReportController extends Controller
 {
-    public function index(Request $request, BranchContext $branchContext, PlanEntitlementService $entitlements): View
+    public function index(Request $request, BranchContext $branchContext, PlanEntitlementService $entitlements): View|Response
     {
         abort_unless($request->user()->hasRole('Super Admin') || $request->user()->can('commission_reports.view'), 403);
 
@@ -41,7 +46,7 @@ class CommissionReportController extends Controller
             ->when($request->filled('date_from'), fn (Builder $query) => $query->whereDate('earned_at', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn (Builder $query) => $query->whereDate('earned_at', '<=', $request->date('date_to')));
 
-        return view('pages/apps.commission-management.reports.index', [
+        $data = [
             'totalEarned' => (clone $base)->whereIn('status', [StaffCommission::STATUS_EARNED, StaffCommission::STATUS_APPROVED, StaffCommission::STATUS_PAID])->sum('commission_amount'),
             'totalApproved' => (clone $base)->where('status', StaffCommission::STATUS_APPROVED)->sum('commission_amount'),
             'totalPaid' => (clone $base)->where('status', StaffCommission::STATUS_PAID)->sum('commission_amount'),
@@ -52,6 +57,32 @@ class CommissionReportController extends Controller
             'staffMembers' => $tenant ? Staff::withoutTenantScope()->where('tenant_id', $tenant->id)->orderBy('first_name')->get() : collect(),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'isSuperAdmin' => $isSuperAdmin,
-        ]);
+        ];
+
+        if ($request->filled('format')) {
+            return app(ReportExporter::class)->download($this->document($data, $tenant, $request), $request->string('format')->toString());
+        }
+
+        return view('pages/apps.commission-management.reports.index', $data);
+    }
+
+    private function document(array $data, ?Tenant $tenant, Request $request): ReportDocument
+    {
+        $currency = $tenant?->currency ?: 'LKR';
+        $money = fn ($value) => $currency . ' ' . number_format((float) $value, 2);
+
+        $document = new ReportDocument('Commission Report', $tenant?->name ?? 'All salons', array_filter([
+            'From' => $request->input('date_from'),
+            'To' => $request->input('date_to'),
+        ]), [
+            'Earned' => $money($data['totalEarned']),
+            'Approved' => $money($data['totalApproved']),
+            'Paid' => $money($data['totalPaid']),
+            'Reversed' => $money($data['totalReversed']),
+        ], $currency);
+
+        $document->table(new ReportTable('By Staff', ['Staff', 'Commission'], $data['byStaff']->map(fn ($row) => [$row->staff?->full_name ?? '—', $row->total]), [1]));
+
+        return $document->table(new ReportTable('By Branch', ['Branch', 'Commission'], $data['byBranch']->map(fn ($row) => [$row->branch?->name ?? '—', $row->total]), [1]));
     }
 }

@@ -23,6 +23,11 @@ class CustomerMembershipPolicy
         return $user->hasRole('Super Admin') || ($user->tenant_id !== null && $user->can('memberships.create'));
     }
 
+    public function renew(User $user, CustomerMembership $membership): bool
+    {
+        return $this->view($user, $membership) && ($user->hasRole('Super Admin') || $user->can('memberships.renew'));
+    }
+
     public function cancel(User $user, CustomerMembership $membership): bool
     {
         return $this->view($user, $membership) && ($user->hasRole('Super Admin') || $user->can('memberships.cancel'));

@@ -9,7 +9,7 @@
     @endsection
 
     <div id="kt_app_content_container">
-        <form method="POST" action="{{ route('services.update', $service) }}">
+        <form method="POST" action="{{ route('services.update', $service) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             @include('pages/apps.service-management.services._form')

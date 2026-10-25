@@ -140,6 +140,7 @@ class CheckoutService
         $subtotal = $promotionResult['items']->sum('gross_amount');
         $lineDiscount = $promotionResult['items']->sum('discount_amount');
         $invoiceDiscount = min(max(0, (float) ($data['discount_amount'] ?? 0)), max(0, $subtotal - $lineDiscount));
+        $this->ensureManualDiscountWithinLimit($branch, $subtotal, $invoiceDiscount);
         $discount = min($subtotal, $lineDiscount + $invoiceDiscount);
 
         $taxConfig = $this->taxes->configFor($branch);
@@ -242,6 +243,15 @@ class CheckoutService
             ]);
         }
 
+        // Paying only part of the bill (the rest left as balance due) can be switched off in Settings > Sales.
+        if ($lines->isNotEmpty()
+            && round((float) $lines->sum(fn ($line) => (float) $line['amount']), 2) < $due - 0.009
+            && ! $this->settings->get('pos.allow_partial_payment', $invoice->tenant_id, $invoice->branch_id)) {
+            throw ValidationException::withMessages([
+                'payments' => 'This salon takes the full amount at checkout. Add payments for the LKR ' . number_format($due, 2) . ' due.',
+            ]);
+        }
+
         if ($lines->isEmpty()) {
             // A deposit that covered everything has already settled the invoice through its payment.
             if ($due <= 0.009 && $invoice->fresh()->payment_status !== Invoice::PAYMENT_PAID) {
@@ -252,6 +262,26 @@ class CheckoutService
         }
 
         $this->payments->recordLines($invoice, $lines->all(), $data['payment_notes'] ?? null, $user, $data['cashier_staff_id'] ?? null);
+    }
+
+    /**
+     * Settings > Customers > Maximum Manual Discount caps the discount typed in at the till, as a share of the bill.
+     */
+    private function ensureManualDiscountWithinLimit(Branch $branch, float $subtotal, float $manualDiscount): void
+    {
+        $maximumPercent = (float) $this->settings->get('promotion.maximum_manual_discount_percent', $branch->tenant_id, $branch->id);
+
+        if ($manualDiscount <= 0 || $maximumPercent >= 100) {
+            return;
+        }
+
+        $maximum = round($subtotal * $maximumPercent / 100, 2);
+
+        if ($manualDiscount > $maximum + 0.009) {
+            throw ValidationException::withMessages([
+                'discount_amount' => 'Manual discounts are limited to ' . rtrim(rtrim(number_format($maximumPercent, 2), '0'), '.') . '% of the bill (LKR ' . number_format($maximum, 2) . ').',
+            ]);
+        }
     }
 
     private function serviceSnapshots(Branch $branch, array $lines): Collection
@@ -331,7 +361,7 @@ class CheckoutService
             $this->ensureStock($branch, $product, $requested[$product->id], "product_items.{$index}.quantity");
 
             $staff = $this->staffForLine($branch, $item['staff_id'] ?? null, "product_items.{$index}.staff_id");
-            $unitPrice = (float) $product->selling_price;
+            $unitPrice = $product->priceAt($branch);
             $gross = $unitPrice * $quantity;
 
             // Tax is applied after membership and promotion discounts, by TaxService.

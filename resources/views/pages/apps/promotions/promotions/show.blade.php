@@ -28,6 +28,8 @@
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                                 <span class="badge badge-light-{{ $statusColor }}">{{ $promotion->lifecycle_status }}</span>
                                 <span class="badge badge-light-primary">{{ $promotion->discount_label }}</span>
+                                        @if ($promotion->isBirthday())<span class="badge badge-light-danger ms-1">🎂 Birthday</span>@endif
+                                        @if ($promotion->schedule_label)<span class="badge badge-light-info ms-1"><i class="bi bi-clock me-1"></i>{{ $promotion->schedule_label }}</span>@endif
                                 <span class="badge badge-light">{{ str($promotion->target_scope)->headline() }}</span>
                             </div>
                             <h1 class="fw-bolder text-gray-900 mb-2">{{ $promotion->name }}</h1>

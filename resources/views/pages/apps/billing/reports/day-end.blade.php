@@ -15,6 +15,10 @@
     @endphp
 
     <div id="kt_app_content_container">
+        <div class="d-flex justify-content-end mb-5">
+            @include('partials.reports._export-buttons', ['route' => 'billing.reports.day-end'])
+        </div>
+
         <div class="card border-0 shadow-sm mb-8 no-print">
             <div class="card-body p-6">
                 <form method="GET" action="{{ route('billing.reports.day-end') }}" class="row g-4 align-items-end">

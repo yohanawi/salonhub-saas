@@ -27,6 +27,8 @@ class Service extends Model
         'default_duration_minutes' => 'integer',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
+        'show_online' => 'boolean',
+        'is_addon' => 'boolean',
     ];
 
     public function category(): BelongsTo
@@ -46,6 +48,32 @@ class Service extends Model
         return $this->belongsToMany(Branch::class, 'branch_services')
             ->withPivot('tenant_id', 'price', 'duration_minutes', 'is_active')
             ->withTimestamps();
+    }
+
+    /**
+     * Services suggested alongside this one when it is booked (e.g. a hair wash with a cut).
+     */
+    public function addons(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class, 'service_addons', 'service_id', 'addon_service_id')
+            ->withPivot('tenant_id', 'sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
+
+    /**
+     * Products used up each time this service is performed, deducted from stock on completion.
+     */
+    public function consumables(): BelongsToMany
+    {
+        return $this->belongsToMany(Product::class, 'service_products')
+            ->withPivot('tenant_id', 'quantity')
+            ->withTimestamps();
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image_path ? asset('storage/' . $this->image_path) : null;
     }
 
     public function appointmentServices(): HasMany

@@ -22,6 +22,20 @@
                 ],
             ];
     }
+
+    // Suggested add-ons per service, limited to services that can actually be booked here.
+    $bookableServiceIds = $services->pluck('id')->all();
+    $addonMap = $services->mapWithKeys(fn ($service) => [
+        $service->id => $service->addons
+            ->filter(fn ($addon) => in_array($addon->id, $bookableServiceIds, true))
+            ->map(fn ($addon) => [
+                'id' => $addon->id,
+                'name' => $addon->name,
+                'price' => (float) ($addon->default_price ?? $addon->price),
+                'duration' => (int) ($addon->default_duration_minutes ?? $addon->duration_minutes),
+            ])
+            ->values(),
+    ]);
 @endphp
 
 
@@ -689,6 +703,9 @@
 
                                 </div>
 
+
+                                {{-- Add-on suggestions (filled by script) --}}
+                                <div class="mt-4 d-none" data-addon-suggestions></div>
 
                                 {{-- Inline Preview --}}
                                 <div class="service-preview mt-5 pt-4 border-top">
@@ -1535,10 +1552,111 @@
 
             /*
             |--------------------------------------------------------------------------
+            | Add-on Suggestions
+            |--------------------------------------------------------------------------
+            */
+            const addonMap = @json($addonMap);
+
+            function selectedServiceIds() {
+                return Array.from(rows?.querySelectorAll('.service-select') || [])
+                    .map(function(select) { return select.value; })
+                    .filter(Boolean);
+            }
+
+            function setSelectValue(select, value) {
+                select.value = value;
+
+                if (window.jQuery && jQuery(select).data('select2')) {
+                    jQuery(select).trigger('change.select2');
+                }
+            }
+
+            function renderAddonSuggestions(row) {
+                const container = row?.querySelector('[data-addon-suggestions]');
+                const serviceId = row?.querySelector('.service-select')?.value;
+
+                if (!container) {
+                    return;
+                }
+
+                const taken = selectedServiceIds();
+                const addons = (addonMap[serviceId] || []).filter(function(addon) {
+                    return !taken.includes(String(addon.id));
+                });
+
+                container.innerHTML = '';
+                container.classList.toggle('d-none', addons.length === 0);
+
+                if (addons.length === 0) {
+                    return;
+                }
+
+                const label = document.createElement('div');
+                label.className = 'text-muted fs-8 fw-semibold mb-2';
+                label.innerHTML = '<i class="bi bi-stars text-warning me-1"></i>Suggested add-ons';
+                container.appendChild(label);
+
+                addons.forEach(function(addon) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-sm btn-light-warning me-2 mb-2 add-addon-service';
+                    button.dataset.addonId = addon.id;
+                    button.textContent = '+ ' + addon.name + ' (' + addon.duration + ' min, LKR ' +
+                        Number(addon.price).toFixed(2) + ')';
+                    container.appendChild(button);
+                });
+            }
+
+            function refreshAllAddonSuggestions() {
+                rows?.querySelectorAll('[data-service-row]').forEach(renderAddonSuggestions);
+            }
+
+            rows?.addEventListener('click', function(event) {
+                const button = event.target.closest('.add-addon-service');
+
+                if (button) {
+                    const sourceRow = button.closest('[data-service-row]');
+                    const sourceStaff = sourceRow?.querySelector('.staff-select')?.value;
+
+                    addServiceRow();
+
+                    const allRows = rows.querySelectorAll('[data-service-row]');
+                    const newRow = allRows[allRows.length - 1];
+
+                    setSelectValue(newRow.querySelector('.service-select'), button.dataset.addonId);
+                    refreshStaffOptions(newRow);
+
+                    // Keep the same stylist when they also perform the add-on.
+                    const staffSelect = newRow.querySelector('.staff-select');
+                    const staffOption = sourceStaff
+                        ? staffSelect?.querySelector('option[value="' + sourceStaff + '"]')
+                        : null;
+
+                    if (staffOption && !staffOption.disabled) {
+                        setSelectValue(staffSelect, sourceStaff);
+                    }
+
+                    updateRowPreview(newRow);
+                }
+
+                // Runs after the remove handler too, so a removed add-on is offered again.
+                setTimeout(refreshAllAddonSuggestions, 0);
+            });
+
+            rows?.addEventListener('change', refreshAllAddonSuggestions);
+
+            if (window.jQuery && rows) {
+                jQuery(rows).on('select2:select select2:clear', '.service-select', refreshAllAddonSuggestions);
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
             | Initial State
             |--------------------------------------------------------------------------
             */
             refreshRows();
+            refreshAllAddonSuggestions();
 
         });
     </script>

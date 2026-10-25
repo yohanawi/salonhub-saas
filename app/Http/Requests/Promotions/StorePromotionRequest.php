@@ -26,9 +26,17 @@ class StorePromotionRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:3000'],
             'internal_notes' => ['nullable', 'string', 'max:3000'],
-            'promotion_type' => ['nullable', 'string', 'max:100'],
+            'promotion_type' => ['nullable', Rule::in(Promotion::TYPES)],
+            'buy_quantity' => ['nullable', 'required_if:promotion_type,' . Promotion::TYPE_BOGO, 'integer', 'min:1', 'max:100'],
+            'get_quantity' => ['nullable', 'required_if:promotion_type,' . Promotion::TYPE_BOGO, 'integer', 'min:1', 'max:100'],
+            'get_discount_percentage' => ['nullable', 'numeric', 'gt:0', 'max:100'],
+            'birthday_window' => ['nullable', 'required_if:promotion_type,' . Promotion::TYPE_BIRTHDAY, Rule::in(array_keys(Promotion::BIRTHDAY_WINDOWS))],
+            'active_days' => ['nullable', 'array'],
+            'active_days.*' => ['integer', 'between:0,6'],
+            'active_from_time' => ['nullable', 'date_format:H:i'],
+            'active_to_time' => ['nullable', 'date_format:H:i'],
             'discount_type' => ['required', Rule::in(Promotion::DISCOUNT_TYPES)],
-            'discount_value' => ['required', 'numeric', 'gt:0'],
+            'discount_value' => ['nullable', 'required_unless:promotion_type,' . Promotion::TYPE_BOGO, 'numeric', 'gt:0'],
             'maximum_discount_amount' => ['nullable', 'numeric', 'min:0'],
             'application_type' => ['required', Rule::in(Promotion::APPLICATION_TYPES)],
             'minimum_spend' => ['nullable', 'numeric', 'min:0'],
@@ -60,7 +68,7 @@ class StorePromotionRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                if ($this->input('discount_type') === Promotion::DISCOUNT_PERCENTAGE && (float) $this->input('discount_value') > 100) {
+                if ($this->input('promotion_type') !== Promotion::TYPE_BOGO && $this->input('discount_type') === Promotion::DISCOUNT_PERCENTAGE && (float) $this->input('discount_value') > 100) {
                     $validator->errors()->add('discount_value', 'Percentage discounts cannot exceed 100%.');
                 }
 

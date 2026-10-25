@@ -166,11 +166,23 @@
             @if ($invoice->branch?->name)
                 <div>{{ $invoice->branch->name }}</div>
             @endif
-            @if ($invoice->branch?->address_summary)
-                <div class="small">{{ $invoice->branch->address_summary }}</div>
+            @if (! empty($business['legal_name']))
+                <div class="small">{{ $business['legal_name'] }}</div>
+            @endif
+            @if ($invoice->branch?->address_summary || ! empty($business['address']))
+                <div class="small">{{ $invoice->branch?->address_summary ?: $business['address'] }}</div>
             @endif
             @if ($invoice->branch?->phone)
                 <div class="small">Tel: {{ $invoice->branch->phone }}</div>
+            @endif
+            @if (! empty($business['registration_number']))
+                <div class="small">Reg. No: {{ $business['registration_number'] }}</div>
+            @endif
+            @if (! empty($business['tax_number']))
+                <div class="small">VAT: {{ $business['tax_number'] }}</div>
+            @endif
+            @if (! empty($business['website']))
+                <div class="small">{{ $business['website'] }}</div>
             @endif
         </div>
 

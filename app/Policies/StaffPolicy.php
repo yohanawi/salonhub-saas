@@ -70,6 +70,14 @@ class StaffPolicy
         return $this->update($user, $staff) && $user->can('staff.delete');
     }
 
+    /**
+     * Inviting a staff member to log in, changing their role, and turning their login off or on.
+     */
+    public function manageAccess(User $user, Staff $staff): bool
+    {
+        return $this->update($user, $staff) && ($user->hasRole('Super Admin') || $user->can('staff.manage_access'));
+    }
+
     public function manageBranches(User $user, Staff $staff): bool
     {
         return $this->update($user, $staff) && ($user->hasRole('Super Admin') || $user->can('staff.manage_branches'));

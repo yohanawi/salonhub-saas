@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Service\StoreServiceRequest;
 use App\Http\Requests\Service\UpdateServiceRequest;
 use App\Models\Branch;
+use App\Models\Product;
 use App\Models\Service;
 use App\Models\ServiceCategory;
 use App\Models\Tenant;
@@ -99,7 +100,7 @@ class ServiceController extends Controller
             'branchConfigs' => collect(),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'selectedTenant' => $tenant,
-        ]);
+        ] + $this->extrasFormData($tenant?->id));
     }
 
     public function store(StoreServiceRequest $request, ServiceCatalogService $catalog, PlanEntitlementService $entitlements): RedirectResponse
@@ -119,7 +120,7 @@ class ServiceController extends Controller
         $this->authorize('view', $service);
         $entitlements->ensureFeature($service->tenant, 'services');
 
-        $service->load(['category', 'branches']);
+        $service->load(['category', 'branches', 'addons', 'consumables.unit']);
         $visibleBranches = $request->user()->hasRole('Super Admin')
             ? Branch::withoutTenantScope()->where('tenant_id', $service->tenant_id)->orderBy('name')->get()
             : $branchContext->availableBranches($request->user());
@@ -150,7 +151,7 @@ class ServiceController extends Controller
             'branchConfigs' => $service->branches->keyBy('id'),
             'tenants' => collect(),
             'selectedTenant' => $service->tenant,
-        ]);
+        ] + $this->extrasFormData($service->tenant_id, $service));
     }
 
     public function update(UpdateServiceRequest $request, Service $service, ServiceCatalogService $catalog, PlanEntitlementService $entitlements): RedirectResponse
@@ -162,6 +163,40 @@ class ServiceController extends Controller
         return redirect()
             ->route('services.show', $service)
             ->with('status', 'Service updated successfully.');
+    }
+
+    /**
+     * Options for the add-on and consumable pickers, plus the service's current selections.
+     */
+    private function extrasFormData(?int $tenantId, ?Service $service = null): array
+    {
+        $service?->loadMissing(['addons', 'consumables']);
+
+        return [
+            'addonOptions' => $tenantId
+                ? Service::withoutTenantScope()
+                    ->where('tenant_id', $tenantId)
+                    ->when($service, fn (Builder $query) => $query->whereKeyNot($service->id))
+                    ->orderByDesc('is_addon')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'is_addon', 'default_price', 'default_duration_minutes'])
+                : collect(),
+            'consumableProducts' => $tenantId
+                ? Product::withoutTenantScope()
+                    ->with('unit:id,name,symbol')
+                    ->where('tenant_id', $tenantId)
+                    ->where('track_inventory', true)
+                    ->where('is_active', true)
+                    ->orderByDesc('is_consumable')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'sku', 'unit_id', 'is_consumable'])
+                : collect(),
+            'selectedAddonIds' => collect(old('addon_ids', $service?->addons->pluck('id')->all() ?? []))->map(fn ($id) => (int) $id)->all(),
+            'consumableLines' => old('consumables', $service?->consumables->map(fn (Product $product) => [
+                'product_id' => $product->id,
+                'quantity' => $product->pivot->quantity,
+            ])->all() ?? []),
+        ];
     }
 
     private function tenant(Request $request): Tenant

@@ -45,6 +45,46 @@
             </div>
         @endif
 
+        @if ($errors->has('duplicate_id'))
+            <div class="alert alert-danger border-0 shadow-sm mb-8">{{ $errors->first('duplicate_id') }}</div>
+        @endif
+
+        @if ($canMerge && $possibleDuplicates->isNotEmpty())
+            <div class="card border-0 shadow-sm mb-5">
+                <div class="card-body p-5">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-people text-warning fs-2 me-3"></i>
+                        <div>
+                            <div class="fw-bold text-gray-900">Possible duplicate {{ Str::plural('customer', $possibleDuplicates->count()) }}</div>
+                            <div class="text-muted fs-8">
+                                Same phone or email. Merging moves their appointments, invoices, loyalty points,
+                                memberships and notes onto this customer, then archives the duplicate.
+                            </div>
+                        </div>
+                    </div>
+                    @foreach ($possibleDuplicates as $duplicate)
+                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 py-3 border-top border-gray-200">
+                            <div>
+                                <a href="{{ route('customer-management.customers.show', $duplicate) }}" class="fw-semibold text-gray-900">{{ $duplicate->full_name }}</a>
+                                <span class="text-muted fs-8">{{ $duplicate->customer_code }} · {{ $duplicate->phone }} {{ $duplicate->email ? '· ' . $duplicate->email : '' }}</span>
+                            </div>
+                            <form method="POST" action="{{ route('customer-management.customers.merge', $customer) }}"
+                                data-swal-confirm
+                                data-swal-title="Merge {{ $duplicate->full_name }} into {{ $customer->full_name }}?"
+                                data-swal-text="Everything on {{ $duplicate->customer_code }} moves to {{ $customer->customer_code }}, and {{ $duplicate->customer_code }} is archived. This cannot be undone."
+                                data-swal-icon="warning"
+                                data-swal-confirm-button="Yes, merge"
+                                data-swal-cancel-button="Cancel">
+                                @csrf
+                                <input type="hidden" name="duplicate_id" value="{{ $duplicate->id }}">
+                                <button type="submit" class="btn btn-sm btn-light-warning text-nowrap">Merge into this customer</button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <div class="card border-0 shadow-sm mb-5 overflow-hidden">
             <div class="card-body p-4 p-lg-6">
                 <div class="d-flex flex-column flex-xl-row justify-content-between gap-8">
@@ -236,8 +276,70 @@
             </div>
         </div>
 
+        @if (session('error'))
+            <div class="alert alert-danger border-0 shadow-sm mb-8">{{ session('error') }}</div>
+        @endif
+
+        @if ($errors->any())
+            <div class="alert alert-danger border-0 shadow-sm mb-8">{{ $errors->first() }}</div>
+        @endif
+
+        @if ($customer->hasAllergies())
+            <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-8">
+                <i class="bi bi-exclamation-octagon-fill fs-1 me-4"></i>
+                <div><div class="fw-bold">Allergies & sensitivities</div><div>{{ $customer->allergies }}</div></div>
+            </div>
+        @endif
+
         <div class="row g-8">
             <div class="col-xl-5">
+                @include('pages.apps.customer-management.customers._care')
+
+                @if ($rewards)
+                    <div class="card border-0 shadow-sm mb-8">
+                        <div class="card-header border-0 pt-8">
+                            <div class="card-title">
+                                <div class="symbol symbol-45px me-4">
+                                    <div class="symbol-label bg-light-warning"><i class="bi bi-gem text-warning fs-3"></i></div>
+                                </div>
+                                <div>
+                                    <h3 class="fw-bold text-gray-900 mb-1">Rewards</h3>
+                                    <div class="text-muted fs-8">Points, tier and the customer's own rewards page.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body pt-4">
+                            @if ($rewards['account'])
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <div>
+                                        <div class="fs-2x fw-bolder text-gray-900">{{ number_format((int) $rewards['account']->available_points) }}</div>
+                                        <div class="text-muted fs-8">points · worth {{ $customer->tenant?->currency ?: 'LKR' }} {{ number_format($rewards['pointsValue'], 2) }}</div>
+                                    </div>
+                                    @if ($rewards['tier'])
+                                        <span class="badge badge-{{ $rewards['tier']->color }} fs-7 px-4 py-2">{{ $rewards['tier']->name }}</span>
+                                    @endif
+                                </div>
+                                @if ($rewards['nextTier'])
+                                    <div class="text-muted fs-8 mb-4">{{ number_format($rewards['pointsToNext']) }} lifetime points to {{ $rewards['nextTier']->name }}.</div>
+                                @endif
+                                <div class="d-flex flex-wrap gap-2">
+                                    @can('loyalty.view')
+                                        <form method="POST" action="{{ route('loyalty-management.customers.send-points', $customer) }}">
+                                            @csrf
+                                            <button class="btn btn-sm btn-light-primary" @disabled(! $customer->phone)><i class="bi bi-chat-dots me-1"></i>Text Points Balance</button>
+                                        </form>
+                                    @endcan
+                                    <button type="button" class="btn btn-sm btn-light" onclick="navigator.clipboard.writeText('{{ $rewardsUrl }}'); this.textContent='Link copied';">
+                                        <i class="bi bi-link-45deg me-1"></i>Copy Rewards Link
+                                    </button>
+                                </div>
+                            @else
+                                <div class="text-muted fs-7">Not enrolled yet. Points start with the first paid visit.</div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
                 <div class="card border-0 shadow-sm mb-8">
                     <div class="card-header border-0 pt-8">
                         <div class="card-title">

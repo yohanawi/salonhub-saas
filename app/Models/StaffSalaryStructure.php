@@ -22,6 +22,7 @@ class StaffSalaryStructure extends Model
         'overtime_enabled' => 'boolean',
         'overtime_rate' => 'decimal:2',
         'commission_enabled' => 'boolean',
+        'epf_applicable' => 'boolean',
         'effective_from' => 'date',
         'effective_to' => 'date',
     ];

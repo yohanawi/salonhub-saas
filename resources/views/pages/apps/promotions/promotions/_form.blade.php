@@ -160,8 +160,46 @@
                     <div class="text-muted fs-7">Value, application, and limits</div>
                 </div>
             </div>
+            @php
+                $promotionType = old('promotion_type', $promotion->promotion_type ?: 'standard');
+                $activeDays = collect(old('active_days', $promotion->active_days ?? []))->map(fn ($day) => (int) $day)->all();
+            @endphp
             <div class="row g-6">
                 <div class="col-12">
+                    <label class="form-label required">Offer Type</label>
+                    <select name="promotion_type" id="promotion_type_select" class="form-select form-select-solid">
+                        <option value="standard" @selected($promotionType === 'standard')>Discount (% or fixed)</option>
+                        <option value="bogo" @selected($promotionType === 'bogo')>Buy X Get Y</option>
+                        <option value="birthday" @selected($promotionType === 'birthday')>Birthday discount</option>
+                    </select>
+                </div>
+                <div class="col-12 promo-bogo">
+                    <div class="row g-3">
+                        <div class="col-4">
+                            <label class="form-label required">Buy</label>
+                            <input type="number" min="1" name="buy_quantity" value="{{ old('buy_quantity', $promotion->buy_quantity ?? 1) }}" class="form-control form-control-solid">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label required">Get</label>
+                            <input type="number" min="1" name="get_quantity" value="{{ old('get_quantity', $promotion->get_quantity ?? 1) }}" class="form-control form-control-solid">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">% Off</label>
+                            <input type="number" step="0.01" min="1" max="100" name="get_discount_percentage" value="{{ old('get_discount_percentage', $promotion->get_discount_percentage ?? 100) }}" class="form-control form-control-solid">
+                        </div>
+                    </div>
+                    <div class="text-muted fs-8 mt-2">In every group of Buy + Get eligible items, the cheapest "Get" items get this % off (100 = free).</div>
+                </div>
+                <div class="col-12 promo-birthday">
+                    <label class="form-label required">Birthday Window</label>
+                    <select name="birthday_window" class="form-select form-select-solid">
+                        @foreach (\App\Models\Promotion::BIRTHDAY_WINDOWS as $value => $label)
+                            <option value="{{ $value }}" @selected(old('birthday_window', $promotion->birthday_window ?? 'week') === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <div class="text-muted fs-8 mt-2">Applied automatically at checkout once per customer per year. Needs the customer's date of birth.</div>
+                </div>
+                <div class="col-12 promo-discount">
                     <label class="form-label required">Discount Type</label>
                     <select name="discount_type" class="form-select form-select-solid">
                         @foreach (\App\Models\Promotion::DISCOUNT_TYPES as $type)
@@ -169,9 +207,9 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12">
+                <div class="col-12 promo-discount">
                     <label class="form-label required">Discount Value</label>
-                    <input type="number" step="0.01" name="discount_value" value="{{ old('discount_value', $promotion->discount_value) }}" class="form-control form-control-solid" required>
+                    <input type="number" step="0.01" name="discount_value" value="{{ old('discount_value', $promotion->discount_value) }}" class="form-control form-control-solid">
                 </div>
                 <div class="col-12">
                     <label class="form-label">Maximum Discount</label>
@@ -229,6 +267,29 @@
                     <label class="form-label">Per-Customer Limit</label>
                     <input type="number" name="per_customer_limit" value="{{ old('per_customer_limit', $promotion->per_customer_limit) }}" class="form-control form-control-solid">
                 </div>
+                <div class="col-12">
+                    <div class="separator separator-dashed my-2"></div>
+                    <label class="form-label fw-bold mt-4">Happy Hour / Days</label>
+                    <div class="text-muted fs-8 mb-3">Leave empty to run all day, every day.</div>
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        @foreach (\App\Models\Promotion::DAYS as $number => $day)
+                            <label class="form-check form-check-sm form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" name="active_days[]" value="{{ $number }}" @checked(in_array($number, $activeDays, true))>
+                                <span class="form-check-label">{{ $day }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fs-8">From</label>
+                            <input type="time" name="active_from_time" value="{{ old('active_from_time', $promotion->active_from_time ? substr($promotion->active_from_time, 0, 5) : '') }}" class="form-control form-control-solid">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fs-8">To</label>
+                            <input type="time" name="active_to_time" value="{{ old('active_to_time', $promotion->active_to_time ? substr($promotion->active_to_time, 0, 5) : '') }}" class="form-control form-control-solid">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -240,3 +301,24 @@
         <i class="bi bi-check2 me-2"></i>Save Promotion
     </button>
 </div>
+
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const typeSelect = document.getElementById('promotion_type_select');
+
+            function syncPromotionType() {
+                const type = typeSelect.value;
+                document.querySelectorAll('.promo-bogo').forEach((el) => el.classList.toggle('d-none', type !== 'bogo'));
+                document.querySelectorAll('.promo-birthday').forEach((el) => el.classList.toggle('d-none', type !== 'birthday'));
+                document.querySelectorAll('.promo-discount').forEach((el) => el.classList.toggle('d-none', type === 'bogo'));
+            }
+
+            typeSelect?.addEventListener('change', syncPromotionType);
+            if (typeSelect) {
+                syncPromotionType();
+            }
+        });
+    </script>
+@endpush

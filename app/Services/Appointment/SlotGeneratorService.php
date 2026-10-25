@@ -5,6 +5,7 @@ namespace App\Services\Appointment;
 use App\Models\Branch;
 use App\Models\Service;
 use App\Models\Staff;
+use App\Services\StaffAvailabilityService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
@@ -22,19 +23,15 @@ class SlotGeneratorService
         $snapshot = $this->pricing->snapshot($service, $branch, $staff);
         $duration = (int) $snapshot['duration_minutes'];
 
-        $schedule = $staff->schedules()
-            ->where('branch_id', $branch->id)
-            ->where('day_of_week', $date->dayOfWeekIso)
-            ->where('is_working', true)
-            ->orderBy('start_time')
-            ->first();
+        // Rostered shift for the day, or the weekly schedule.
+        $window = app(StaffAvailabilityService::class)->workingWindow($staff, $branch->id, $date);
 
-        if (! $schedule) {
+        if (! $window) {
             return [];
         }
 
-        $cursor = CarbonImmutable::parse($date->format('Y-m-d') . ' ' . $schedule->start_time);
-        $scheduleEnd = CarbonImmutable::parse($date->format('Y-m-d') . ' ' . $schedule->end_time);
+        $cursor = CarbonImmutable::parse($date->format('Y-m-d') . ' ' . $window[0]);
+        $scheduleEnd = CarbonImmutable::parse($date->format('Y-m-d') . ' ' . $window[1]);
         $slots = [];
 
         while ($cursor->copy()->addMinutes($duration)->lessThanOrEqualTo($scheduleEnd)) {

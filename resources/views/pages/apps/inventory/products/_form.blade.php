@@ -434,6 +434,47 @@
                     </div>
 
 
+                    {{-- Batch / Expiry Tracking --}}
+                    <div class="col-md-6">
+
+                        <label
+                            class="d-flex align-items-center justify-content-between rounded-4 border border-gray-300 p-5 h-100">
+
+                            <div class="d-flex align-items-center">
+
+                                <div class="symbol symbol-45px me-4">
+                                    <div class="symbol-label bg-light-info">
+                                        <i class="bi bi-calendar2-week text-info fs-3"></i>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="fw-bold text-gray-900 mb-1">
+                                        Track Batches & Expiry
+                                    </div>
+
+                                    <div class="text-muted fs-8">
+                                        Record batch numbers and expiry dates on receipt; stock is used soonest-expiring first.
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+                            <div class="form-check form-switch form-check-custom form-check-solid ms-3">
+
+                                <input type="hidden" name="track_batches" value="0">
+
+                                <input class="form-check-input" type="checkbox" name="track_batches"
+                                    value="1" @checked(old('track_batches', $product->track_batches ?? false))>
+
+                            </div>
+
+                        </label>
+
+                    </div>
+
+
                     {{-- Negative Stock --}}
                     <div class="col-md-6">
 

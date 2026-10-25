@@ -15,6 +15,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\BranchContext;
 use App\Services\PlanEntitlementService;
+use App\Services\Staff\StaffAccessService;
 use App\Services\StaffManagementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -112,10 +113,11 @@ class StaffController extends Controller
     {
         $this->authorize('view', $staff);
 
-        $staff->load(['tenant', 'user', 'branches', 'services.category', 'schedules.branch', 'breaks.branch', 'timeOff.branch', 'commissionSettings.service']);
+        $staff->load(['tenant', 'user.roles', 'branches', 'services.category', 'schedules.branch', 'breaks.branch', 'timeOff.branch', 'commissionSettings.service']);
 
         return view('pages/apps.staff-management.staff.show', [
             'staffMember' => $staff,
+            'assignableRoles' => app(StaffAccessService::class)->assignableRoles($request->user()),
         ]);
     }
 

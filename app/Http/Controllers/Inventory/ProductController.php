@@ -14,6 +14,7 @@ use App\Models\Unit;
 use App\Services\BranchContext;
 use App\Services\Inventory\InventoryService;
 use App\Services\PlanEntitlementService;
+use App\Services\Settings\SettingService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,7 +84,8 @@ class ProductController extends Controller
                 'cost_price' => 0,
                 'selling_price' => 0,
                 'tax_rate' => 0,
-                'reorder_level' => 0,
+                // Prefilled from Settings > Inventory > Default Low Stock Threshold.
+                'reorder_level' => $tenant ? (int) app(SettingService::class)->get('inventory.default_low_stock_threshold', $tenant->id) : 0,
                 'minimum_stock_level' => 0,
             ]),
             'categories' => $this->categories($tenant, $isSuperAdmin, $request, true),
@@ -189,6 +191,8 @@ class ProductController extends Controller
             'selling_price' => $data['selling_price'],
             'tax_rate' => $data['tax_rate'] ?? 0,
             'track_inventory' => (bool) ($data['track_inventory'] ?? false),
+            // Batches only make sense for stock that is tracked at all.
+            'track_batches' => (bool) ($data['track_batches'] ?? false) && (bool) ($data['track_inventory'] ?? false),
             'minimum_stock_level' => $data['minimum_stock_level'] ?? 0,
             'reorder_level' => $data['reorder_level'] ?? 0,
             'allow_negative_stock' => (bool) ($data['allow_negative_stock'] ?? false),

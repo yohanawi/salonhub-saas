@@ -204,7 +204,7 @@ class DepositService
     /**
      * The salon keeps the deposit, typically after a late cancellation or a no-show.
      */
-    public function forfeit(AppointmentDeposit $deposit, array $data, User $user): AppointmentDeposit
+    public function forfeit(AppointmentDeposit $deposit, array $data, ?User $user): AppointmentDeposit
     {
         return DB::transaction(function () use ($deposit, $data, $user) {
             $deposit = AppointmentDeposit::withoutTenantScope()->whereKey($deposit->id)->lockForUpdate()->firstOrFail();
@@ -216,7 +216,8 @@ class DepositService
             $deposit->update([
                 'status' => AppointmentDeposit::STATUS_FORFEITED,
                 'resolved_at' => now(),
-                'resolved_by' => $user->id,
+                // Null when the system forfeits it (e.g. the automatic no-show job).
+                'resolved_by' => $user?->id,
                 'notes' => trim(($deposit->notes ? $deposit->notes . "\n" : '') . 'Forfeited: ' . ($data['reason'] ?? '')),
             ]);
 

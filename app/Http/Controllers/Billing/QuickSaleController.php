@@ -86,13 +86,13 @@ class QuickSaleController extends Controller
                 ->orderBy('name')
                 ->get(),
             'staff' => $staff,
-            'products' => Product::withoutTenantScope()
+            'products' => Product::applyBranchPrices(Product::withoutTenantScope()
                 ->with(['inventories' => fn ($query) => $query->where('branch_id', $branch->id)])
                 ->where('tenant_id', $tenant->id)
                 ->where('is_active', true)
                 ->where('is_sellable', true)
                 ->orderBy('name')
-                ->get(),
+                ->get(), $branch->id),
             'customers' => $customers,
             'loyaltyPoints' => $loyaltyPoints,
             'paymentMethods' => PaymentMethod::withoutTenantScope()

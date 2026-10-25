@@ -30,6 +30,11 @@ class LoyaltyProgram extends Model
         return $this->hasMany(LoyaltyEarningRule::class);
     }
 
+    public function tiers(): HasMany
+    {
+        return $this->hasMany(LoyaltyTier::class)->orderBy('min_points');
+    }
+
     public function accounts(): HasMany
     {
         return $this->hasMany(CustomerLoyaltyAccount::class);

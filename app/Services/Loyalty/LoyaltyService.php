@@ -368,7 +368,7 @@ class LoyaltyService
             $points += max(0, $rulePoints);
         }
 
-        return (int) floor($points * $this->membershipMultiplier($invoice));
+        return (int) floor($points * $this->membershipMultiplier($invoice) * $this->tierMultiplier($invoice, $program));
     }
 
     public function addPoints(CustomerLoyaltyAccount $account, int $points, string $type, ?Model $source, ?User $user, ?string $description = null, mixed $expiresAt = null): LoyaltyPointTransaction
@@ -422,6 +422,7 @@ class LoyaltyService
             }
 
             $locked->update($updates);
+            app(LoyaltyTierService::class)->refresh($locked);
 
             if ($type === LoyaltyPointTransaction::TYPE_EARN && $source instanceof Invoice) {
                 $source->update(['loyalty_points_earned' => abs($points)]);
@@ -468,6 +469,21 @@ class LoyaltyService
         }
 
         return (float) $items->sum('total_amount');
+    }
+
+    /**
+     * The customer's tier (as it stands before this visit's points) can boost what they earn.
+     */
+    private function tierMultiplier(Invoice $invoice, LoyaltyProgram $program): float
+    {
+        $account = CustomerLoyaltyAccount::withoutTenantScope()
+            ->with('tier')
+            ->where('tenant_id', $invoice->tenant_id)
+            ->where('customer_id', $invoice->customer_id)
+            ->where('loyalty_program_id', $program->id)
+            ->first();
+
+        return max(1.0, (float) ($account?->tier?->points_multiplier ?? 1));
     }
 
     private function membershipMultiplier(Invoice $invoice): float

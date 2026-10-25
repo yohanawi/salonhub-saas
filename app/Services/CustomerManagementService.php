@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Customers\ReferralService;
+use App\Services\Settings\SettingService;
 use Illuminate\Support\Facades\DB;
 
 class CustomerManagementService
@@ -13,13 +15,21 @@ class CustomerManagementService
     {
         return DB::transaction(function () use ($tenant, $data, $createdBy) {
             $note = $data['note'] ?? null;
+            $referrals = app(ReferralService::class);
+            $referrer = $referrals->resolveReferrer($tenant->id, $data['referral_code_used'] ?? null, null);
             unset($data['tenant_id'], $data['note']);
 
-            $customer = $tenant->customers()->create($this->payload($data));
+            $customer = $tenant->customers()->create($this->payload($data) + [
+                'referred_by_customer_id' => $referrer?->id,
+            ]);
+
+            // The prefix comes from Settings > Customers; the number is the record id, so codes never clash.
+            $prefix = strtoupper(trim((string) app(SettingService::class)->get('customer.number_prefix', $tenant->id))) ?: 'CUS';
 
             $customer->update([
-                'customer_code' => 'CUS-' . str_pad((string) $customer->id, 6, '0', STR_PAD_LEFT),
+                'customer_code' => $prefix . '-' . str_pad((string) $customer->id, 6, '0', STR_PAD_LEFT),
             ]);
+            $referrals->codeFor($customer);
 
             if ($note) {
                 $customer->noteEntries()->create([
@@ -39,7 +49,12 @@ class CustomerManagementService
             $note = $data['note'] ?? null;
             unset($data['tenant_id'], $data['note']);
 
-            $customer->update($this->payload($data));
+            // A referrer can be added later, but never changed once set.
+            $referrer = ! $customer->referred_by_customer_id
+                ? app(ReferralService::class)->resolveReferrer($customer->tenant_id, $data['referral_code_used'] ?? null, null, $customer)
+                : null;
+
+            $customer->update($this->payload($data) + ($referrer ? ['referred_by_customer_id' => $referrer->id] : []));
 
             if ($note) {
                 $customer->noteEntries()->create([
@@ -68,6 +83,8 @@ class CustomerManagementService
             'phone' => $data['phone'],
             'gender' => $data['gender'] ?? null,
             'date_of_birth' => $data['date_of_birth'] ?? null,
+            'anniversary_date' => $data['anniversary_date'] ?? null,
+            'allergies' => $data['allergies'] ?? null,
             'address' => $data['address'] ?? null,
             'notes' => $data['notes'] ?? null,
             'marketing_consent' => (bool) ($data['marketing_consent'] ?? false),

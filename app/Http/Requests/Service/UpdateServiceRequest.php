@@ -4,6 +4,7 @@ namespace App\Http\Requests\Service;
 
 use App\Models\Branch;
 use App\Models\ServiceCategory;
+use App\Http\Requests\Service\Concerns\ValidatesServiceExtras;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Validator;
 
 class UpdateServiceRequest extends FormRequest
 {
+    use ValidatesServiceExtras;
+
     public function authorize(): bool
     {
         return $this->user()?->can('update', $this->route('service')) ?? false;
@@ -49,7 +52,7 @@ class UpdateServiceRequest extends FormRequest
             'branches.*.price' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'branches.*.duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
             'branches.*.is_active' => ['nullable', 'boolean'],
-        ];
+        ] + $this->extraRules();
     }
 
     public function after(): array
@@ -75,6 +78,8 @@ class UpdateServiceRequest extends FormRequest
                         $validator->errors()->add('branches', 'One or more selected branches do not belong to this salon.');
                     }
                 }
+
+                $this->validateExtras($validator, $tenantId, $service->id);
             },
         ];
     }

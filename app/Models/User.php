@@ -48,6 +48,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -59,7 +61,22 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
         'onboarded_at' => 'datetime',
         'last_login_at' => 'datetime',
+        'invited_at' => 'datetime',
+        'invitation_accepted_at' => 'datetime',
+        'two_factor_secret' => 'encrypted',
+        'two_factor_recovery_codes' => 'encrypted:array',
+        'two_factor_confirmed_at' => 'datetime',
     ];
+
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
+    }
+
+    public function hasPendingInvitation(): bool
+    {
+        return $this->invited_at !== null && $this->invitation_accepted_at === null;
+    }
 
     public function scopeForTenant(Builder $query, int $tenantId): Builder
     {
@@ -69,6 +86,23 @@ class User extends Authenticatable implements MustVerifyEmail
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * Why this user may not sign in (deactivated account or suspended salon), or null when they may.
+     */
+    public function loginBlockedReason(): ?string
+    {
+        // A null status only occurs on unsaved/in-memory models; the column defaults to "active".
+        if (filled($this->status) && $this->status !== 'active') {
+            return 'This account has been deactivated. Please contact support.';
+        }
+
+        if ($this->tenant_id && $this->tenant?->isSuspended() && ! $this->hasRole('Super Admin')) {
+            return 'This salon account has been suspended. Please contact support.';
+        }
+
+        return null;
     }
 
     public function branch(): BelongsTo
@@ -99,7 +133,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function addresses()
     {
-        return $this->hasMany(Address::class);
+        // Primary first, then in the order they were added.
+        return $this->hasMany(Address::class)->orderByDesc('is_primary')->orderBy('id');
     }
 
     public function getDefaultAddressAttribute()

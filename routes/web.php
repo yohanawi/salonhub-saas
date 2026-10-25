@@ -6,9 +6,12 @@ use App\Http\Controllers\Apps\RoleManagementController;
 use App\Http\Controllers\Apps\UserManagementController;
 use App\Http\Controllers\AuditLog\AuditLogController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\Auth\StaffInvitationController;
 use App\Http\Controllers\Appointment\AppointmentAvailabilityController;
 use App\Http\Controllers\Appointment\AppointmentController;
 use App\Http\Controllers\Appointment\AppointmentStatusController;
+use App\Http\Controllers\Appointment\AppointmentRescheduleController;
+use App\Http\Controllers\Appointment\WaitlistController;
 use App\Http\Controllers\Billing\CashRegisterController;
 use App\Http\Controllers\Billing\CheckoutController;
 use App\Http\Controllers\Billing\DayEndReportController;
@@ -28,18 +31,26 @@ use App\Http\Controllers\Billing\RefundController;
 use App\Http\Controllers\Branch\BranchController;
 use App\Http\Controllers\Branch\BranchArchiveController;
 use App\Http\Controllers\Branch\BranchReportController;
+use App\Http\Controllers\Branch\BranchPricingController;
 use App\Http\Controllers\Branch\BranchSpecialHourController;
 use App\Http\Controllers\Branch\BranchStatusController;
 use App\Http\Controllers\Branch\SwitchBranchController;
 use App\Http\Controllers\Branch\UpdateBranchHoursController;
 use App\Http\Controllers\Commission\CommissionDashboardController;
+use App\Http\Controllers\Commission\MyCommissionController;
 use App\Http\Controllers\Commission\CommissionPayoutController;
 use App\Http\Controllers\Commission\CommissionReportController;
 use App\Http\Controllers\Commission\CommissionRuleController;
 use App\Http\Controllers\Commission\CommissionSettingController;
 use App\Http\Controllers\Commission\StaffCommissionController;
 use App\Http\Controllers\CustomerManagement\CustomerController;
+use App\Http\Controllers\CustomerManagement\CustomerCareController;
+use App\Http\Controllers\CustomerManagement\CustomerMergeController;
+use App\Http\Controllers\CustomerManagement\CustomerSegmentController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SubscriptionStatusController;
+use App\Http\Controllers\Profile\TwoFactorController;
+use App\Http\Controllers\Profile\AddressController;
 use App\Http\Controllers\Expense\ExpenseApprovalController;
 use App\Http\Controllers\Expense\ExpenseAttachmentController;
 use App\Http\Controllers\Expense\ExpenseCategoryController as ExpenseCategoryController;
@@ -54,6 +65,11 @@ use App\Http\Controllers\Inventory\ProductBrandController;
 use App\Http\Controllers\Inventory\ProductCategoryController;
 use App\Http\Controllers\Inventory\ProductController as InventoryProductController;
 use App\Http\Controllers\Inventory\StockAdjustmentController;
+use App\Http\Controllers\Inventory\ProductBatchController;
+use App\Http\Controllers\Inventory\PurchaseController;
+use App\Http\Controllers\Inventory\StockTakeController;
+use App\Http\Controllers\Inventory\SupplierController;
+use App\Http\Controllers\Inventory\StockTransferController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Inventory\UnitController;
 use App\Http\Controllers\Loyalty\CustomerMembershipController;
@@ -61,6 +77,8 @@ use App\Http\Controllers\Loyalty\LoyaltyDashboardController;
 use App\Http\Controllers\Loyalty\LoyaltyEarningRuleController;
 use App\Http\Controllers\Loyalty\LoyaltyPointTransactionController;
 use App\Http\Controllers\Loyalty\LoyaltyProgramController;
+use App\Http\Controllers\Loyalty\LoyaltyTierController;
+use App\Http\Controllers\Loyalty\CustomerRewardsController;
 use App\Http\Controllers\Loyalty\LoyaltyReportController;
 use App\Http\Controllers\Loyalty\MembershipPlanController;
 use App\Http\Controllers\OnboardingController;
@@ -70,12 +88,16 @@ use App\Http\Controllers\Payroll\PayrollPeriodController;
 use App\Http\Controllers\Payroll\PayrollReportController;
 use App\Http\Controllers\Payroll\PayrollRunController;
 use App\Http\Controllers\Payroll\PayslipController;
+use App\Http\Controllers\Payroll\PayrollStatutoryController;
+use App\Http\Controllers\Payroll\SalaryAdvanceController;
 use App\Http\Controllers\Payroll\SalaryStructureController;
 use App\Http\Controllers\Promotions\PromotionController;
 use App\Http\Controllers\Promotions\PromotionCouponController;
 use App\Http\Controllers\Promotions\PromotionDashboardController;
 use App\Http\Controllers\Promotions\PromotionReportController;
 use App\Http\Controllers\Profile\ProfileController;
+use App\Http\Controllers\Reports\BusinessReportController;
+use App\Http\Controllers\Reports\ReportScheduleController;
 use App\Http\Controllers\Promotions\PromotionUsageController;
 use App\Http\Controllers\Search\GlobalSearchController;
 use App\Http\Controllers\Service\ServiceCategoryController;
@@ -83,6 +105,12 @@ use App\Http\Controllers\Service\ServiceController;
 use App\Http\Controllers\Service\ServiceStatusController;
 use App\Http\Controllers\Settings\SystemSettingsController;
 use App\Http\Controllers\Staff\StaffController;
+use App\Http\Controllers\Staff\StaffAccessController;
+use App\Http\Controllers\Staff\AttendanceController;
+use App\Http\Controllers\Staff\LeaveController;
+use App\Http\Controllers\Staff\MyWorkController;
+use App\Http\Controllers\Staff\PublicFeedbackController;
+use App\Http\Controllers\Staff\RosterController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -97,9 +125,17 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Receipt link texted to customers; the signature is the access check.
+Route::get('/ps/{payslip}', [PayslipController::class, 'publicPdf'])->middleware(['signed', 'throttle:30,1'])->whereNumber('payslip')->name('payslips.public');
+Route::get('/rewards/{customer}', [CustomerRewardsController::class, 'show'])->middleware(['signed', 'throttle:30,1'])->whereNumber('customer')->name('rewards.show');
+Route::get('/feedback/{feedback}', [PublicFeedbackController::class, 'show'])->middleware(['signed', 'throttle:30,1'])->whereNumber('feedback')->name('feedback.show');
+Route::post('/feedback/{feedback}', [PublicFeedbackController::class, 'store'])->middleware(['signed', 'throttle:10,1'])->whereNumber('feedback')->name('feedback.store');
+Route::get('/invitations/{user}', [StaffInvitationController::class, 'show'])->middleware('throttle:30,1')->whereNumber('user')->name('invitations.accept');
+Route::post('/invitations/{user}', [StaffInvitationController::class, 'accept'])->middleware('throttle:10,1')->whereNumber('user')->name('invitations.accept.store');
 Route::get('/r/{invoice}', [PublicReceiptController::class, 'show'])->middleware(['signed', 'throttle:60,1'])->whereNumber('invoice')->name('receipts.show');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'subscription.active', 'two-factor.enrolled'])->group(function () {
+
+    Route::get('/subscription/inactive', [SubscriptionStatusController::class, 'inactive'])->name('subscription.inactive');
 
     Route::get('/', [DashboardController::class, 'index']);
 
@@ -114,10 +150,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/settings/email', [ProfileController::class, 'updateEmail'])->name('settings.email');
         Route::patch('/settings/password', [ProfileController::class, 'updatePassword'])->name('settings.password');
         Route::post('/settings/deactivate', [ProfileController::class, 'deactivate'])->name('settings.deactivate');
+        Route::post('/addresses', [AddressController::class, 'store'])->name('addresses.store');
+        Route::put('/addresses/{address}', [AddressController::class, 'update'])->whereNumber('address')->name('addresses.update');
+        Route::post('/addresses/{address}/primary', [AddressController::class, 'makePrimary'])->whereNumber('address')->name('addresses.primary');
+        Route::delete('/addresses/{address}', [AddressController::class, 'destroy'])->whereNumber('address')->name('addresses.destroy');
+        Route::post('/two-factor', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
+        Route::post('/two-factor/confirm', [TwoFactorController::class, 'confirm'])->name('two-factor.confirm');
+        Route::post('/two-factor/recovery-codes', [TwoFactorController::class, 'recoveryCodes'])->name('two-factor.recovery-codes');
+        Route::delete('/two-factor', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
         Route::get('/security', [ProfileController::class, 'security'])->name('security');
         Route::get('/activity', [ProfileController::class, 'activity'])->name('activity');
         Route::get('/billing', [ProfileController::class, 'billing'])->name('billing');
         Route::get('/statements', [ProfileController::class, 'statements'])->name('statements');
+        Route::get('/appointments', [ProfileController::class, 'appointments'])->name('appointments');
+        Route::get('/commissions', MyCommissionController::class)->name('commissions');
+        Route::get('/attendance', [MyWorkController::class, 'attendance'])->name('attendance');
+        Route::post('/attendance/clock-in', [MyWorkController::class, 'clockIn'])->name('attendance.clock-in');
+        Route::post('/attendance/clock-out', [MyWorkController::class, 'clockOut'])->name('attendance.clock-out');
+        Route::get('/leave', [MyWorkController::class, 'leave'])->name('leave');
+        Route::post('/leave', [MyWorkController::class, 'requestLeave'])->name('leave.store');
+        Route::post('/leave/{leave}/cancel', [MyWorkController::class, 'cancelLeave'])->name('leave.cancel');
         Route::get('/logs', [ProfileController::class, 'logs'])->name('logs');
         Route::get('/logs/export', [ProfileController::class, 'exportLogs'])->name('logs.export');
     });
@@ -125,14 +177,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
     Route::name('user-management.')->middleware('can:manage-user-management')->group(function () {
-        Route::resource('/user-management/users', UserManagementController::class);
-        Route::resource('/user-management/roles', RoleManagementController::class);
-        Route::resource('/user-management/permissions', PermissionManagementController::class);
+        // Creating, editing and deleting happen in the Livewire modals on these pages.
+        Route::resource('/user-management/users', UserManagementController::class)->only(['index', 'show']);
+        Route::resource('/user-management/roles', RoleManagementController::class)->only(['index', 'show']);
+        Route::resource('/user-management/permissions', PermissionManagementController::class)->only(['index']);
     });
 
     Route::name('plan-management.')->group(function () {
         Route::get('/plan-management/subscriptions', [PlanManagementController::class, 'subscriptions'])->name('subscriptions.index');
         Route::patch('/plan-management/subscriptions/{tenant}', [PlanManagementController::class, 'updateSubscription'])->name('subscriptions.update');
+        Route::patch('/plan-management/tenants/{tenant}/status', [PlanManagementController::class, 'updateTenantStatus'])->name('tenants.status.update');
         Route::patch('/plan-management/plans/{plan}/status', [PlanManagementController::class, 'updateStatus'])->name('plans.status.update');
         Route::resource('/plan-management/plans', PlanManagementController::class);
     });
@@ -144,6 +198,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/current', [SwitchBranchController::class, 'clear'])->name('switch.clear');
         Route::get('/{branch}', [BranchController::class, 'show'])->name('show');
         Route::get('/{branch}/reports', [BranchReportController::class, 'show'])->name('reports.show');
+        Route::get('/{branch}/pricing', [BranchPricingController::class, 'edit'])->name('pricing.edit');
+        Route::put('/{branch}/pricing', [BranchPricingController::class, 'update'])->name('pricing.update');
         Route::get('/{branch}/edit', [BranchController::class, 'edit'])->name('edit');
         Route::put('/{branch}', [BranchController::class, 'update'])->name('update');
         Route::delete('/{branch}', [BranchArchiveController::class, 'archive'])->name('archive');
@@ -169,11 +225,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::prefix('staff-management')->name('staff-management.')->group(function () {
+        Route::get('/roster', [RosterController::class, 'index'])->name('roster.index');
+        Route::post('/roster/shifts', [RosterController::class, 'save'])->name('roster.save');
+        Route::post('/roster/move', [RosterController::class, 'move'])->name('roster.move');
+        Route::post('/roster/copy-previous-week', [RosterController::class, 'copyPreviousWeek'])->name('roster.copy');
+        Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+        Route::post('/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
+        Route::get('/leave', [LeaveController::class, 'index'])->name('leave.index');
+        Route::post('/leave', [LeaveController::class, 'store'])->name('leave.store');
+        Route::post('/leave/{leave}/review', [LeaveController::class, 'review'])->name('leave.review');
+        Route::post('/staff/{staff}/access/invite', [StaffAccessController::class, 'invite'])->name('staff.access.invite');
+        Route::post('/staff/{staff}/access/resend', [StaffAccessController::class, 'resend'])->name('staff.access.resend');
+        Route::patch('/staff/{staff}/access/role', [StaffAccessController::class, 'updateRole'])->name('staff.access.role');
+        Route::patch('/staff/{staff}/access/status', [StaffAccessController::class, 'updateStatus'])->name('staff.access.status');
         Route::resource('/staff', StaffController::class)
             ->parameters(['staff' => 'staff']);
     });
 
     Route::prefix('customer-management')->name('customer-management.')->group(function () {
+        Route::get('/segments', [CustomerSegmentController::class, 'index'])->name('segments.index');
+        Route::post('/segments/campaign', [CustomerSegmentController::class, 'sendCampaign'])->name('segments.campaign');
+        Route::post('/customers/{customer}/merge', [CustomerMergeController::class, 'store'])->name('customers.merge');
+        Route::post('/customers/{customer}/photos', [CustomerCareController::class, 'storePhotos'])->name('photos.store');
+        Route::get('/customers/{customer}/photos/{photo}', [CustomerCareController::class, 'photo'])->name('photos.show');
+        Route::delete('/customers/{customer}/photos/{photo}', [CustomerCareController::class, 'destroyPhoto'])->name('photos.destroy');
+        Route::get('/customers/{customer}/consultations/create', [CustomerCareController::class, 'createConsultation'])->name('consultations.create');
+        Route::post('/customers/{customer}/consultations', [CustomerCareController::class, 'storeConsultation'])->name('consultations.store');
+        Route::get('/customers/{customer}/consultations/{consultation}', [CustomerCareController::class, 'showConsultation'])->name('consultations.show');
         Route::resource('/customers', CustomerController::class);
     });
 
@@ -185,6 +263,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/appointments/{appointment}/check-in', [AppointmentStatusController::class, 'checkIn'])->name('appointments.check-in');
         Route::post('/appointments/{appointment}/start', [AppointmentStatusController::class, 'start'])->name('appointments.start');
         Route::post('/appointments/{appointment}/complete', [AppointmentStatusController::class, 'complete'])->name('appointments.complete');
+        Route::post('/appointments/{appointment}/consume-stock', [AppointmentStatusController::class, 'consumeStock'])->name('appointments.consume-stock');
+        Route::get('/waitlist', [WaitlistController::class, 'index'])->name('waitlist.index');
+        Route::post('/waitlist', [WaitlistController::class, 'store'])->name('waitlist.store');
+        Route::post('/waitlist/{waitlistEntry}/book', [WaitlistController::class, 'book'])->name('waitlist.book');
+        Route::post('/waitlist/{waitlistEntry}/cancel', [WaitlistController::class, 'cancel'])->name('waitlist.cancel');
+        Route::patch('/appointments/{appointment}/move', [AppointmentRescheduleController::class, 'move'])->name('appointments.move');
+        Route::patch('/appointments/{appointment}/resize', [AppointmentRescheduleController::class, 'resize'])->name('appointments.resize');
         Route::post('/appointments/{appointment}/cancel', [AppointmentStatusController::class, 'cancel'])->name('appointments.cancel');
         Route::post('/appointments/{appointment}/no-show', [AppointmentStatusController::class, 'noShow'])->name('appointments.no-show');
         Route::resource('/appointments', AppointmentController::class);
@@ -201,8 +286,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reports/day-end', [DayEndReportController::class, 'index'])->name('reports.day-end');
         Route::get('/reports/sales', [SalesReportController::class, 'index'])->name('reports.sales');
         Route::get('/reports/sales/export', [SalesReportController::class, 'export'])->name('reports.sales.export');
+        Route::get('/reports/sales/download', [SalesReportController::class, 'download'])->name('reports.sales.download');
         Route::get('/reports/tax', [TaxReportController::class, 'index'])->name('reports.tax');
         Route::get('/reports/tax/export', [TaxReportController::class, 'export'])->name('reports.tax.export');
+        Route::get('/reports/tax/download', [TaxReportController::class, 'download'])->name('reports.tax.download');
         Route::get('/gift-cards/lookup', [GiftCardController::class, 'lookup'])->name('gift-cards.lookup');
         Route::post('/gift-cards/{giftCard}/void', [GiftCardController::class, 'void'])->name('gift-cards.void');
         Route::resource('/gift-cards', GiftCardController::class)->only(['index', 'create', 'store', 'show'])->parameters(['gift-cards' => 'giftCard']);
@@ -242,6 +329,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->only(['index']);
         Route::resource('/adjustments', StockAdjustmentController::class)
             ->only(['index', 'create', 'store', 'show']);
+        Route::resource('/suppliers', SupplierController::class)
+            ->except(['show', 'destroy']);
+        Route::get('/purchases/{purchase}/print', [PurchaseController::class, 'print'])->name('purchases.print');
+        Route::post('/purchases/{purchase}/order', [PurchaseController::class, 'order'])->name('purchases.order');
+        Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel'])->name('purchases.cancel');
+        Route::post('/purchases/{purchase}/receive', [PurchaseController::class, 'receive'])->name('purchases.receive');
+        Route::resource('/purchases', PurchaseController::class)
+            ->except(['destroy']);
+        Route::get('/stock-takes/{stockTake}/print', [StockTakeController::class, 'print'])->name('stock-takes.print');
+        Route::post('/stock-takes/{stockTake}/cancel', [StockTakeController::class, 'cancel'])->name('stock-takes.cancel');
+        Route::resource('/stock-takes', StockTakeController::class)
+            ->parameters(['stock-takes' => 'stockTake'])
+            ->only(['index', 'store', 'show', 'update']);
+        Route::get('/batches', [ProductBatchController::class, 'index'])->name('batches.index');
+        Route::post('/transfers/{transfer}/send', [StockTransferController::class, 'send'])->name('transfers.send');
+        Route::post('/transfers/{transfer}/receive', [StockTransferController::class, 'receive'])->name('transfers.receive');
+        Route::post('/transfers/{transfer}/cancel', [StockTransferController::class, 'cancel'])->name('transfers.cancel');
+        Route::resource('/transfers', StockTransferController::class)->only(['index', 'create', 'store', 'show']);
+        Route::post('/batches/{batch}/write-off', [ProductBatchController::class, 'writeOff'])->name('batches.write-off');
     });
 
     Route::prefix('expense-management')->name('expense-management.')->group(function () {
@@ -294,6 +400,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->except(['show']);
     });
 
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/profit-loss', [BusinessReportController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/profit-loss/export', [BusinessReportController::class, 'profitLossExport'])->name('profit-loss.export');
+        Route::get('/branch-comparison', [BusinessReportController::class, 'branchComparison'])->name('branch-comparison');
+        Route::get('/branch-comparison/export', [BusinessReportController::class, 'branchComparisonExport'])->name('branch-comparison.export');
+        Route::get('/staff-performance', [BusinessReportController::class, 'staffPerformance'])->name('staff-performance');
+        Route::get('/staff-performance/export', [BusinessReportController::class, 'staffPerformanceExport'])->name('staff-performance.export');
+        Route::get('/schedules', [ReportScheduleController::class, 'index'])->name('schedules.index');
+        Route::post('/schedules', [ReportScheduleController::class, 'store'])->name('schedules.store');
+        Route::post('/schedules/{schedule}/toggle', [ReportScheduleController::class, 'toggle'])->name('schedules.toggle');
+        Route::post('/schedules/{schedule}/send', [ReportScheduleController::class, 'sendNow'])->name('schedules.send');
+        Route::delete('/schedules/{schedule}', [ReportScheduleController::class, 'destroy'])->name('schedules.destroy');
+    });
+
     Route::prefix('payroll')->name('payroll.')->group(function () {
         Route::get('/dashboard', PayrollDashboardController::class)->name('dashboard');
         Route::get('/reports', [PayrollReportController::class, 'index'])->name('reports.index');
@@ -303,6 +423,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/runs/{payrollRun}/reject', [PayrollRunController::class, 'reject'])->name('runs.reject');
         Route::post('/runs/{payrollRun}/payments', [PayrollPaymentController::class, 'store'])->name('runs.payments.store');
         Route::get('/payslips/{payrollItem}', [PayslipController::class, 'show'])->name('payslips.show');
+        Route::get('/payslips/{payrollItem}/pdf', [PayslipController::class, 'pdf'])->name('payslips.pdf');
+        Route::post('/payslips/{payrollItem}/send', [PayslipController::class, 'send'])->name('payslips.send');
+        Route::post('/runs/{payrollRun}/send-payslips', [PayrollRunController::class, 'sendPayslips'])->name('runs.send-payslips');
+        Route::get('/runs/{payrollRun}/bank-export', [PayrollRunController::class, 'bankExport'])->name('runs.bank-export');
+        Route::get('/statutory', [PayrollStatutoryController::class, 'index'])->name('statutory.index');
+        Route::get('/statutory/export', [PayrollStatutoryController::class, 'export'])->name('statutory.export');
+        Route::get('/advances', [SalaryAdvanceController::class, 'index'])->name('advances.index');
+        Route::post('/advances', [SalaryAdvanceController::class, 'store'])->name('advances.store');
+        Route::post('/advances/{advance}/approve', [SalaryAdvanceController::class, 'approve'])->name('advances.approve');
+        Route::post('/advances/{advance}/reject', [SalaryAdvanceController::class, 'reject'])->name('advances.reject');
+        Route::post('/advances/{advance}/pay', [SalaryAdvanceController::class, 'pay'])->name('advances.pay');
         Route::resource('/salary-structures', SalaryStructureController::class)
             ->parameters(['salary-structures' => 'salaryStructure'])
             ->except(['show', 'destroy']);
@@ -320,6 +451,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/transactions/adjust', [LoyaltyPointTransactionController::class, 'adjust'])->name('transactions.adjust');
         Route::get('/transactions', [LoyaltyPointTransactionController::class, 'index'])->name('transactions.index');
         Route::post('/memberships/{membership}/cancel', [CustomerMembershipController::class, 'cancel'])->name('memberships.cancel');
+        Route::post('/memberships/{membership}/renew', [CustomerMembershipController::class, 'renew'])->name('memberships.renew');
+        Route::post('/memberships/{membership}/auto-renew', [CustomerMembershipController::class, 'toggleAutoRenew'])->name('memberships.auto-renew');
+        Route::get('/tiers', [LoyaltyTierController::class, 'index'])->name('tiers.index');
+        Route::post('/tiers', [LoyaltyTierController::class, 'store'])->name('tiers.store');
+        Route::put('/tiers/{tier}', [LoyaltyTierController::class, 'update'])->name('tiers.update');
+        Route::delete('/tiers/{tier}', [LoyaltyTierController::class, 'destroy'])->name('tiers.destroy');
+        Route::post('/customers/{customer}/send-points', [CustomerRewardsController::class, 'sendBalance'])->name('customers.send-points');
         Route::resource('/programs', LoyaltyProgramController::class)
             ->parameters(['programs' => 'program'])
             ->except(['show', 'destroy']);

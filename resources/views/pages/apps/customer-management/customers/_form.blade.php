@@ -227,7 +227,7 @@
                     {{-- Phone --}}
                     <div class="col-md-6">
 
-                        <label class="form-label required fw-semibold">
+                        <label class="form-label {{ $requirePhone ?? true ? 'required' : '' }} fw-semibold">
                             Phone Number
                         </label>
 
@@ -239,7 +239,7 @@
 
                             <input type="text" name="phone" value="{{ old('phone', $customer->phone) }}"
                                 class="form-control @error('phone') is-invalid @enderror" placeholder="+94 77 123 4567"
-                                autocomplete="tel" required>
+                                autocomplete="tel" @required($requirePhone ?? true)>
 
                             @error('phone')
                                 <div class="invalid-feedback">
@@ -255,7 +255,7 @@
                     {{-- Email --}}
                     <div class="col-md-6">
 
-                        <label class="form-label fw-semibold">
+                        <label class="form-label {{ $requireEmail ?? false ? 'required' : '' }} fw-semibold">
                             Email Address
                         </label>
 
@@ -278,6 +278,25 @@
                         </div>
 
                     </div>
+
+
+                    {{-- Possible duplicate --}}
+                    @if (session('duplicate_customer_id'))
+                        <div class="col-12">
+                            <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center gap-3 mb-0">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">This looks like a customer you already have.</div>
+                                    <a href="{{ route('customer-management.customers.show', session('duplicate_customer_id')) }}" target="_blank">
+                                        Open the existing customer
+                                    </a>
+                                </div>
+                                <label class="form-check form-check-custom form-check-solid">
+                                    <input class="form-check-input" type="checkbox" name="allow_duplicate" value="1">
+                                    <span class="form-check-label fw-semibold">It's a different person — save anyway</span>
+                                </label>
+                            </div>
+                        </div>
+                    @endif
 
 
                     {{-- Gender --}}
@@ -336,6 +355,27 @@
                         </div>
 
                     </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Anniversary</label>
+                        <input type="date" name="anniversary_date"
+                            value="{{ old('anniversary_date', optional($customer->anniversary_date)->format('Y-m-d')) }}"
+                            class="form-control @error('anniversary_date') is-invalid @enderror">
+                        @error('anniversary_date')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    @if (! $customer->referred_by_customer_id)
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Referred by (friend's referral code)</label>
+                            <input type="text" name="referral_code_used" value="{{ old('referral_code_used') }}" maxlength="20"
+                                class="form-control text-uppercase @error('referral_code_used') is-invalid @enderror @error('referral_code') is-invalid @enderror" placeholder="e.g. NADEE123">
+                            @error('referral_code')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    @endif
 
                 </div>
 
@@ -399,6 +439,15 @@
 
 
                     {{-- Profile Notes --}}
+                    <div class="col-12">
+                        <label class="form-label fw-semibold text-danger"><i class="bi bi-exclamation-octagon me-1"></i>Allergies & Sensitivities</label>
+                        <textarea name="allergies" rows="2" class="form-control form-control-solid @error('allergies') is-invalid @enderror"
+                            placeholder="e.g. PPD hair dye, latex, nut oils. Shown as a warning on bookings and at checkout.">{{ old('allergies', $customer->allergies) }}</textarea>
+                        @error('allergies')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     <div class="col-12">
 
                         <label class="form-label fw-semibold">

@@ -7,7 +7,10 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Services\Commission\CommissionGenerator;
+use App\Services\Customers\ReferralService;
+use App\Services\Loyalty\CustomerRewardsService;
 use App\Services\Loyalty\LoyaltyService;
+use App\Services\Settings\SettingService;
 use App\Services\Promotions\PromotionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -130,7 +133,15 @@ class PaymentService
 
         // Gift card value earns points when it is spent, not when the card is bought.
         if ($invoice->payment_status === Invoice::PAYMENT_PAID && ! $invoice->items()->whereIn('item_type', ['membership', 'gift_card'])->exists()) {
-            app(LoyaltyService::class)->earnFromInvoice($invoice->fresh(['tenant', 'customer', 'items.service']), $user);
+            $earned = app(LoyaltyService::class)->earnFromInvoice($invoice->fresh(['tenant', 'customer', 'items.service']), $user);
+
+            if ($earned && $invoice->customer && app(SettingService::class)->get('loyalty.notify_points_earned', $invoice->tenant_id, $invoice->branch_id)) {
+                app(CustomerRewardsService::class)->sendBalance($invoice->customer, $user);
+            }
+        }
+
+        if ($invoice->payment_status === Invoice::PAYMENT_PAID && $invoice->customer_id) {
+            app(ReferralService::class)->rewardIfDue($invoice->fresh(['tenant', 'customer']), $user);
         }
     }
 

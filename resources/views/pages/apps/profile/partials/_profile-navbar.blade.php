@@ -191,6 +191,30 @@
                             href="{{ route('profile.settings') }}">Settings</a>
                     </li>
                     <!--end::Nav item-->
+                    @if (Auth::user()->staffProfile)
+                        <!--begin::Nav item-->
+                        <li class="nav-item mt-2">
+                            <a class="nav-link text-active-primary ms-0 me-10 py-5 {{ request()->routeIs('profile.appointments') ? 'active' : '' }}"
+                                href="{{ route('profile.appointments') }}">Appointments</a>
+                        </li>
+                        <!--end::Nav item-->
+                        @if (Auth::user()->can('commissions.view_own') || Auth::user()->can('commissions.view'))
+                            <!--begin::Nav item-->
+                            <li class="nav-item mt-2">
+                                <a class="nav-link text-active-primary ms-0 me-10 py-5 {{ request()->routeIs('profile.commissions') ? 'active' : '' }}"
+                                    href="{{ route('profile.commissions') }}">Commissions</a>
+                            </li>
+                            <!--end::Nav item-->
+                        @endif
+                        <li class="nav-item mt-2">
+                            <a class="nav-link text-active-primary ms-0 me-10 py-5 {{ request()->routeIs('profile.attendance') ? 'active' : '' }}"
+                                href="{{ route('profile.attendance') }}">Attendance</a>
+                        </li>
+                        <li class="nav-item mt-2">
+                            <a class="nav-link text-active-primary ms-0 me-10 py-5 {{ request()->routeIs('profile.leave') ? 'active' : '' }}"
+                                href="{{ route('profile.leave') }}">Leave</a>
+                        </li>
+                    @endif
                     <!--begin::Nav item-->
                     <li class="nav-item mt-2">
                         <a class="nav-link text-active-primary ms-0 me-10 py-5 {{ request()->routeIs('profile.security') ? 'active' : '' }}"

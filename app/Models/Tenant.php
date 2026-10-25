@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -11,11 +12,24 @@ class Tenant extends Model
 {
     use Auditable;
 
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_SUSPENDED = 'suspended';
+
+    public const STATUSES = [
+        self::STATUS_ACTIVE,
+        self::STATUS_SUSPENDED,
+    ];
+
     protected $guarded = [];
 
     protected $casts = [
         'settings' => 'array',
     ];
+
+    public function isSuspended(): bool
+    {
+        return $this->status === self::STATUS_SUSPENDED;
+    }
 
     public const BUSINESS_TYPES = [
         'Hair Salon',
@@ -170,6 +184,16 @@ class Tenant extends Model
     public function subscription(): HasOne
     {
         return $this->hasOne(Subscription::class)->latestOfMany();
+    }
+
+    /**
+     * Salons that may use the system: not suspended, with a subscription that grants access.
+     */
+    public function scopeOperational(Builder $query): Builder
+    {
+        return $query
+            ->where($query->getModel()->getTable() . '.status', '!=', self::STATUS_SUSPENDED)
+            ->whereHas('subscription', fn (Builder $subscription) => $subscription->grantingAccess());
     }
 
     public function systemSettings(): HasMany

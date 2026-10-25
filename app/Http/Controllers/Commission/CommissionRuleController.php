@@ -166,13 +166,36 @@ class CommissionRuleController extends Controller
             'product_id' => in_array($scope, [CommissionRule::SCOPE_PRODUCT, CommissionRule::SCOPE_STAFF_PRODUCT], true) ? ($data['product_id'] ?? null) : null,
             'commission_scope' => $scope,
             'commission_type' => $data['commission_type'],
-            'commission_value' => $data['commission_value'],
+            'commission_value' => $data['commission_type'] === CommissionRule::TYPE_TIERED ? 0 : ($data['commission_value'] ?? 0),
+            'tiers' => $data['commission_type'] === CommissionRule::TYPE_TIERED ? $this->normalizeTiers($data['tiers'] ?? []) : null,
             'calculate_on' => $data['calculate_on'],
             'priority' => $data['priority'] ?? $this->priorityFor($scope),
             'effective_from' => $data['effective_from'] ?? null,
             'effective_to' => $data['effective_to'] ?? null,
             'is_active' => (bool) ($data['is_active'] ?? false),
         ];
+    }
+
+    /**
+     * Sorted by threshold. Without a zero tier, sales below the first threshold earn no commission
+     * from this rule, so a starting tier is added explicitly as 0%.
+     */
+    private function normalizeTiers(array $tiers): array
+    {
+        $tiers = collect($tiers)
+            ->filter(fn ($tier) => is_array($tier) && $tier['min_sales'] !== null && $tier['min_sales'] !== '' && $tier['rate'] !== null && $tier['rate'] !== '')
+            ->map(fn ($tier) => ['min_sales' => round((float) $tier['min_sales'], 2), 'rate' => round((float) $tier['rate'], 2)])
+            ->unique('min_sales')
+            ->sortBy('min_sales')
+            ->values();
+
+        abort_if($tiers->isEmpty(), 422, 'Add at least one commission tier.');
+
+        if ($tiers->first()['min_sales'] > 0) {
+            $tiers->prepend(['min_sales' => 0.0, 'rate' => 0.0]);
+        }
+
+        return $tiers->all();
     }
 
     private function assertTenantId(Tenant $tenant, string $model, mixed $id, string $field): void

@@ -9,6 +9,7 @@ use App\Models\Service;
 use App\Models\Staff;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Settings\SettingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -36,7 +37,7 @@ class AppointmentBookingService
                 'appointment_number' => null,
                 'booking_source' => $data['booking_source'] ?? 'reception',
                 'source' => $data['booking_source'] ?? 'reception',
-                'status' => $data['status'] ?? Appointment::STATUS_PENDING,
+                'status' => $data['status'] ?? $this->defaultStatus($tenant, $prepared['branch']),
                 'starts_at' => $prepared['starts_at'],
                 'ends_at' => $prepared['ends_at'],
                 'subtotal' => $prepared['totals']['subtotal'],
@@ -78,6 +79,7 @@ class AppointmentBookingService
 
         return DB::transaction(function () use ($appointment, $tenant, $data, $user) {
             $prepared = $this->prepare($tenant, $data, $appointment);
+            $this->ensureStaffReassignmentAllowed($appointment, collect($prepared['lines'])->pluck('staff.id')->all());
             $this->lockStaff($prepared['lines']);
             $this->validateAvailability($prepared, $appointment);
             $fromStatus = $appointment->status;
@@ -114,6 +116,35 @@ class AppointmentBookingService
 
             return $appointment->fresh(['branch', 'customer', 'appointmentServices.service', 'appointmentServices.staff', 'statusHistory.changedBy']);
         });
+    }
+
+    /**
+     * With "Allow Staff Reassignment" off, a booked appointment keeps the staff members it was booked with.
+     *
+     * @param  array<int, int>  $staffIds  The staff the appointment would have after the change.
+     */
+    public function ensureStaffReassignmentAllowed(Appointment $appointment, array $staffIds): void
+    {
+        $current = $appointment->appointmentServices()->pluck('staff_id')->map(fn ($id) => (int) $id)->unique()->sort()->values()->all();
+        $next = collect($staffIds)->map(fn ($id) => (int) $id)->unique()->sort()->values()->all();
+
+        if ($current === $next || app(SettingService::class)->get('appointment_status.allow_staff_reassignment', $appointment->tenant_id, $appointment->branch_id)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'staff_id' => 'This salon does not allow moving a booked appointment to another staff member.',
+        ]);
+    }
+
+    /**
+     * New bookings start confirmed when the salon turns on "Auto Confirm Appointments", otherwise pending.
+     */
+    public function defaultStatus(Tenant $tenant, ?Branch $branch = null): string
+    {
+        return app(SettingService::class)->get('booking.auto_confirm', $tenant->id, $branch?->id)
+            ? Appointment::STATUS_CONFIRMED
+            : Appointment::STATUS_PENDING;
     }
 
     private function prepare(Tenant $tenant, array $data, ?Appointment $ignoreAppointment = null): array

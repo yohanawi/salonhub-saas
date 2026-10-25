@@ -583,6 +583,11 @@
                 </div>
 
 
+                @can('manageAccess', $staffMember)
+                    @include('pages/apps.staff-management.staff._login-access')
+                @endcan
+
+
                 {{-- ================================================= --}}
                 {{-- COMMISSION SUMMARY --}}
                 {{-- ================================================= --}}

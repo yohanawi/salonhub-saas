@@ -806,6 +806,9 @@
 
 
 
+        @if ($calendarView === 'timeline')
+            @include('pages/apps.appointment-management.appointments._timeline')
+        @else
         {{-- ============================================================
             STAFF CALENDAR BOARD
         ============================================================ --}}
@@ -858,7 +861,13 @@
 
                 <div class="card-toolbar d-none d-md-flex">
 
-                    <div class="d-flex gap-4 text-muted fs-8">
+                    <div class="d-flex gap-4 text-muted fs-8 align-items-center">
+
+                        <a href="{{ route('appointment-management.appointments.calendar', array_merge(request()->query(), ['view' => 'timeline'])) }}"
+                            class="btn btn-sm btn-light-primary me-2">
+                            <i class="bi bi-clock me-1"></i>
+                            Timeline
+                        </a>
 
                         <span>
                             <span class="bullet bullet-dot bg-warning me-1"></span>
@@ -1289,6 +1298,7 @@
             </div>
 
         </div>
+        @endif
 
     </div>
 

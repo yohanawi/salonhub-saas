@@ -36,6 +36,8 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \App\Http\Middleware\EnsureUserIsActive::class,
+            \App\Http\Middleware\EnforceIdleTimeout::class,
+            \App\Http\Middleware\EnsureTwoFactorChallengePassed::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
 
@@ -62,6 +64,8 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'signed' => \App\Http\Middleware\ValidateSignature::class,
+        'subscription.active' => \App\Http\Middleware\EnsureTenantSubscriptionIsActive::class,
+        'two-factor.enrolled' => \App\Http\Middleware\EnsureTwoFactorEnrolled::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
     ];

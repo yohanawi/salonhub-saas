@@ -100,6 +100,24 @@
                         </div>
                         <!--end::Input group-->
                         <!--begin::Input group-->
+                        <div class="fv-row mb-7">
+                            <!--begin::Label-->
+                            <label class="fw-semibold fs-6 mb-2">Salon</label>
+                            <!--end::Label-->
+                            <!--begin::Input-->
+                            <select wire:model.live="tenant_id" name="tenant_id" class="form-select form-select-solid">
+                                <option value="">No salon (platform user)</option>
+                                @foreach ($tenants as $tenantOption)
+                                    <option value="{{ $tenantOption->id }}">{{ $tenantOption->name }}</option>
+                                @endforeach
+                            </select>
+                            <!--end::Input-->
+                            <div class="text-muted fs-7 mt-1">Counts towards the salon's plan user limit.</div>
+                            @error('tenant_id')
+                            <span class="text-danger">{{ $message }}</span> @enderror
+                        </div>
+                        <!--end::Input group-->
+                        <!--begin::Input group-->
                         <div class="mb-7">
                             <!--begin::Label-->
                             <label class="required fw-semibold fs-6 mb-5">Role</label>

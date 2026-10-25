@@ -11,6 +11,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use App\Services\Reports\ReportCatalog;
+use App\Services\Reports\ReportExporter;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SalesReportController extends Controller
@@ -66,6 +69,17 @@ class SalesReportController extends Controller
         };
 
         return $this->csv($filename, $headers, $rows);
+    }
+
+    public function download(Request $request, BranchContext $branchContext, PlanEntitlementService $entitlements, SalesReportService $reports, ReportCatalog $catalog, ReportExporter $exporter): Response
+    {
+        [$tenant, , $selectedBranch, $branchIds] = $this->reportScope($request, $branchContext, $entitlements);
+        [$from, $to] = $this->period($request, $reports->timezone($tenant));
+
+        return $exporter->download(
+            $catalog->salesDocument($tenant, $reports->build($tenant, $branchIds, $from, $to), $selectedBranch?->name ?? 'All branches'),
+            $request->string('format', 'xlsx')->toString()
+        );
     }
 
     /**

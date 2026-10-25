@@ -46,14 +46,14 @@ class SocialiteController extends Controller
                 ->withErrors(['email' => 'No SaloonHub account uses this email yet. Please register your salon first.']);
         }
 
-        if ($user->status !== 'active') {
+        if ($blockedReason = $user->loginBlockedReason()) {
             $auditLogService->recordAuthentication(AuditLog::ACTION_FAILED_LOGIN, $user, $request, [
                 'email' => $user->email,
-                'reason' => 'account_inactive',
+                'reason' => $user->status !== 'active' ? 'account_inactive' : 'tenant_suspended',
                 'provider' => $provider,
             ]);
 
-            return redirect()->route('login')->withErrors(['email' => 'This account has been deactivated. Please contact support.']);
+            return redirect()->route('login')->withErrors(['email' => $blockedReason]);
         }
 
         if (! $user->hasVerifiedEmail()) {

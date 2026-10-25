@@ -21,10 +21,16 @@ class CustomerLoyaltyAccount extends Model
         'expired_points' => 'integer',
         'joined_at' => 'datetime',
         'last_activity_at' => 'datetime',
+        'tier_achieved_at' => 'datetime',
     ];
 
     public const STATUS_ACTIVE = 'active';
     public const STATUS_INACTIVE = 'inactive';
+
+    public function tier(): BelongsTo
+    {
+        return $this->belongsTo(LoyaltyTier::class, 'loyalty_tier_id');
+    }
 
     public function customer(): BelongsTo
     {

@@ -85,6 +85,8 @@ class PlanEntitlementService
             return;
         }
 
+        $this->ensureSubscriptionActive($tenant);
+
         $limit = $this->limit($tenant, $limitKey);
 
         if ($limit !== null && $this->usage($tenant)[$usageKey] >= $limit) {
@@ -96,6 +98,8 @@ class PlanEntitlementService
 
     public function ensureFeature(Tenant $tenant, string $feature, ?string $message = null): void
     {
+        $this->ensureSubscriptionActive($tenant);
+
         if (! $this->featureEnabled($tenant, $feature)) {
             throw ValidationException::withMessages([
                 'plan' => $message ?: (self::FEATURE_MESSAGES[$feature] ?? 'Your subscription plan does not include this feature.'),
@@ -113,6 +117,11 @@ class PlanEntitlementService
     public function featureValue(Tenant $tenant, string $feature): mixed
     {
         $subscription = $this->subscription($tenant);
+
+        // A lapsed subscription keeps its plan for reactivation, but none of its features are usable.
+        if ($subscription && ! $subscription->grantsAccess()) {
+            return false;
+        }
 
         return data_get($subscription?->entitlements, "features.{$feature}", $subscription?->plan?->featureValue($feature) ?? false);
     }
@@ -136,6 +145,22 @@ class PlanEntitlementService
             'users' => User::query()->where('tenant_id', $tenant->id)->count(),
             'customers' => Customer::withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count(),
         ];
+    }
+
+    /**
+     * Why the salon is locked out, or null while it may use the system. A salon that has not picked a plan yet
+     * (still onboarding) is not locked out here; its features are simply unavailable until it does.
+     */
+    public function subscriptionBlockedReason(Tenant $tenant): ?string
+    {
+        return $this->subscription($tenant)?->accessBlockedReason();
+    }
+
+    public function ensureSubscriptionActive(Tenant $tenant): void
+    {
+        if ($reason = $this->subscriptionBlockedReason($tenant)) {
+            throw ValidationException::withMessages(['plan' => $reason]);
+        }
     }
 
     private function subscription(Tenant $tenant): ?Subscription

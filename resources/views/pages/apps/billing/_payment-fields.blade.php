@@ -4,7 +4,12 @@
     window.posPayments.setTotal(total); the first line follows it until the cashier edits an amount.
 --}}
 @php
-    $paymentRows = old('payments', [['payment_method_id' => old('payment_method_id'), 'amount' => old('amount', number_format($total, 2, '.', ''))]]);
+    // The first line starts on the salon's default method (Settings > Sales > Default Payment Method).
+    $defaultMethodType = auth()->user()?->tenant_id
+        ? app(\App\Services\Settings\SettingService::class)->get('payment.default_method', auth()->user()->tenant_id)
+        : null;
+    $defaultMethodId = $paymentMethods->firstWhere('type', $defaultMethodType)?->id;
+    $paymentRows = old('payments', [['payment_method_id' => old('payment_method_id', $defaultMethodId), 'amount' => old('amount', number_format($total, 2, '.', ''))]]);
 @endphp
 
 @if ($requireShift && ! $cashShift)

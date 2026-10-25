@@ -39,8 +39,9 @@ class QuickSaleRequest extends FormRequest
             'customer_id' => ['nullable', 'required_if:customer_mode,' . self::CUSTOMER_EXISTING, 'integer'],
             'new_customer.first_name' => ['nullable', 'required_if:customer_mode,' . self::CUSTOMER_NEW, 'string', 'max:100'],
             'new_customer.last_name' => ['nullable', 'string', 'max:100'],
-            'new_customer.phone' => ['nullable', 'required_if:customer_mode,' . self::CUSTOMER_NEW, 'string', 'max:30'],
-            'new_customer.email' => ['nullable', 'email', 'max:255'],
+            // Settings > Customers decides whether a new customer needs a phone and/or email.
+            'new_customer.phone' => ['nullable', ...($this->customerSetting('customer.require_phone') ? ['required_if:customer_mode,' . self::CUSTOMER_NEW] : []), 'string', 'max:30'],
+            'new_customer.email' => ['nullable', ...($this->customerSetting('customer.require_email') ? ['required_if:customer_mode,' . self::CUSTOMER_NEW] : []), 'email', 'max:255'],
             'service_items' => ['nullable', 'array'],
             'service_items.*' => ['array'],
             'service_items.*.service_id' => ['nullable', 'integer'],
@@ -136,5 +137,10 @@ class QuickSaleRequest extends FormRequest
         if ($mode !== self::CUSTOMER_EXISTING && (int) $this->input('loyalty_points_to_redeem', 0) > 0) {
             $validator->errors()->add('loyalty_points_to_redeem', 'Loyalty points can only be redeemed for a registered customer.');
         }
+    }
+
+    private function customerSetting(string $key): bool
+    {
+        return (bool) app(SettingService::class)->get($key, $this->user()?->tenant_id);
     }
 }

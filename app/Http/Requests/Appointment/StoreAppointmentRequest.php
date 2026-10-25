@@ -8,6 +8,8 @@ use App\Models\Customer;
 use App\Models\Service;
 use App\Models\Staff;
 use App\Services\BranchContext;
+use App\Services\Appointment\BookingWindowService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -58,6 +60,8 @@ class StoreAppointmentRequest extends FormRequest
                     $validator->errors()->add('branch_id', 'The selected branch does not belong to this salon.');
                 } elseif (! $this->user()->hasRole('Super Admin') && ! app(BranchContext::class)->canAccess($this->user(), $branch)) {
                     $validator->errors()->add('branch_id', 'You cannot create appointments for this branch.');
+                } else {
+                    $this->validateStartTime($validator, $branch);
                 }
 
                 if (! Customer::withoutTenantScope()->where('tenant_id', $tenantId)->whereKey($this->integer('customer_id'))->exists()) {
@@ -75,6 +79,40 @@ class StoreAppointmentRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /**
+     * Applies the salon's booking window (see BookingWindowService).
+     */
+    private function validateStartTime(Validator $validator, Branch $branch): void
+    {
+        if ($validator->errors()->has('starts_at')) {
+            return;
+        }
+
+        try {
+            $startsAt = CarbonImmutable::parse($this->input('starts_at'));
+        } catch (\Throwable) {
+            return;
+        }
+
+        if (! $this->startTimeChanged($startsAt)) {
+            return;
+        }
+
+        $violation = app(BookingWindowService::class)->violation($branch, $startsAt, $this->input('booking_source'));
+
+        if ($violation !== null) {
+            $validator->errors()->add('starts_at', $violation);
+        }
+    }
+
+    /**
+     * A new appointment always has its time checked; an update overrides this to skip unchanged times.
+     */
+    protected function startTimeChanged(CarbonImmutable $startsAt): bool
+    {
+        return true;
     }
 
     protected function tenantId(): ?int

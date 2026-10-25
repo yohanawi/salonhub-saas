@@ -65,13 +65,13 @@
         </div>
         <div class="col-md-4">
             <label class="form-label required">Commission Type</label>
-            <select name="commission_type" class="form-select form-select-solid">
-                @foreach(\App\Models\CommissionSetting::TYPES as $type)
-                    <option value="{{ $type }}" @selected(old('commission_type', $rule->commission_type) === $type)>{{ str($type)->headline() }}</option>
+            <select name="commission_type" id="commission_type_select" class="form-select form-select-solid">
+                @foreach(\App\Models\CommissionRule::TYPES as $type)
+                    <option value="{{ $type }}" @selected(old('commission_type', $rule->commission_type) === $type)>{{ $type === \App\Models\CommissionRule::TYPE_TIERED ? 'Tiered (monthly sales target)' : str($type)->headline() }}</option>
                 @endforeach
             </select>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-4" id="commission_value_group">
             <label class="form-label required">Commission Value</label>
             <input type="number" step="0.01" min="0" name="commission_value" value="{{ old('commission_value', $rule->commission_value) }}" class="form-control form-control-solid">
         </div>
@@ -103,8 +103,94 @@
             </label>
         </div>
     </div>
+
+    @php
+        $tierRows = collect(old('tiers', $rule->tiers ?? []))->values();
+
+        if ($tierRows->isEmpty()) {
+            $tierRows = collect([['min_sales' => 0, 'rate' => 10], ['min_sales' => 100000, 'rate' => 15]]);
+        }
+    @endphp
+
+    <div id="commission_tiers_group" class="mt-8 rounded-4 border border-dashed border-gray-300 p-6">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <h4 class="fw-bold text-gray-900 mb-1">Sales Tiers</h4>
+                <div class="text-muted fs-8">
+                    The rate depends on the staff member's service + product sales (after discount, before tax) in the calendar month,
+                    including the sale being paid. Each sale keeps the rate of the tier reached at that moment.
+                </div>
+            </div>
+            <button type="button" id="tier_add" class="btn btn-sm btn-light-primary"><i class="bi bi-plus-lg me-1"></i>Add Tier</button>
+        </div>
+
+        @error('tiers')<div class="alert alert-danger py-2 fs-7">{{ $message }}</div>@enderror
+        @error('tiers.*.min_sales')<div class="alert alert-danger py-2 fs-7">{{ $message }}</div>@enderror
+
+        <div class="row g-3 text-muted fs-8 fw-bold text-uppercase mb-2">
+            <div class="col-6">Monthly sales from</div>
+            <div class="col-4">Commission %</div>
+        </div>
+        <div id="tier_rows">
+            @foreach ($tierRows as $index => $tier)
+                <div class="row g-3 mb-3 tier-row">
+                    <div class="col-6">
+                        <input type="number" step="0.01" min="0" name="tiers[{{ $index }}][min_sales]" value="{{ $tier['min_sales'] ?? '' }}" class="form-control form-control-solid form-control-sm" placeholder="0.00">
+                    </div>
+                    <div class="col-4">
+                        <input type="number" step="0.01" min="0" max="100" name="tiers[{{ $index }}][rate]" value="{{ $tier['rate'] ?? '' }}" class="form-control form-control-solid form-control-sm" placeholder="%">
+                    </div>
+                    <div class="col-2 text-end">
+                        <button type="button" class="btn btn-sm btn-icon btn-light-danger tier-remove"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        <div class="text-muted fs-8 mt-2">Example: 0 → 10%, 100,000 → 15%. Sales below the lowest threshold earn 0% from this rule.</div>
+    </div>
+
     <div class="d-flex justify-content-end gap-3 mt-8">
         <a href="{{ route('commission-management.rules.index') }}" class="btn btn-light">Cancel</a>
         <button type="submit" class="btn btn-primary" @disabled($isSuperAdmin && ! $selectedTenant)>Save Rule</button>
     </div>
 </form>
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const typeSelect = document.getElementById('commission_type_select');
+            const tiersGroup = document.getElementById('commission_tiers_group');
+            const valueGroup = document.getElementById('commission_value_group');
+            const tierRows = document.getElementById('tier_rows');
+            let nextIndex = tierRows.querySelectorAll('.tier-row').length;
+
+            function syncType() {
+                const tiered = typeSelect.value === 'tiered';
+                tiersGroup.classList.toggle('d-none', !tiered);
+                valueGroup.classList.toggle('d-none', tiered);
+                tiersGroup.querySelectorAll('input').forEach((input) => input.disabled = !tiered);
+            }
+
+            document.getElementById('tier_add').addEventListener('click', function() {
+                const index = nextIndex++;
+                tierRows.insertAdjacentHTML('beforeend',
+                    '<div class="row g-3 mb-3 tier-row">' +
+                    '<div class="col-6"><input type="number" step="0.01" min="0" name="tiers[' + index + '][min_sales]" class="form-control form-control-solid form-control-sm" placeholder="0.00"></div>' +
+                    '<div class="col-4"><input type="number" step="0.01" min="0" max="100" name="tiers[' + index + '][rate]" class="form-control form-control-solid form-control-sm" placeholder="%"></div>' +
+                    '<div class="col-2 text-end"><button type="button" class="btn btn-sm btn-icon btn-light-danger tier-remove"><i class="bi bi-trash"></i></button></div>' +
+                    '</div>');
+            });
+
+            tierRows.addEventListener('click', function(event) {
+                const button = event.target.closest('.tier-remove');
+
+                if (button && tierRows.querySelectorAll('.tier-row').length > 1) {
+                    button.closest('.tier-row').remove();
+                }
+            });
+
+            typeSelect.addEventListener('change', syncType);
+            syncType();
+        });
+    </script>
+@endpush

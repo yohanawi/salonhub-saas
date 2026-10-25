@@ -99,6 +99,7 @@ class CommissionRuleResolver
             'commission_type' => $rule->commission_type,
             'commission_value' => (float) $rule->commission_value,
             'calculate_on' => $rule->calculate_on,
+            'tiers' => $rule->isTiered() ? $rule->sortedTiers() : null,
         ];
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Auth;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Services\Audit\AuditLogService;
+use App\Services\Settings\SettingService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -63,7 +64,7 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (Auth::user()->status !== 'active') {
+        if ($blockedReason = Auth::user()->loginBlockedReason()) {
             $user = Auth::user();
             Auth::logout();
 
@@ -71,11 +72,11 @@ class LoginRequest extends FormRequest
                 AuditLog::ACTION_FAILED_LOGIN,
                 $user,
                 $this,
-                ['email' => $this->input('email'), 'reason' => 'account_inactive']
+                ['email' => $this->input('email'), 'reason' => $user->status !== 'active' ? 'account_inactive' : 'tenant_suspended']
             );
 
             throw ValidationException::withMessages([
-                'email' => 'This account has been deactivated. Please contact support.',
+                'email' => $blockedReason,
             ]);
         }
 
@@ -91,7 +92,7 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited()
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), $this->maxAttempts())) {
             return;
         }
 
@@ -105,6 +106,18 @@ class LoginRequest extends FormRequest
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    /**
+     * Failed sign-ins allowed before a lockout: the account's salon sets it in Settings > Security.
+     * Unknown emails get the default, so the limit does not reveal which addresses have accounts.
+     */
+    private function maxAttempts(): int
+    {
+        $tenantId = User::query()->where('email', $this->input('email'))->value('tenant_id');
+        $limit = $tenantId ? (int) app(SettingService::class)->get('security.login_attempt_limit', $tenantId) : 0;
+
+        return $limit > 0 ? $limit : 5;
     }
 
     /**

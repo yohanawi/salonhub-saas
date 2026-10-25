@@ -303,6 +303,35 @@
                                                 <i class="bi {{ $statusConfig['icon'] }} me-1"></i>
                                                 {{ str($status)->replace('_', ' ')->headline() }}
                                             </span>
+                                            @if ($subscription && $subscription->status === 'trialing' && ! $subscription->grantsAccess())
+                                                <div class="text-danger fs-8 mt-1">Trial ended {{ $subscription->trial_ends_at->format('d M Y') }}</div>
+                                            @endif
+                                            @if ($tenant->isSuspended())
+                                                <div class="mt-2">
+                                                    <span class="badge badge-danger px-3 py-2">
+                                                        <i class="bi bi-slash-circle-fill text-white me-1"></i>
+                                                        Suspended
+                                                    </span>
+                                                </div>
+                                            @endif
+                                            <form method="POST"
+                                                action="{{ route('plan-management.tenants.status.update', $tenant) }}"
+                                                class="mt-2"
+                                                data-swal-confirm
+                                                data-swal-title="{{ $tenant->isSuspended() ? 'Reactivate' : 'Suspend' }} {{ $tenant->name }}?"
+                                                data-swal-text="{{ $tenant->isSuspended() ? 'Their users will be able to sign in again.' : 'All of their users are signed out and cannot sign in until the salon is reactivated.' }}"
+                                                data-swal-icon="warning"
+                                                data-swal-confirm-button="Yes, {{ $tenant->isSuspended() ? 'reactivate' : 'suspend' }}"
+                                                data-swal-cancel-button="Cancel">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="status"
+                                                    value="{{ $tenant->isSuspended() ? \App\Models\Tenant::STATUS_ACTIVE : \App\Models\Tenant::STATUS_SUSPENDED }}">
+                                                <button type="submit"
+                                                    class="btn btn-sm {{ $tenant->isSuspended() ? 'btn-light-success' : 'btn-light-danger' }} py-1 px-3 fs-8">
+                                                    {{ $tenant->isSuspended() ? 'Reactivate salon' : 'Suspend salon' }}
+                                                </button>
+                                            </form>
                                         </td>
 
                                         <td>

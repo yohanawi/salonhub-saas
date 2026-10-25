@@ -22,6 +22,7 @@ class CustomerMembership extends Model
         'joining_fee_paid' => 'decimal:2',
         'auto_renew' => 'boolean',
         'cancelled_at' => 'datetime',
+        'renewal_reminder_sent_at' => 'datetime',
     ];
 
     public const STATUS_PENDING = 'pending';
@@ -43,6 +44,16 @@ class CustomerMembership extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function renewedFrom(): BelongsTo
+    {
+        return $this->belongsTo(CustomerMembership::class, 'renewed_from_membership_id');
+    }
+
+    public function renewedTo(): BelongsTo
+    {
+        return $this->belongsTo(CustomerMembership::class, 'renewed_membership_id');
     }
 
     public function usages(): HasMany

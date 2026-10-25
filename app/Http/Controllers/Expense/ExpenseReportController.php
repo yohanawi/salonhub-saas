@@ -13,10 +13,15 @@ use App\Services\PlanEntitlementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use App\Services\Reports\ReportCatalog;
+use App\Services\Reports\ReportExporter;
+use App\Support\Reports\ReportDocument;
+use App\Support\Reports\ReportTable;
+use Symfony\Component\HttpFoundation\Response;
 
 class ExpenseReportController extends Controller
 {
-    public function index(Request $request, BranchContext $branchContext, PlanEntitlementService $entitlements): View
+    public function index(Request $request, BranchContext $branchContext, PlanEntitlementService $entitlements): View|Response
     {
         abort_unless($request->user()->hasRole('Super Admin') || $request->user()->can('expense_reports.view'), 403);
 
@@ -43,7 +48,7 @@ class ExpenseReportController extends Controller
             ->when($request->filled('date_from'), fn (Builder $query) => $query->whereDate('expense_date', '>=', $request->date('date_from')))
             ->when($request->filled('date_to'), fn (Builder $query) => $query->whereDate('expense_date', '<=', $request->date('date_to')));
 
-        return view('pages/apps.expense-management.reports.index', [
+        $data = [
             'totalExpenses' => (clone $base)->sum('total_amount'),
             'totalPaid' => (clone $base)->sum('paid_amount'),
             'totalOutstanding' => (clone $base)->sum('balance_amount'),
@@ -55,6 +60,21 @@ class ExpenseReportController extends Controller
             'vendors' => $tenant ? Vendor::withoutTenantScope()->where('tenant_id', $tenant->id)->orderBy('name')->get() : Vendor::withoutTenantScope()->orderBy('name')->get(),
             'tenants' => $isSuperAdmin ? Tenant::query()->orderBy('name')->get() : collect(),
             'isSuperAdmin' => $isSuperAdmin,
-        ]);
+        ];
+
+        if ($request->filled('format')) {
+            return app(ReportExporter::class)->download($this->document($data, $tenant, $request), $request->string('format')->toString());
+        }
+
+        return view('pages/apps.expense-management.reports.index', $data);
+    }
+
+    private function document(array $data, ?Tenant $tenant, Request $request): ReportDocument
+    {
+        return app(ReportCatalog::class)->expenseSummary($tenant, $data, array_filter([
+            'From' => $request->input('date_from'),
+            'To' => $request->input('date_to'),
+            'Branch' => $request->filled('branch_id') ? optional($data['branches']->firstWhere('id', $request->integer('branch_id')))->name : 'All branches',
+        ]));
     }
 }

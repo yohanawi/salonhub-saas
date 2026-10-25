@@ -24,6 +24,13 @@
     @endphp
 
     <div id="kt_app_content_container">
+
+        @if ($appointment->customer?->hasAllergies())
+            <div class="alert alert-danger border-0 shadow-sm d-flex align-items-center mb-8">
+                <i class="bi bi-exclamation-octagon-fill fs-1 me-4"></i>
+                <div><div class="fw-bold">Allergies & sensitivities: {{ $appointment->customer->full_name }}</div><div>{{ $appointment->customer->allergies }}</div></div>
+            </div>
+        @endif
         @if ($errors->any())
             <div class="alert alert-danger border-0 shadow-sm mb-8">
                 <div class="fw-bold text-gray-900 mb-1">Checkout cannot continue</div>

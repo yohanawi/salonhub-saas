@@ -44,7 +44,6 @@ class SystemSettingsManagementTest extends TestCase
                     'booking.minimum_notice_minutes' => 90,
                     'booking.maximum_advance_days' => 45,
                     'booking.cancellation_cutoff_hours' => 10,
-                    'booking.reschedule_cutoff_hours' => 8,
                     'booking.allow_same_day' => 1,
                     'booking.allow_walk_ins' => 0,
                     'booking.auto_confirm' => 1,
@@ -53,7 +52,6 @@ class SystemSettingsManagementTest extends TestCase
                     'appointment_status.auto_mark_no_show' => 1,
                     'appointment_status.no_show_grace_minutes' => 15,
                     'appointment_status.allow_staff_reassignment' => 1,
-                    'appointment_status.allow_service_modification_after_checkin' => 0,
                 ],
             ])
             ->assertRedirect();

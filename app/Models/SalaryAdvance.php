@@ -30,6 +30,17 @@ class SalaryAdvance extends Model
     public const STATUS_RECOVERED = 'recovered';
     public const STATUS_REJECTED = 'rejected';
 
+    public const STATUSES = [
+        self::STATUS_REQUESTED,
+        self::STATUS_APPROVED,
+        self::STATUS_PAID,
+        self::STATUS_RECOVERED,
+        self::STATUS_REJECTED,
+    ];
+
+    public const REPAYMENT_ONE_TIME = 'one_time';
+    public const REPAYMENT_INSTALLMENTS = 'installments';
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
@@ -38,5 +49,37 @@ class SalaryAdvance extends Model
     public function staff(): BelongsTo
     {
         return $this->belongsTo(Staff::class);
+    }
+
+    public function requestedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function paidBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return str($this->status)->headline()->toString();
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_REQUESTED => 'warning',
+            self::STATUS_APPROVED => 'primary',
+            self::STATUS_PAID => 'info',
+            self::STATUS_RECOVERED => 'success',
+            self::STATUS_REJECTED => 'danger',
+            default => 'secondary',
+        };
     }
 }

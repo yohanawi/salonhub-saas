@@ -83,10 +83,13 @@
                         @endif
                         <!--begin::Action-->
                         <div class="d-flex justify-content-end pb-0 px-0">
-                            <a href="#" class="btn btn-light btn-active-light-primary me-2"
-                                id="kt_account_billing_cancel_subscription_btn">Cancel Subscription</a>
-                            <button class="btn btn-primary" data-bs-toggle="modal"
-                                data-bs-target="#kt_modal_upgrade_plan">Upgrade Plan</button>
+                            <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip"
+                                title="Online plan changes aren't available yet — please contact support.">
+                                <a href="#" class="btn btn-light me-2 disabled" aria-disabled="true"
+                                    style="pointer-events: none;">Cancel Subscription</a>
+                                <a href="#" class="btn btn-primary disabled" aria-disabled="true"
+                                    style="pointer-events: none;">Upgrade Plan</a>
+                            </span>
                         </div>
                         <!--end::Action-->
                     </div>
@@ -236,75 +239,96 @@
         </div>
         <!--end::Card header-->
         <!--begin::Card body-->
-        <div class="card-body">
+        <div class="card-body" id="kt_billing_addresses">
+            @if (session('status'))
+                <div class="alert alert-success py-3 mb-6">{{ session('status') }}</div>
+            @endif
+            @if ($errors->any())
+                <div class="alert alert-danger py-3 mb-6">{{ $errors->first() }}</div>
+            @endif
+
             <!--begin::Addresses-->
             <div class="row gx-9 gy-6">
-                @if ($address)
-                    <!--begin::Col-->
+                @foreach ($addresses as $savedAddress)
                     <div class="col-xl-6" data-kt-billing-element="address">
-                        <!--begin::Address-->
-                        <div class="card card-dashed h-xl-100 flex-row flex-stack flex-wrap p-6">
-                            <!--begin::Details-->
-                            <div class="d-flex flex-column py-2">
-                                <div class="d-flex align-items-center fs-5 fw-bold mb-5">Billing Address
-                                    <span class="badge badge-light-success fs-7 ms-2">Primary</span>
+                        <div class="card card-dashed h-xl-100 p-6">
+                            <div class="d-flex flex-stack flex-wrap gap-3">
+                                <div class="d-flex flex-column py-2">
+                                    <div class="d-flex align-items-center fs-5 fw-bold mb-3">
+                                        {{ $savedAddress->label ?: $savedAddress->type_label . ' Address' }}
+                                        @if ($savedAddress->is_primary)
+                                            <span class="badge badge-light-success fs-7 ms-2">Primary</span>
+                                        @endif
+                                    </div>
+                                    <div class="fs-6 fw-semibold text-gray-600">
+                                        {!! collect($savedAddress->lines())->map(fn ($line) => e($line))->implode('<br />') !!}
+                                    </div>
                                 </div>
-                                <div class="fs-6 fw-semibold text-gray-600">{{ $address->address_line_1 }}
-                                    @if ($address->address_line_2)
-                                        <br />{{ $address->address_line_2 }}
-                                    @endif
-                                    <br />{{ $address->city }} {{ $address->postal_code }}
-                                    <br />{{ $address->country }}
+                                <div class="d-flex align-items-center flex-wrap gap-2 py-2">
+                                    @unless ($savedAddress->is_primary)
+                                        <form method="POST" action="{{ route('profile.addresses.primary', $savedAddress) }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-light">Make primary</button>
+                                        </form>
+                                    @endunless
+                                    <button type="button" class="btn btn-sm btn-light-primary" data-bs-toggle="collapse"
+                                        data-bs-target="#address_edit_{{ $savedAddress->id }}">Edit</button>
+                                    <form method="POST" action="{{ route('profile.addresses.destroy', $savedAddress) }}"
+                                        data-swal-confirm data-swal-title="Remove this address?" data-swal-icon="warning"
+                                        data-swal-confirm-button="Yes, remove" data-swal-cancel-button="Cancel">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-light-danger">Delete</button>
+                                    </form>
                                 </div>
                             </div>
-                            <!--end::Details-->
-                        </div>
-                        <!--end::Address-->
-                    </div>
-                    <!--end::Col-->
-                @else
-                    <!--begin::Col-->
-                    <div class="col-xl-6" data-kt-billing-element="address">
-                        <!--begin::Address-->
-                        <div class="card card-dashed h-xl-100 flex-row flex-stack flex-wrap p-6">
-                            <!--begin::Details-->
-                            <div class="d-flex flex-column py-2">
-                                <div class="d-flex align-items-center fs-5 fw-bold mb-3">No billing address on file
-                                </div>
+                            <div class="collapse mt-5" id="address_edit_{{ $savedAddress->id }}">
+                                <form method="POST" action="{{ route('profile.addresses.update', $savedAddress) }}">
+                                    @csrf
+                                    @method('PUT')
+                                    @include('pages/apps.profile.partials._address-fields', ['formAddress' => $savedAddress])
+                                    <button type="submit" class="btn btn-sm btn-primary">Save address</button>
+                                </form>
                             </div>
-                            <!--end::Details-->
                         </div>
-                        <!--end::Address-->
                     </div>
-                    <!--end::Col-->
+                @endforeach
+
+                @if ($addresses->isEmpty())
+                    <div class="col-xl-6" data-kt-billing-element="address">
+                        <div class="card card-dashed h-xl-100 flex-row flex-stack flex-wrap p-6">
+                            <div class="d-flex flex-column py-2">
+                                <div class="d-flex align-items-center fs-5 fw-bold mb-3">No billing address on file</div>
+                            </div>
+                        </div>
+                    </div>
                 @endif
-                <!--begin::Col-->
-                <div class="col-xl-6">
-                    <!--begin::Notice-->
-                    <div
-                        class="notice d-flex bg-light-primary rounded border-primary border border-dashed flex-stack h-xl-100 mb-10 p-6">
-                        <!--begin::Wrapper-->
-                        <div class="d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap">
-                            <!--begin::Content-->
-                            <div class="mb-3 mb-md-0 fw-semibold">
-                                <h4 class="text-gray-900 fw-bold">Billing address</h4>
-                                <div class="fs-6 text-gray-700 pe-7">Add a billing address so it can appear on your
-                                    invoices and statements.</div>
+
+                @if ($addresses->count() < \App\Models\Address::MAX_PER_USER)
+                    <div class="col-xl-6">
+                        <div class="notice d-flex bg-light-primary rounded border-primary border border-dashed flex-stack h-xl-100 mb-10 p-6">
+                            <div class="d-flex flex-stack flex-grow-1 flex-wrap flex-md-nowrap">
+                                <div class="mb-3 mb-md-0 fw-semibold">
+                                    <h4 class="text-gray-900 fw-bold">Billing address</h4>
+                                    <div class="fs-6 text-gray-700 pe-7">Add a billing address so it can appear on your
+                                        invoices and statements.</div>
+                                </div>
+                                <button type="button" class="btn btn-primary px-6 text-nowrap align-self-center"
+                                    data-bs-toggle="collapse" data-bs-target="#address_new">New Address</button>
                             </div>
-                            <!--end::Content-->
-                            <!--begin::Action-->
-                            <span class="d-inline-block align-self-center" tabindex="0" data-bs-toggle="tooltip"
-                                title="Address management isn't available yet — coming soon.">
-                                <a href="#" class="btn btn-primary px-6 text-nowrap disabled" aria-disabled="true"
-                                    style="pointer-events: none;">New Address</a>
-                            </span>
-                            <!--end::Action-->
                         </div>
-                        <!--end::Wrapper-->
                     </div>
-                    <!--end::Notice-->
-                </div>
-                <!--end::Col-->
+                    <div class="col-12 collapse {{ $errors->any() ? 'show' : '' }}" id="address_new">
+                        <div class="card card-dashed p-6">
+                            <h4 class="fw-bold mb-5">New address</h4>
+                            <form method="POST" action="{{ route('profile.addresses.store') }}">
+                                @csrf
+                                @include('pages/apps.profile.partials._address-fields', ['formAddress' => null])
+                                <button type="submit" class="btn btn-sm btn-primary">Add address</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
             </div>
             <!--end::Addresses-->
             <!--begin::Tax info-->

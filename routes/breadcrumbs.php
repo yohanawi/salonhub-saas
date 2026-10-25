@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\CommissionPayout;
 use App\Models\CommissionRule;
 use App\Models\Customer;
+use App\Models\CustomerConsultation;
 use App\Models\CustomerPackage;
 use App\Models\Expense;
 use App\Models\GiftCard;
@@ -33,6 +34,10 @@ use App\Models\Staff;
 use App\Models\StaffCommission;
 use App\Models\StaffSalaryStructure;
 use App\Models\StockAdjustment;
+use App\Models\Purchase;
+use App\Models\StockTake;
+use App\Models\StockTransfer;
+use App\Models\Supplier;
 use App\Models\Unit;
 use App\Models\Vendor;
 use Diglactic\Breadcrumbs\Breadcrumbs;
@@ -270,6 +275,11 @@ Breadcrumbs::for('appointment-management.appointments.index', function (Breadcru
 Breadcrumbs::for('appointment-management.appointments.calendar', function (BreadcrumbTrail $trail) {
     $trail->parent('appointment-management.index');
     $trail->push('Calendar', route('appointment-management.appointments.calendar'));
+});
+
+Breadcrumbs::for('appointment-management.waitlist.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('appointment-management.index');
+    $trail->push('Waitlist', route('appointment-management.waitlist.index'));
 });
 
 // Home > Dashboard > Appointment Management > Appointments > Create
@@ -530,6 +540,56 @@ Breadcrumbs::for('inventory.adjustments.show', function (BreadcrumbTrail $trail,
     $trail->push($adjustment->adjustment_number, route('inventory.adjustments.show', $adjustment));
 });
 
+Breadcrumbs::for('inventory.suppliers.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.index');
+    $trail->push('Suppliers', route('inventory.suppliers.index'));
+});
+
+Breadcrumbs::for('inventory.suppliers.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.suppliers.index');
+    $trail->push('New Supplier', route('inventory.suppliers.create'));
+});
+
+Breadcrumbs::for('inventory.suppliers.edit', function (BreadcrumbTrail $trail, Supplier $supplier) {
+    $trail->parent('inventory.suppliers.index');
+    $trail->push($supplier->name, route('inventory.suppliers.edit', $supplier));
+});
+
+Breadcrumbs::for('inventory.purchases.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.index');
+    $trail->push('Purchase Orders', route('inventory.purchases.index'));
+});
+
+Breadcrumbs::for('inventory.purchases.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.purchases.index');
+    $trail->push('New Purchase Order', route('inventory.purchases.create'));
+});
+
+Breadcrumbs::for('inventory.purchases.show', function (BreadcrumbTrail $trail, Purchase $purchase) {
+    $trail->parent('inventory.purchases.index');
+    $trail->push($purchase->purchase_number ?? 'Purchase Order', route('inventory.purchases.show', $purchase));
+});
+
+Breadcrumbs::for('inventory.purchases.edit', function (BreadcrumbTrail $trail, Purchase $purchase) {
+    $trail->parent('inventory.purchases.show', $purchase);
+    $trail->push('Edit', route('inventory.purchases.edit', $purchase));
+});
+
+Breadcrumbs::for('inventory.stock-takes.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.index');
+    $trail->push('Stock Takes', route('inventory.stock-takes.index'));
+});
+
+Breadcrumbs::for('inventory.stock-takes.show', function (BreadcrumbTrail $trail, StockTake $stockTake) {
+    $trail->parent('inventory.stock-takes.index');
+    $trail->push($stockTake->stock_take_number ?? 'Stock Take', route('inventory.stock-takes.show', $stockTake));
+});
+
+Breadcrumbs::for('inventory.batches.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.index');
+    $trail->push('Batches & Expiry', route('inventory.batches.index'));
+});
+
 // Home > Dashboard > Expense Management
 Breadcrumbs::for('expense-management.index', function (BreadcrumbTrail $trail) {
     $trail->parent('dashboard');
@@ -668,6 +728,16 @@ Breadcrumbs::for('payroll.dashboard', function (BreadcrumbTrail $trail) {
     $trail->push('Dashboard', route('payroll.dashboard'));
 });
 
+Breadcrumbs::for('payroll.advances.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('payroll.index');
+    $trail->push('Salary Advances', route('payroll.advances.index'));
+});
+
+Breadcrumbs::for('payroll.statutory.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('payroll.index');
+    $trail->push('EPF / ETF', route('payroll.statutory.index'));
+});
+
 Breadcrumbs::for('payroll.salary-structures.index', function (BreadcrumbTrail $trail) {
     $trail->parent('payroll.index');
     $trail->push('Salary Structures', route('payroll.salary-structures.index'));
@@ -727,6 +797,11 @@ Breadcrumbs::for('loyalty-management.index', function (BreadcrumbTrail $trail) {
 Breadcrumbs::for('loyalty-management.dashboard', function (BreadcrumbTrail $trail) {
     $trail->parent('loyalty-management.index');
     $trail->push('Dashboard', route('loyalty-management.dashboard'));
+});
+
+Breadcrumbs::for('loyalty-management.tiers.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('loyalty-management.index');
+    $trail->push('Tiers', route('loyalty-management.tiers.index'));
 });
 
 Breadcrumbs::for('loyalty-management.programs.index', function (BreadcrumbTrail $trail) {
@@ -875,4 +950,75 @@ Breadcrumbs::for('audit-logs.index', function (BreadcrumbTrail $trail) {
 Breadcrumbs::for('audit-logs.show', function (BreadcrumbTrail $trail, AuditLog $auditLog) {
     $trail->parent('audit-logs.index');
     $trail->push('Activity #' . $auditLog->id, route('audit-logs.show', $auditLog));
+});
+
+// Home > Dashboard > Business reports
+Breadcrumbs::for('reports.profit-loss', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Profit & Loss', route('reports.profit-loss'));
+});
+
+Breadcrumbs::for('reports.branch-comparison', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Branch Comparison', route('reports.branch-comparison'));
+});
+
+Breadcrumbs::for('reports.staff-performance', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Staff Performance', route('reports.staff-performance'));
+});
+
+Breadcrumbs::for('reports.schedules.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('dashboard');
+    $trail->push('Scheduled Reports', route('reports.schedules.index'));
+});
+
+Breadcrumbs::for('branches.pricing.edit', function (BreadcrumbTrail $trail, Branch $branch) {
+    $trail->parent('branches.show', $branch);
+    $trail->push('Prices & Tax', route('branches.pricing.edit', $branch));
+});
+
+Breadcrumbs::for('inventory.transfers.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.index');
+    $trail->push('Stock Transfers', route('inventory.transfers.index'));
+});
+
+Breadcrumbs::for('inventory.transfers.create', function (BreadcrumbTrail $trail) {
+    $trail->parent('inventory.transfers.index');
+    $trail->push('New Transfer', route('inventory.transfers.create'));
+});
+
+Breadcrumbs::for('inventory.transfers.show', function (BreadcrumbTrail $trail, StockTransfer $transfer) {
+    $trail->parent('inventory.transfers.index');
+    $trail->push($transfer->transfer_number ?? 'Transfer', route('inventory.transfers.show', $transfer));
+});
+
+Breadcrumbs::for('staff-management.roster.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('staff-management.index');
+    $trail->push('Shift Roster', route('staff-management.roster.index'));
+});
+
+Breadcrumbs::for('staff-management.attendance.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('staff-management.index');
+    $trail->push('Attendance', route('staff-management.attendance.index'));
+});
+
+Breadcrumbs::for('staff-management.leave.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('staff-management.index');
+    $trail->push('Leave Requests', route('staff-management.leave.index'));
+});
+
+Breadcrumbs::for('customer-management.segments.index', function (BreadcrumbTrail $trail) {
+    $trail->parent('customer-management.customers.index');
+    $trail->push('Segments & Campaigns', route('customer-management.segments.index'));
+});
+
+Breadcrumbs::for('customer-management.consultations.create', function (BreadcrumbTrail $trail, Customer $customer) {
+    $trail->parent('customer-management.customers.show', $customer);
+    $trail->push('Consultation Form', route('customer-management.consultations.create', $customer));
+});
+
+Breadcrumbs::for('customer-management.consultations.show', function (BreadcrumbTrail $trail, Customer $customer, CustomerConsultation $consultation) {
+    $trail->parent('customer-management.customers.show', $customer);
+    $trail->push('Consultation ' . $consultation->created_at?->format('M d, Y'), route('customer-management.consultations.show', [$customer, $consultation]));
 });

@@ -73,6 +73,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Scheduler Timezone
+    |--------------------------------------------------------------------------
+    |
+    | The timezone the daily jobs in App\Console\Kernel are timed in, so that
+    | "09:30" greetings and the "01:00" expiry runs happen at salon local time
+    | rather than UTC. Stored dates still use the application timezone above.
+    |
+    */
+
+    'schedule_timezone' => env('APP_SCHEDULE_TIMEZONE', 'Asia/Colombo'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

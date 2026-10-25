@@ -60,6 +60,7 @@ class Appointment extends Model
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'stock_shortages' => 'array',
     ];
 
     public function branch(): BelongsTo

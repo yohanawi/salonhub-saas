@@ -13,6 +13,8 @@ class AppointmentStatusService
         Appointment::STATUS_PENDING => [
             Appointment::STATUS_CONFIRMED,
             Appointment::STATUS_CANCELLED,
+            // An unconfirmed booking the customer never turned up for (used by the automatic no-show job).
+            Appointment::STATUS_NO_SHOW,
         ],
         Appointment::STATUS_CONFIRMED => [
             Appointment::STATUS_CHECKED_IN,
@@ -30,9 +32,21 @@ class AppointmentStatusService
         ],
     ];
 
-    public function transition(Appointment $appointment, string $status, User $user, ?string $notes = null): Appointment
+    public function __construct(private readonly CancellationPolicyService $cancellations)
+    {
+    }
+
+    /**
+     * @param  User|null  $user  Null when the system makes the change (the automatic no-show job).
+     */
+    public function transition(Appointment $appointment, string $status, ?User $user, ?string $notes = null): Appointment
     {
         $from = $appointment->status;
+        // Judged before the change, against the time the cancellation is made.
+        // Only a booking that has not started yet can be cancelled "late".
+        $lateCancellation = $status === Appointment::STATUS_CANCELLED
+            && in_array($from, [Appointment::STATUS_PENDING, Appointment::STATUS_CONFIRMED], true)
+            && $this->cancellations->isLate($appointment);
 
         if (! in_array($status, self::TRANSITIONS[$from] ?? [], true)) {
             throw ValidationException::withMessages([
@@ -40,10 +54,10 @@ class AppointmentStatusService
             ]);
         }
 
-        return DB::transaction(function () use ($appointment, $status, $user, $notes, $from) {
+        return DB::transaction(function () use ($appointment, $status, $user, $notes, $from, $lateCancellation) {
             $payload = [
                 'status' => $status,
-                'updated_by' => $user->id,
+                'updated_by' => $user?->id,
             ];
 
             if ($status === Appointment::STATUS_CHECKED_IN) {
@@ -60,7 +74,7 @@ class AppointmentStatusService
 
             if ($status === Appointment::STATUS_CANCELLED) {
                 $payload['cancelled_at'] = now();
-                $payload['cancelled_by'] = $user->id;
+                $payload['cancelled_by'] = $user?->id;
                 $payload['cancellation_reason'] = $notes;
             }
 
@@ -72,9 +86,17 @@ class AppointmentStatusService
                 'tenant_id' => $appointment->tenant_id,
                 'from_status' => $from,
                 'to_status' => $status,
-                'changed_by' => $user->id,
+                'changed_by' => $user?->id,
                 'notes' => $notes,
             ]);
+
+            if ($status === Appointment::STATUS_CANCELLED) {
+                $this->cancellations->afterCancellation($appointment, $lateCancellation, $user);
+            }
+
+            if ($status === Appointment::STATUS_NO_SHOW) {
+                $this->cancellations->afterNoShow($appointment, $user);
+            }
 
             return $appointment->fresh(['appointmentServices', 'statusHistory.changedBy']);
         });

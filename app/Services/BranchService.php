@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Branch;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Settings\SettingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -237,12 +238,21 @@ class BranchService
 
     private function syncDefaultBusinessHours(Branch $branch): void
     {
+        // A new branch opens Monday to Saturday at the salon's default hours (Settings > General).
+        $settings = app(SettingService::class);
+        $opensAt = $settings->get('branch.default_open_time', $branch->tenant_id) ?: '09:00';
+        $closesAt = $settings->get('branch.default_close_time', $branch->tenant_id) ?: '18:00';
+
+        if ($closesAt <= $opensAt) {
+            [$opensAt, $closesAt] = ['09:00', '18:00'];
+        }
+
         $hours = collect(Branch::DAY_LABELS)
             ->keys()
             ->map(fn (int $day) => [
                 'day_of_week' => $day,
-                'opens_at' => $day === 7 ? null : '09:00',
-                'closes_at' => $day === 7 ? null : '18:00',
+                'opens_at' => $day === 7 ? null : $opensAt,
+                'closes_at' => $day === 7 ? null : $closesAt,
                 'is_closed' => $day === 7,
             ])
             ->all();

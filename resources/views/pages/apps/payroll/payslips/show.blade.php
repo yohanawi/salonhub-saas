@@ -2,6 +2,25 @@
     @section('title') Payslip @endsection
     @section('breadcrumbs') {{ Breadcrumbs::render('payroll.payslips.show', $item) }} @endsection
     <div id="kt_app_content_container">
+        @include('pages/apps.payroll.partials._alerts')
+        <div class="d-flex flex-wrap gap-3 mb-5 justify-content-end">
+            <a href="{{ route('payroll.payslips.pdf', $item) }}" class="btn btn-sm btn-light-primary"><i class="bi bi-file-earmark-pdf me-1"></i>Download PDF</a>
+            @if (in_array($item->status, ['approved', 'paid'], true) && $item->run && auth()->user()->can('approve', $item->run))
+                <form method="POST" action="{{ route('payroll.payslips.send', $item) }}" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="channels[]" value="email">
+                    <button class="btn btn-sm btn-light-success" @disabled(! ($item->staff?->email || $item->staff?->user?->email))><i class="bi bi-envelope me-1"></i>Email Payslip</button>
+                </form>
+                <form method="POST" action="{{ route('payroll.payslips.send', $item) }}" class="d-inline">
+                    @csrf
+                    <input type="hidden" name="channels[]" value="message">
+                    <button class="btn btn-sm btn-light-success" @disabled(! $item->staff?->phone)><i class="bi bi-whatsapp me-1"></i>Send by SMS / WhatsApp</button>
+                </form>
+            @endif
+            @if ($item->payslip_sent_at)
+                <span class="badge badge-light-success align-self-center">Sent {{ $item->payslip_sent_at->format('M d, H:i') }}</span>
+            @endif
+        </div>
         <div class="card border-0 shadow-sm">
             <div class="card-header border-0 py-6 d-flex justify-content-between">
                 <div>
@@ -36,6 +55,14 @@
                     </div>
                 </div>
                 <div class="separator my-8"></div>
+                @if ((float) $item->epf_employer_amount > 0 || (float) $item->etf_employer_amount > 0)
+                    <div class="rounded-3 bg-light p-4 mb-6 fs-7">
+                        <strong>Employer contributions</strong> (not deducted):
+                        EPF 12% LKR {{ number_format((float) $item->epf_employer_amount, 2) }} ·
+                        ETF 3% LKR {{ number_format((float) $item->etf_employer_amount, 2) }} ·
+                        on EPF earnings of LKR {{ number_format((float) $item->statutory_earnings, 2) }}
+                    </div>
+                @endif
                 <div class="d-flex justify-content-between align-items-center"><span class="fs-3 fw-bold">Net Salary</span><span class="fs-2 fw-bold text-success">LKR {{ number_format((float) $item->net_pay, 2) }}</span></div>
             </div>
         </div>

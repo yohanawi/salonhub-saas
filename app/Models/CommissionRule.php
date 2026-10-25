@@ -16,10 +16,21 @@ class CommissionRule extends Model
 
     protected $casts = [
         'commission_value' => 'decimal:2',
+        'tiers' => 'array',
         'effective_from' => 'date',
         'effective_to' => 'date',
         'is_active' => 'boolean',
         'priority' => 'integer',
+    ];
+
+    /** Rate depends on how much the staff member has sold in the calendar month (see `tiers`). */
+    public const TYPE_TIERED = 'tiered';
+
+    public const TYPES = [
+        CommissionSetting::TYPE_PERCENTAGE,
+        CommissionSetting::TYPE_FIXED,
+        self::TYPE_TIERED,
+        CommissionSetting::TYPE_NONE,
     ];
 
     public const SCOPE_TENANT = 'tenant';
@@ -73,6 +84,23 @@ class CommissionRule extends Model
     public function staffCommissions(): HasMany
     {
         return $this->hasMany(StaffCommission::class);
+    }
+
+    public function isTiered(): bool
+    {
+        return $this->commission_type === self::TYPE_TIERED;
+    }
+
+    /**
+     * Tiers sorted from the lowest sales threshold up, as [['min_sales' => float, 'rate' => float], ...].
+     */
+    public function sortedTiers(): array
+    {
+        return collect($this->tiers ?? [])
+            ->map(fn (array $tier) => ['min_sales' => (float) $tier['min_sales'], 'rate' => (float) $tier['rate']])
+            ->sortBy('min_sales')
+            ->values()
+            ->all();
     }
 
     public function scopeActiveForDate(Builder $query, mixed $date): Builder

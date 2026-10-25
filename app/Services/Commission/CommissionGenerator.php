@@ -2,6 +2,7 @@
 
 namespace App\Services\Commission;
 
+use App\Models\CommissionRule;
 use App\Models\CommissionSetting;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -19,6 +20,7 @@ class CommissionGenerator
         private readonly CommissionRuleResolver $resolver,
         private readonly CommissionCalculator $calculator,
         private readonly PlanEntitlementService $entitlements,
+        private readonly TieredCommissionService $tiered,
     ) {
     }
 
@@ -167,6 +169,21 @@ class CommissionGenerator
             return null;
         }
 
+        $tierNote = null;
+
+        if ($rule['commission_type'] === CommissionRule::TYPE_TIERED) {
+            $sales = $this->tiered->monthlySales($item->staff, $invoice->paid_at ?? now(), $item, $invoice);
+            $tier = $this->tiered->tierFor($rule['tiers'] ?? [], $sales);
+
+            if (! $tier || $tier['rate'] <= 0) {
+                return null;
+            }
+
+            // Calculated as a plain percentage at the tier's rate; the ledger still records it as tiered.
+            $rule['commission_value'] = $tier['rate'];
+            $tierNote = sprintf(' Tier %d (%s%% from %s monthly sales; month to date %s).', $tier['index'] + 1, rtrim(rtrim(number_format($tier['rate'], 2), '0'), '.'), number_format($tier['min_sales'], 2), number_format($sales, 2));
+        }
+
         $calculation = $this->calculator->calculate(
             (float) ($item->gross_amount ?? ((float) $item->quantity * (float) $item->unit_price)),
             (float) ($item->discount_amount ?? $item->discount ?? 0),
@@ -202,7 +219,7 @@ class CommissionGenerator
             'commission_amount' => $calculation['commission_amount'],
             'status' => StaffCommission::STATUS_EARNED,
             'earned_at' => now(),
-            'notes' => "Generated from {$invoice->invoice_number}.",
+            'notes' => "Generated from {$invoice->invoice_number}." . ($tierNote ?? ''),
         ]);
     }
 }

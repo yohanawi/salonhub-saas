@@ -15,6 +15,7 @@ class ExpireLoyaltyPoints extends Command
     public function handle(LoyaltyService $loyalty): int
     {
         $tenants = Tenant::query()
+            ->operational()
             ->when($this->option('tenant_id'), fn ($query) => $query->whereKey($this->option('tenant_id')))
             ->get();
 

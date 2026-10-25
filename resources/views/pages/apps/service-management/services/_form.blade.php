@@ -641,6 +641,8 @@
 
         </div>
 
+        @include('pages/apps.service-management.services._extras')
+
     </div>
 
 

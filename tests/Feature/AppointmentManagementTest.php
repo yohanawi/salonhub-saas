@@ -14,6 +14,7 @@ use App\Models\Staff;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\RolesPermissionsSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\PermissionRegistrar;
@@ -94,11 +95,11 @@ class AppointmentManagementTest extends TestCase
         [, $owner, $branch, $customer, $service, $staff] = $this->bookingSetup();
 
         $this->actingAs($owner)
-            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff, '2026-08-17 10:00'))
+            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff, $this->bookingDay() . ' 10:00'))
             ->assertRedirect();
 
         $this->actingAs($owner)
-            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff, '2026-08-17 10:30'))
+            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff, $this->bookingDay() . ' 10:30'))
             ->assertSessionHasErrors('services.0.staff_id');
 
         $this->assertSame(1, Appointment::query()->count());
@@ -157,9 +158,72 @@ class AppointmentManagementTest extends TestCase
             ->assertSee($appointment->appointment_number);
 
         $this->actingAs($owner)
-            ->get(route('appointment-management.appointments.calendar', ['date' => '2026-08-17']))
+            ->get(route('appointment-management.appointments.calendar', ['date' => $this->bookingDay()]))
             ->assertOk()
             ->assertSee('Day / Staff View');
+    }
+
+    public function test_appointments_cannot_be_booked_in_the_past(): void
+    {
+        [, $owner, $branch, $customer, $service, $staff] = $this->bookingSetup();
+        $lastMonday = now('Asia/Colombo')->previous(Carbon::MONDAY)->format('Y-m-d');
+
+        $this->actingAs($owner)
+            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff, $lastMonday . ' 10:00'))
+            ->assertSessionHasErrors(['starts_at' => 'The appointment time is in the past.']);
+
+        $this->assertSame(0, Appointment::query()->count());
+    }
+
+    public function test_appointments_cannot_be_booked_beyond_the_maximum_advance_period(): void
+    {
+        [, $owner, $branch, $customer, $service, $staff] = $this->bookingSetup();
+        $farMonday = now('Asia/Colombo')->addDays(61)->next(Carbon::MONDAY)->format('Y-m-d');
+
+        $this->actingAs($owner)
+            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff, $farMonday . ' 10:00'))
+            ->assertSessionHasErrors(['starts_at' => 'Appointments can be booked at most 60 days in advance.']);
+    }
+
+    public function test_online_bookings_need_the_minimum_notice(): void
+    {
+        [, $owner, $branch, $customer, $service, $staff] = $this->bookingSetup();
+        $soon = now('Asia/Colombo')->addMinutes(30)->format('Y-m-d H:i');
+
+        $this->actingAs($owner)
+            ->post(route('appointment-management.appointments.store'), array_merge(
+                $this->appointmentPayload($branch, $customer, $service, $staff, $soon),
+                ['booking_source' => 'online'],
+            ))
+            ->assertSessionHasErrors(['starts_at' => "Online bookings need at least 60 minutes' notice."]);
+    }
+
+    public function test_past_appointment_can_be_edited_without_moving_it(): void
+    {
+        [, $owner, $branch, $customer, $service, $staff] = $this->bookingSetup();
+
+        $this->actingAs($owner)
+            ->post(route('appointment-management.appointments.store'), $this->appointmentPayload($branch, $customer, $service, $staff))
+            ->assertRedirect();
+
+        $appointment = Appointment::firstOrFail();
+        $pastStart = now('Asia/Colombo')->previous(Carbon::MONDAY)->setTime(10, 0);
+        $appointment->forceFill(['starts_at' => $pastStart->format('Y-m-d H:i:s')])->saveQuietly();
+
+        $this->actingAs($owner)
+            ->put(route('appointment-management.appointments.update', $appointment), array_merge(
+                $this->appointmentPayload($branch, $customer, $service, $staff, $pastStart->format('Y-m-d H:i')),
+                ['internal_notes' => 'Updated after the visit.'],
+            ))
+            ->assertSessionDoesntHaveErrors('starts_at');
+    }
+
+    /**
+     * The next Monday (staff work Mondays in bookingSetup), so bookings are always in the future.
+     */
+    private function bookingDay(): string
+    {
+        return now('Asia/Colombo')->next(Carbon::MONDAY)->format('Y-m-d');
     }
 
     private function bookingSetup(): array
@@ -284,14 +348,14 @@ class AppointmentManagementTest extends TestCase
         return [$tenant, $owner, $branch, $customer, $service, $staff];
     }
 
-    private function appointmentPayload(Branch $branch, Customer $customer, Service $service, Staff $staff, string $startsAt = '2026-08-17 10:00'): array
+    private function appointmentPayload(Branch $branch, Customer $customer, Service $service, Staff $staff, ?string $startsAt = null): array
     {
         return [
             'branch_id' => $branch->id,
             'customer_id' => $customer->id,
             'booking_source' => 'reception',
             'status' => Appointment::STATUS_PENDING,
-            'starts_at' => $startsAt,
+            'starts_at' => $startsAt ?? $this->bookingDay() . ' 10:00',
             'discount_amount' => 0,
             'tax_amount' => 0,
             'customer_notes' => 'Use fragrance-free products.',
